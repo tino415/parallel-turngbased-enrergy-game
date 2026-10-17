@@ -138,7 +138,7 @@ function renderOrders(){
 function clickNode(id){if(state.nodes[id].owner===0){selected=id;render()}else if(selected!==null&&neighbors(selected).includes(id)){$('hint').textContent='Set the attack amount for node '+id+' in the selected node allocation panel.'}}
 
 function aiOrders(){const planned={};const ns=state.nodes;for(const node of ns.filter(n=>n.owner!==null&&n.owner!==0)){const adj=neighbors(node.id),foes=adj.filter(id=>ns[id].owner!==node.owner),friends=adj.filter(id=>ns[id].owner===node.owner);let active=node.active;if(foes.length){foes.sort((a,b)=>ns[a].active-ns[b].active);const t=foes[0];if(active>ns[t].active*0.9+2){planned[node.id]={source:node.id,type:'attack',amount:Math.min(active,ns[t].active*1.4+3),dest:t};continue}}
-if(friends.length&&active>10){const towards=friends.sort((a,b)=>neighbors(b).filter(k=>ns[k].owner!==1).length-neighbors(a).filter(k=>ns[k].owner!==1).length);if(neighbors(towards[0]).some(k=>ns[k].owner!==1)){planned[node.id]={source:node.id,type:'transfer',amount:active*0.5,dest:towards[0]};continue}}
+if(friends.length&&active>10){const towards=friends.sort((a,b)=>neighbors(b).filter(k=>ns[k].owner!==node.owner).length-neighbors(a).filter(k=>ns[k].owner!==node.owner).length);if(neighbors(towards[0]).some(k=>ns[k].owner!==1)){planned[node.id]={source:node.id,type:'transfer',amount:active*0.5,dest:towards[0]};continue}}
 if(active>3)planned[node.id]={source:node.id,type:'invest',amount:active*0.6,dest:null};}return planned}
 function resolve(){if(state.finished)return;const nodes=state.nodes;
 const manual=Object.entries(orders).flatMap(([source,p])=>[
@@ -198,7 +198,7 @@ function renderFlows(svg,graph,element){
  const filter=$('overlay').value;
  if(filter==='none')return;
  for(const o of previewOrders()){
-  if(filter==='manual'&&o.automatic||filter==='policy'&&!o.automatic||!o.dest||o.amount<=.01)continue;
+  if(filter==='manual'&&o.automatic||filter==='policy'&&!o.automatic||o.dest===undefined||o.dest===null||o.amount<=.01)continue;
   const [ax,ay]=xy[o.source],[bx,by]=xy[o.dest],dx=bx-ax,dy=by-ay,length=Math.hypot(dx,dy)||1;
   const fromX=ax+dx/length*32,fromY=ay+dy/length*32,toX=bx-dx/length*35,toY=by-dy/length*35;
   const color=o.type==='attack'?'#ef886a':o.automatic?'#31c9a0':'#7fbeff';
@@ -240,8 +240,8 @@ $('resolve').disabled=state.finished;
 const svg=$('map');svg.innerHTML='';svg.setAttribute('viewBox',xy.length===14&&mapSeed==='classic'?'0 0 800 460':'0 0 1800 1050');
 const ns='http://www.w3.org/2000/svg';
 const element=(name,attrs,parent=svg)=>{const e=document.createElementNS(ns,name);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,v);parent.append(e);return e};
-for(const [a,b] of edges)element('line',{x1:xy[a][0],y1:xy[a][1],x2:xy[b][0],y2:xy[b][1],stroke:'#71849d','stroke-width':3,opacity:.55},graph);
 const graph=element('g',{transform:'translate('+camera.x+' '+camera.y+') scale('+camera.scale+')'});
+for(const [a,b] of edges)element('line',{x1:xy[a][0],y1:xy[a][1],x2:xy[b][0],y2:xy[b][1],stroke:'#71849d','stroke-width':3,opacity:.55},graph);
 for(const n of nodes){const [x,y]=xy[n.id],group=element('g',{},graph);const cir=element('circle',{cx:x,cy:y,r:30,fill:n.owner===null?'#768092':(['#3278c8','#cc6255','#b18adc','#d9a44d','#72b995','#da7dba'][n.owner%6]),class:'node'+(selected===n.id?' selected':'')+(orders[n.id]?' node-ordered':'')},group);cir.addEventListener('click',()=>clickNode(n.id));const t=element('text',{x,y:y+2,'font-size':17},group);t.textContent=fmt(n.active);const t2=element('text',{x,y:y+18,'font-size':10},group);t2.textContent='I '+fmt(n.invested);const t3=element('text',{x,y:y-40,'font-size':12},group);t3.textContent=n.id;group.style.cursor='pointer';group.addEventListener('click',()=>clickNode(n.id))}
 let selectedNode=selected===null?null:nodes[selected];$('selectedTitle').textContent=selectedNode?'Node '+selected:'Select a blue node';
 $('details').textContent=selectedNode?'Active '+fmt(selectedNode.active)+' · Invested '+fmt(selectedNode.invested):'Choose a blue node to issue an order.';
