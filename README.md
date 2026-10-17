@@ -96,6 +96,24 @@ The deployed content comes from `dist/`; the Workers configuration is in `wrangl
 
 - **v0.8.4:** Compact mobile header, full-height map area and an explicit Settings panel for orders and conquest defaults.
 
+## Repeatable simulations and regression testing
+
+The game engine accepts an injected combat RNG. The development-only simulation harness uses an **independent combat seed** as well as the map seed to replay an entire match deterministically. Normal browser matches continue to use their existing randomness and **blue remains human-controlled** in the actual game.
+
+Run AI-versus-AI simulations (all players, including blue, use the existing AI strategy):
+
+```sh
+npm run simulate -- --matches=50 --rounds=200 --nodes=30 --players=3 --seed=balance-v1
+npm run simulate -- --matches=5 --nodes=60 --players=4 --density=dense --json
+npm run check                  # Includes deterministic simulation regression tests
+```
+
+- Repeating the same command with the same seeds and engine revision yields the same outcomes and SHA-256 round-state checksums.
+- Each match uses derived seeds of the form `<seed>:map:<index>` and `<seed>:combat:<index>`. The map seed controls the topology and starting positions; the combat seed controls attack and defense randomness.
+- Reports include wins by player, games not decided within the round limit, game length, node ownership, energy totals and per-match checksums. A match reaching the cap is **unresolved**, not counted as a draw or a victory.
+- The tests exercise multiple densities and player counts, graph connectivity, valid node IDs and edges, finite nonnegative energy, legitimate ownership, no eliminated player returning, and repeatability.
+- This is **not** a gameplay rebalance or a browser-save replay feature. It runs headlessly for testing and diagnosis.
+
 ## Known limitations
 
 - Simple AI and experimental balance.
