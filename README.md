@@ -22,7 +22,7 @@ This is a gameplay experiment, not finalized balancing. The AI is deliberately s
 
 ## Hosting
 
-Static site: deploy repository root with no build command using Cloudflare Pages.
+Cloudflare Pages: set build command to `npm run build`, build output directory to `dist`, and root directory to repository root. The build copies only `index.html`, `_headers`, and `src/` into `dist/`, avoiding development assets and `node_modules`. If using Cloudflare Workers Builds instead, set its deploy command/assets directory appropriately (for example, Workers static assets `directory = "./dist"` in Wrangler configuration).
 
 ## v0.5.0: Visualization and map management
 
@@ -40,6 +40,6 @@ This remains a single-file zero-dependency prototype. A modular engine and autom
 - `src/styles.css` — presentation styles.
 - `src/game.js` — current game, round resolution, policies, AI, generator and UI logic. Further engine/UI separation remains future work.
 - `tests/smoke.test.mjs` — dependency-free structural and parsing checks.
-- Run `npm test` (requires Node.js) or `npm run check` locally. Cloudflare Pages can continue publishing the repository root with no build command.
+- Run `npm test` (requires Node.js) or `npm run check` locally. Use `npm run build` and deploy `dist/` to Cloudflare Pages.
 
 This refactor is intended to preserve v0.5.0 gameplay behavior; the larger domain/UI split is not yet complete.
