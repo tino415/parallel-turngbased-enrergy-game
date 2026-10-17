@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 
-test.beforeEach(async ({ page }) => { await page.goto('/'); });
+test.beforeEach(async ({ page }) => {
+  await page.goto('/');
+});
 
 test('main views can be opened without losing state', async ({ page }, testInfo) => {
   await expect(page.locator('#score')).toContainText('Round');
@@ -39,7 +41,7 @@ test('node selection exposes editable allocations', async ({ page }, testInfo) =
 test('round state survives refresh using local save', async ({ page }) => {
   await page.locator('#resolve').click();
   await expect(page.locator('#score')).toContainText('Round 2');
-  page.on('dialog', dialog => dialog.accept());
+  page.on('dialog', (dialog) => dialog.accept());
   await page.reload();
   await expect(page.locator('#score')).toContainText('Round 2');
 });
@@ -47,7 +49,7 @@ test('round state survives refresh using local save', async ({ page }) => {
 test('viewport has no unexpected horizontal document overflow', async ({ page }) => {
   const overflow = await page.evaluate(() => ({
     page: document.documentElement.scrollWidth,
-    viewport: document.documentElement.clientWidth
+    viewport: document.documentElement.clientWidth,
   }));
   expect(overflow.page).toBeLessThanOrEqual(overflow.viewport + 2);
 });
@@ -58,7 +60,7 @@ test('mobile scrolling and map pan are explicit modes', async ({ page }, testInf
   await expect(page.locator('#panMode')).toHaveAttribute('aria-pressed', 'false');
   await page.locator('#panMode').click();
   await expect(page.locator('#panMode')).toHaveAttribute('aria-pressed', 'true');
-  expect(await viewport.evaluate(el => getComputedStyle(el).touchAction)).toBe('none');
+  expect(await viewport.evaluate((el) => getComputedStyle(el).touchAction)).toBe('none');
   await page.locator('#panMode').click();
-  expect(await viewport.evaluate(el => getComputedStyle(el).touchAction)).not.toBe('none');
+  expect(await viewport.evaluate((el) => getComputedStyle(el).touchAction)).not.toBe('none');
 });

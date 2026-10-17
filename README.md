@@ -20,11 +20,11 @@ You control the blue nodes. Other player colors are AI opponents; gray nodes are
 
 The main content has three tabs:
 
-| View | What it does |
-| --- | --- |
-| **Map** | Select blue nodes, inspect connections and order-flow overlays, pan and zoom. |
+| View          | What it does                                                                                                                                                                         |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Map**       | Select blue nodes, inspect connections and order-flow overlays, pan and zoom.                                                                                                        |
 | **Dashboard** | Review your nodes' energy, defense and production; apply bulk policies or manual investments; edit each node's policy investment %, reserve and enabled state directly in the table. |
-| **Messages** | See combat events and round summaries (the most recent 70 entries). |
+| **Messages**  | See combat events and round summaries (the most recent 70 entries).                                                                                                                  |
 
 On desktop, the sidebar contains the selected node's manual allocations and persistent policy editor. On narrow screens, tapping a blue node opens those details in a modal instead of requiring scrolling below the map. Default conquest settings and planned orders remain in the sidebar area.
 
@@ -51,21 +51,23 @@ Node.js is used only for the development commands:
 npm test        # Node's built-in test runner
 npm run check   # Syntax checks for both scripts, then tests
 npm run build   # Copy deployable static assets to dist/
+npm run format # Apply Prettier to source, styles, markup, tests and docs
+npm run format:check # Verify formatting without changing files
 ```
 
 The build copies `index.html`, `_headers`, and `src/` into `dist/`. No bundling is performed.
 
 ## Source layout
 
-| Path | Responsibility |
-| --- | --- |
-| `index.html` | Page, tabs, map area, dashboard container and New game dialog |
-| `src/styles.css` | Responsive layout and styling |
-| `src/game.js` | Browser UI, order entry, map rendering, autosave and view navigation |
-| `src/engine.js` | Browser-independent map generation, policy evaluation, forecasts, AI and full round resolution; accepts injected RNG for reproducible tests |
-| `tests/*.test.mjs` | Syntax/structure, graph generation, economy/policy and round-resolution regression tests |
-| `scripts/build.mjs` | Prepare `dist/` |
-| `wrangler.toml` | Cloudflare Worker name and static assets directory |
+| Path                | Responsibility                                                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `index.html`        | Page, tabs, map area, dashboard container and New game dialog                                                                               |
+| `src/styles.css`    | Responsive layout and styling                                                                                                               |
+| `src/game.js`       | Browser UI, order entry, map rendering, autosave and view navigation                                                                        |
+| `src/engine.js`     | Browser-independent map generation, policy evaluation, forecasts, AI and full round resolution; accepts injected RNG for reproducible tests |
+| `tests/*.test.mjs`  | Syntax/structure, graph generation, economy/policy and round-resolution regression tests                                                    |
+| `scripts/build.mjs` | Prepare `dist/`                                                                                                                             |
+| `wrangler.toml`     | Cloudflare Worker name and static assets directory                                                                                          |
 
 The game engine is extracted from the DOM. However, the application is still a prototype: UI state is managed in `game.js`, combat randomness during normal play is not seeded for replays, and there is no online multiplayer.
 
