@@ -66,3 +66,11 @@ This refactor is intended to preserve v0.5.0 gameplay behavior; the larger domai
 - `src/game.js` only supplies player inputs, configures conquest defaults, updates application state and renders the result.
 - `tests/round.test.mjs` covers multi-orders, automatic AI response, one-hop transfers, conquest defaults, multiplayer termination and repeatability.
 - Page scrolling over the map no longer zooms it unintentionally; use Ctrl/Cmd + scroll or the new ± buttons. Dragging still pans.
+
+## v0.8.0: Navigation, policies and match recovery
+
+- Map, Dashboard and Messages are three views. Battle history is no longer in the node sidebar.
+- Dashboard supports directly setting an investment-policy percentage and defense reserve on each owned node, as well as enabling/disabling that node's persistent policy. Bulk policy editing remains available.
+- Matches are automatically saved in this browser using localStorage, including map topology, state, pending manual orders, node policies, round history and conquest defaults. The browser automatically restores the match after a reload.
+- A native beforeunload confirmation is requested for active games when the browser supports it; some browsers, especially on mobile, may not display one. Autosave is the recovery mechanism.
+- Starting a new game requires confirmation once the current match has advanced beyond round 1. This replaces the local autosave. Browser storage is local to the device/profile and can be cleared by browser privacy settings.
