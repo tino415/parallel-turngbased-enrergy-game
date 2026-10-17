@@ -39,4 +39,54 @@ function forecast(node,incoming,outgoing){
  const defense=Math.max(0,node.active-spent);
  return {invest,incoming,defense,income:1+.1*(node.invested+invest),next:.9*(defense+incoming)+1+.1*(node.invested+invest)};
 }
-globalThis.GameEngine=Object.freeze({seeded,buildMap,evaluatePolicy,forecast});
+function aiOrders(nodes,links){const planned={};const ns=nodes;const neighbors=i=>links.flatMap(([a,b])=>a===i?[b]:b===i?[a]:[]);for(const node of ns.filter(n=>n.owner!==null&&n.owner!==0)){const adj=neighbors(node.id),foes=adj.filter(id=>ns[id].owner!==node.owner),friends=adj.filter(id=>ns[id].owner===node.owner);let active=node.active;if(foes.length){foes.sort((a,b)=>ns[a].active-ns[b].active);const t=foes[0];if(active>ns[t].active*0.9+2){planned[node.id]={source:node.id,type:'attack',amount:Math.min(active,ns[t].active*1.4+3),dest:t};continue}}
+if(friends.length&&active>10){const towards=friends.sort((a,b)=>neighbors(b).filter(k=>ns[k].owner!==node.owner).length-neighbors(a).filter(k=>ns[k].owner!==node.owner).length);if(neighbors(towards[0]).some(k=>ns[k].owner!==node.owner)){planned[node.id]={source:node.id,type:'transfer',amount:active*0.5,dest:towards[0]};continue}}
+if(active>3)planned[node.id]={source:node.id,type:'invest',amount:active*0.6,dest:null};}return planned}
+
+function resolveRound({state,orders,policies,links,defaultConquestPolicy=null,rng=Math.random}){
+ if(state.finished)return {state,policies,events:[]};
+ const nodes=state.nodes.map(n=>({...n})),nextPolicies={...policies},events=[];
+ const neighbors=i=>links.flatMap(([a,b])=>a===i?[b]:b===i?[a]:[]);
+ const fmt=v=>v.toFixed(1),log=message=>events.push(message),rnd=(a,b)=>a+rng()*(b-a),clamp=v=>Math.max(0,v);
+ const allocated=p=>p.invest+Object.values(p.edges).reduce((sum,n)=>sum+n,0);
+const manual=Object.entries(orders).flatMap(([source,p])=>[
+ ...(p.invest>0?[{source:Number(source),type:'invest',amount:p.invest,dest:null}]:[]),
+ ...Object.entries(p.edges).filter(([,amount])=>amount>0).map(([dest,amount])=>({source:Number(source),type:nodes[Number(dest)].owner===0?'transfer':'attack',amount,dest:Number(dest)}))
+]);
+const automatic=Object.keys(policies).map(Number).flatMap(source=>evaluatePolicy({source,policy:policies[source],node:nodes[source],manualSpent:allocated(orders[source]??{invest:0,edges:{}}),manualHold:Boolean(orders[source]?.hold),neighbors:neighbors(source),owners:nodes.map(n=>n.owner)}));
+const all=[...manual,...automatic,...Object.values(aiOrders(nodes,links))];const valid=[],spent={};for(const o of all){const n=nodes[o.source];if(!n||n.owner===null||o.amount<=0||(spent[o.source]||0)+o.amount>n.active+1e-8)continue;if(o.type!=='invest'&&!neighbors(o.source).includes(o.dest))continue;if(o.type==='transfer'&&nodes[o.dest].owner!==n.owner)continue;if(o.type==='attack'&&nodes[o.dest].owner===n.owner)continue;spent[o.source]=(spent[o.source]||0)+o.amount;valid.push({...o,owner:n.owner})}
+for(const o of valid)nodes[o.source].active=clamp(nodes[o.source].active-o.amount);
+for(const o of valid.filter(o=>o.type==='invest'))nodes[o.source].invested+=o.amount;
+for(const o of valid.filter(o=>o.type==='transfer'))nodes[o.dest].active+=o.amount;
+const battles={};for(const o of valid.filter(o=>o.type==='attack')){const key=o.dest+':'+o.owner; if(!battles[key])battles[key]={dest:o.dest,owner:o.owner,amount:0};battles[key].amount+=o.amount}
+const byTarget={};for(const attack of Object.values(battles))(byTarget[attack.dest]??=[]).push(attack);
+for(const [destination,attacks] of Object.entries(byTarget)){const node=nodes[Number(destination)],original=node.owner;for(let i=attacks.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[attacks[i],attacks[j]]=[attacks[j],attacks[i]]}
+for(const a of attacks){
+ if(node.owner===a.owner){node.active+=a.amount;continue}
+ const defenderOwner=node.owner,defenderBefore=node.active;
+ const atk=a.amount*rnd(.8,1.2),def=defenderBefore*rnd(.8,1.2);
+ let attackerSurvived=0,defenderSurvived=0;
+ if(atk>def){
+   attackerSurvived=a.amount*(1-def/atk);
+   node.owner=a.owner;node.active=attackerSurvived;
+ }else{
+   defenderSurvived=defenderBefore*(1-atk/Math.max(def,1e-10));
+   node.active=defenderSurvived;
+ }
+ const attackerLoss=a.amount-attackerSurvived;
+ const defenderLoss=defenderBefore-defenderSurvived;
+ log('Round '+state.round+' · Node '+node.id+': '+(a.owner===0?'Blue':'Red')+
+     ' attacks '+(defenderOwner===null?'Neutral':defenderOwner===0?'Blue':'Red')+
+     ' with '+fmt(a.amount)+' vs '+fmt(defenderBefore)+
+     '. '+(atk>def?'Captured!':'Defended!')+
+     ' Attacker lost '+fmt(attackerLoss)+', defender lost '+fmt(defenderLoss)+
+     '. Remaining '+fmt(atk>def?attackerSurvived:defenderSurvived)+'.');
+ }
+ if(node.owner!==original){node.invested*=rnd(.25,.75);if(node.owner===0&&defaultConquestPolicy){nextPolicies[node.id]={...defaultConquestPolicy,dest:null}}}}
+for(const n of nodes){const income=1+n.invested*.1;n.active=clamp(n.active*.9+income)}
+for(const id of Object.keys(nextPolicies)){if(nodes[Number(id)].owner!==0)delete nextPolicies[id]}
+let blue=nodes.filter(n=>n.owner===0).length,red=nodes.filter(n=>n.owner!==null&&n.owner!==0).length;
+log('Round '+state.round+' complete: Blue '+blue+' nodes / Red '+red+' nodes.');const nextState={...state,nodes,round:state.round+1};
+const alive=new Set(nodes.filter(n=>n.owner!==null).map(n=>n.owner));if(alive.size<=1){nextState.finished=true;log(alive.has(0)?'Blue wins by elimination!':'An AI player wins by elimination!')}return {state:nextState,policies:nextPolicies,events};}
+
+globalThis.GameEngine=Object.freeze({seeded,buildMap,evaluatePolicy,forecast,aiOrders,resolveRound});
