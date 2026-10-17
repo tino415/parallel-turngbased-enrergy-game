@@ -2,11 +2,11 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Parallel Energy Game</title><style>
 :root{font-family:system-ui,sans-serif;color:#e7eef9;background:#0e1625}*{box-sizing:border-box}body{margin:0}header{padding:16px 20px;border-bottom:1px solid #334155;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}h1{font-size:21px;margin:0}.muted{color:#abb9ce;font-size:13px}.layout{display:grid;grid-template-columns:minmax(320px,1fr) 300px;gap:15px;max-width:1200px;margin:auto;padding:15px}.panel{padding:15px;background:#182538;border:1px solid #384960;border-radius:12px}svg{width:100%;height:auto;min-height:340px}button,input,select{background:#263a56;border:1px solid #637891;color:white;border-radius:7px;padding:8px;font:inherit}button{cursor:pointer}button:disabled{opacity:.4;cursor:default}.primary{background:#285e99}.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.order-row{border:1px solid #435570;background:#203149;border-radius:9px;padding:9px;margin:8px 0}.order-row .order-fields{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.order-row label{display:flex;flex-direction:column;gap:3px;font-size:12px}.order-row input,.order-row select{width:100%;min-width:0}.order-row button{padding:5px 9px}.order-top{display:flex;align-items:center;justify-content:space-between}.order-selected{outline:2px solid #8ebdff}.node-ordered{stroke:#f8d278;stroke-width:4}.allocation-line{display:grid;grid-template-columns:1fr 100px;align-items:center;gap:8px;margin-top:10px}.allocation-line input{width:100%}.log{max-height:230px;overflow:auto;font-size:12px;line-height:1.7}input{width:90px}.node{cursor:pointer;stroke:#d2daea;stroke-width:2}.selected{stroke:#fff;stroke-width:5}svg text{fill:#fff;pointer-events:none;text-anchor:middle;font-weight:700}@media(max-width:760px){.layout{grid-template-columns:1fr}svg{min-height:260px}}
 </style></head><body>
-<header><div><h1>⚡ Parallel Energy Game</h1><div class="muted">Simultaneous orders • Local energy • Prototype <span id="version" title="Game build version" style="display:inline-block;padding:2px 7px;margin-left:7px;border:1px solid #637891;border-radius:5px;color:#f8d278;font-weight:700">v0.3.1</span></div></div><div><span id="score"></span> <button class="primary" id="resolve">Resolve round</button> <button id="reset">New game</button></div></header>
-<div class="layout"><div class="panel"><svg id="map" viewBox="0 0 800 460"></svg><p class="muted">Blue = you · Red = AI · Gray = neutral. Node label shows active energy and invested energy (I). Select a blue node to allocate its energy among investment and connected neighbors. Unallocated energy remains for defense.</p></div><aside class="panel"><h3 id="selectedTitle">Select a blue node</h3><p id="details" class="muted"></p><p id="hint" class="muted"></p><div id="allocator"></div><h3>Planned orders <span id="orderCount" class="muted"></span></h3><p class="muted">Review allocations below. Select any node to edit all of its allocations. Nothing executes until Resolve round.</p><div id="orders"></div><button id="clearAll">Clear all orders</button><h3>Round log</h3><div id="log" class="log"></div><details><summary>Prototype rules</summary><p class="muted">Nodes start with active and invested energy. Invested principal is locked and earns 10% in active energy. Active energy decays 10% each round. Each node naturally generates 1 active energy. Energy transfers only across one edge. Each node may invest once and allocate energy to any number of neighboring nodes, retaining unallocated energy for defense. Attacks are grouped by destination and attacker, then shuffled; attack power uses an independent ±20% modifier for each combatant. Captured nodes lose a random 25–75% of investment. The player owning more nodes after round 20 wins.</p></details></aside></div>
+<header><div><h1>⚡ Parallel Energy Game</h1><div class="muted">Simultaneous orders • Local energy • Prototype <span id="version" title="Game build version" style="display:inline-block;padding:2px 7px;margin-left:7px;border:1px solid #637891;border-radius:5px;color:#f8d278;font-weight:700">v0.3.2</span></div></div><div><span id="score"></span> <button class="primary" id="resolve">Resolve round</button> <button id="reset">New game</button></div></header>
+<div class="layout"><div class="panel"><svg id="map" viewBox="0 0 800 460"></svg><p class="muted">Blue = you · Red = AI · Gray = neutral. Node label shows active energy and invested energy (I). Select a blue node to allocate its energy among investment and connected neighbors. Unallocated energy remains for defense.</p></div><aside class="panel"><h3 id="selectedTitle">Select a blue node</h3><p id="details" class="muted"></p><p id="hint" class="muted"></p><div id="allocator"></div><h3>Planned orders <span id="orderCount" class="muted"></span></h3><p class="muted">Review allocations below. Select any node to edit all of its allocations. Nothing executes until Resolve round.</p><div id="orders"></div><button id="clearAll">Clear all orders</button><h3>Round log</h3><div id="log" class="log"></div><details><summary>Prototype rules</summary><p class="muted">Nodes start with active and invested energy. Invested principal is locked and earns 10% in active energy. Active energy decays 10% each round. Each node naturally generates 1 active energy. Energy transfers only across one edge. Each node may invest once and allocate energy to any number of neighboring nodes, retaining unallocated energy for defense. Attacks are grouped by destination and attacker, then shuffled; attack power uses an independent ±20% modifier for each combatant. Captured nodes lose a random 25–75% of investment. Victory is achieved by eliminating the opposing player. Neutral nodes do not have to be conquered.</p></details></aside></div>
 <script>
 "use strict";
-const N=14,MAX_ROUNDS=20;
+const N=14;
 const edges=[[0,1],[0,2],[1,3],[1,4],[2,4],[2,5],[3,6],[4,6],[4,7],[5,7],[6,8],[7,8],[7,9],[8,10],[9,10],[9,11],[10,12],[11,12],[11,13],[12,13]];
 const xy=[[70,230],[165,115],[165,355],[280,70],[290,210],[280,385],[415,105],[420,295],[520,170],[530,375],[630,220],[640,405],[725,300],[735,415]];
 const neighbors=i=>edges.flatMap(([a,b])=>a===i?[b]:b===i?[a]:[]);
@@ -84,13 +84,34 @@ for(const o of valid.filter(o=>o.type==='transfer'))nodes[o.dest].active+=o.amou
 const battles={};for(const o of valid.filter(o=>o.type==='attack')){const key=o.dest+':'+o.owner; if(!battles[key])battles[key]={dest:o.dest,owner:o.owner,amount:0};battles[key].amount+=o.amount}
 const byTarget={};for(const attack of Object.values(battles))(byTarget[attack.dest]??=[]).push(attack);
 for(const [destination,attacks] of Object.entries(byTarget)){const node=nodes[Number(destination)],original=node.owner;for(let i=attacks.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[attacks[i],attacks[j]]=[attacks[j],attacks[i]]}
-for(const a of attacks){if(node.owner===a.owner){node.active+=a.amount;continue}const atk=a.amount*rnd(.8,1.2),def=node.active*rnd(.8,1.2);if(atk>def){const survivors=a.amount*(1-def/atk);node.owner=a.owner;node.active=survivors;log('Node '+node.id+' captured by '+(a.owner===0?'Blue':'Red')+'.')}else{node.active=node.active*(1-atk/Math.max(def,1e-10));log('Attack on node '+node.id+' repelled.')}}if(node.owner!==original){node.invested*=rnd(.25,.75)}}
+for(const a of attacks){
+ if(node.owner===a.owner){node.active+=a.amount;continue}
+ const defenderOwner=node.owner,defenderBefore=node.active;
+ const atk=a.amount*rnd(.8,1.2),def=defenderBefore*rnd(.8,1.2);
+ let attackerSurvived=0,defenderSurvived=0;
+ if(atk>def){
+   attackerSurvived=a.amount*(1-def/atk);
+   node.owner=a.owner;node.active=attackerSurvived;
+ }else{
+   defenderSurvived=defenderBefore*(1-atk/Math.max(def,1e-10));
+   node.active=defenderSurvived;
+ }
+ const attackerLoss=a.amount-attackerSurvived;
+ const defenderLoss=defenderBefore-defenderSurvived;
+ log('Round '+state.round+' · Node '+node.id+': '+(a.owner===0?'Blue':'Red')+
+     ' attacks '+(defenderOwner===null?'Neutral':defenderOwner===0?'Blue':'Red')+
+     ' with '+fmt(a.amount)+' vs '+fmt(defenderBefore)+
+     '. '+(atk>def?'Captured!':'Defended!')+
+     ' Attacker lost '+fmt(attackerLoss)+', defender lost '+fmt(defenderLoss)+
+     '. Remaining '+fmt(atk>def?attackerSurvived:defenderSurvived)+'.');
+ }
+ if(node.owner!==original){node.invested*=rnd(.25,.75)}}
 for(const n of nodes){const income=1+n.invested*.1;n.active=clamp(n.active*.9+income)}
 let blue=nodes.filter(n=>n.owner===0).length,red=nodes.filter(n=>n.owner===1).length;
 log('Round '+state.round+' complete: Blue '+blue+' nodes / Red '+red+' nodes.');state.round++;orders={};
-if(state.round>MAX_ROUNDS){state.finished=true;log(blue===red?'Draw!':blue>red?'Blue wins!':'Red wins!')}render()}
+if(blue===0||red===0){state.finished=true;log(blue===0?'Red wins by elimination!':'Blue wins by elimination!')}render()}
 function render(){const nodes=state.nodes,blue=nodes.filter(n=>n.owner===0).length,red=nodes.filter(n=>n.owner===1).length;
-$('score').textContent='Round '+Math.min(state.round,MAX_ROUNDS)+' / '+MAX_ROUNDS+' · Blue '+blue+' · Red '+red;
+$('score').textContent='Round '+state.round+' · Blue '+blue+' · Red '+red;
 $('resolve').disabled=state.finished;
 const svg=$('map');svg.innerHTML='';
 const ns='http://www.w3.org/2000/svg';
