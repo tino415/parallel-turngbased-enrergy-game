@@ -176,6 +176,8 @@ function renderDashboard(){
 function attachNavigation(){
  const svg=$('map');let drag=null;
  svg.addEventListener('wheel',e=>{
+   // Normal page scrolling must not zoom the map.
+   if(!e.ctrlKey&&!e.metaKey)return;
    e.preventDefault();
    camera.scale=Math.max(.3,Math.min(5,camera.scale*(e.deltaY<0?1.12:.89)));
    render();
@@ -222,5 +224,8 @@ $('log').innerHTML=history.map(line=>'<div>'+line+'</div>').join('');
 $('clearAll').onclick=()=>{orders={};render()};
 $('resolve').onclick=resolve;$('reset').onclick=openNewGame;
 $('generate').onclick=generate;for(const id of ['nodeCount','playerCount','density','seed'])$(id).addEventListener('input',previewMap);$('cancelNewGame').onclick=()=>$('newGameDialog').close();$('tableView').onclick=()=>{viewDashboard=!viewDashboard;$('tableView').textContent=viewDashboard?'Map view':'Node dashboard';render()};
-$('overlay').onchange=render;$('fit').onclick=()=>{camera={x:0,y:0,scale:1};render()};
+$('overlay').onchange=render;
+$('zoomIn').onclick=()=>{camera.scale=Math.min(5,camera.scale*1.25);render()};
+$('zoomOut').onclick=()=>{camera.scale=Math.max(.3,camera.scale/1.25);render()};
+$('fit').onclick=()=>{camera={x:0,y:0,scale:1};render()};
 fresh();attachNavigation();
