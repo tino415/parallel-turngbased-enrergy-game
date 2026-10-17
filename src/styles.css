@@ -10,3 +10,14 @@ dialog#newGameDialog::backdrop{background:#050a13b8}
 #newGamePreview{display:block;width:100%;height:auto;min-height:0;aspect-ratio:12/7;background:#111b2a;border:1px solid #364b65;border-radius:8px}
 .dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:15px}
 @media(max-width:600px){.generator-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.view-tabs{display:flex;gap:5px;align-items:center}
+.view-tabs button.active{background:#285e99;border-color:#80b9f5;font-weight:700}
+#messagesView{min-height:60vh}
+#messagesView h2{font-size:18px}
+#messagesView .log{max-height:65vh;overflow-y:auto;font-size:14px;line-height:1.85}
+#dashboard[hidden],#messagesView[hidden],#mapViewport[hidden],[hidden]{display:none!important}
+#dashboard{max-height:75vh}
+#dashboard input[type=number]{width:76px}
+#dashboard input[type=checkbox]{width:auto}
+@media(max-width:760px){.view-tabs{width:100%}.view-tabs button{flex:1}}
