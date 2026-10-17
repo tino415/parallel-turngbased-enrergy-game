@@ -177,6 +177,7 @@ function renderDashboard(){
 }
 function attachNavigation(){
  const svg=$('map');let drag=null;
+ const canPanTouch=()=>document.getElementById('mapViewport').classList.contains('touch-pan-mode');
  svg.addEventListener('wheel',e=>{
    // Normal page scrolling must not zoom the map.
    if(!e.ctrlKey&&!e.metaKey)return;
@@ -186,7 +187,8 @@ function attachNavigation(){
  },{passive:false});
  svg.addEventListener('pointerdown',e=>{
    // Node clicks must remain native click events. Only pan on empty background.
-   if(e.button!==0 || e.target.closest('.node-hit') || e.pointerType==='touch')return;
+   if(e.button!==0 || (e.pointerType==='touch' ? !canPanTouch() : Boolean(e.target.closest('.node-hit'))))return;
+   if(e.pointerType==='touch')svg.setPointerCapture(e.pointerId);
    drag={x:e.clientX,y:e.clientY,ox:camera.x,oy:camera.y,id:e.pointerId};
  });
  svg.addEventListener('pointermove',e=>{
@@ -198,7 +200,7 @@ function attachNavigation(){
    const g=svg.querySelector('g');
    if(g)g.setAttribute('transform','translate('+camera.x+' '+camera.y+') scale('+camera.scale+')');
  });
- const stop=e=>{if(drag&&e.pointerId===drag.id)drag=null};
+ const stop=e=>{if(drag&&e.pointerId===drag.id){drag=null;if(svg.hasPointerCapture(e.pointerId))svg.releasePointerCapture(e.pointerId)}};
  svg.addEventListener('pointerup',stop);
  svg.addEventListener('pointercancel',stop);
  window.addEventListener('pointerup',stop);
@@ -275,6 +277,7 @@ $('clearAll').onclick=()=>{orders={};render()};
 $('resolve').onclick=resolve;$('reset').onclick=openNewGame;
 $('generate').onclick=()=>{if(state.round>1&&!confirm('Start a new game? Your current match will be replaced (autosave will also be replaced).'))return;generate()};for(const id of ['nodeCount','playerCount','density','seed'])$(id).addEventListener('input',previewMap);$('cancelNewGame').onclick=()=>$('newGameDialog').close();$('tableView').onclick=()=>switchView('dashboard');$('mapTab').onclick=()=>switchView('map');$('messagesTab').onclick=()=>switchView('messages');
 $('overlay').onchange=render;
+$('panMode').onclick=()=>{const active=$('mapViewport').classList.toggle('touch-pan-mode');$('panMode').setAttribute('aria-pressed',String(active));$('panMode').textContent=active?'Scroll':'Pan'};
 $('zoomIn').onclick=()=>{camera.scale=Math.min(5,camera.scale*1.25);render()};
 $('zoomOut').onclick=()=>{camera.scale=Math.max(.3,camera.scale/1.25);render()};
 $('fit').onclick=()=>{camera={x:0,y:0,scale:1};render()};
