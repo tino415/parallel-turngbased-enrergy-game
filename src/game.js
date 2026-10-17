@@ -225,11 +225,11 @@ function restoreGame(){
   const raw=localStorage.getItem(SAVE_KEY);if(!raw)return false;
   const save=JSON.parse(raw);
   if(!save.state||!Array.isArray(save.state.nodes)||!Array.isArray(save.xy)||!Array.isArray(save.edges))return false;
-  if(!confirm('Resume your saved match (round '+save.state.round+')? Choose Cancel for a fresh game.'))return false;
+  // Always recover an existing match; New Game is the explicit way to replace it.
   ({state,orders,policies,xy,edges,N,playerCount,mapSeed,history,selected}=save);
   orders??={};policies??={};history??=[];selected??=null;
   if(save.defaults){$('autoConquer').checked=Boolean(save.defaults.enabled);$('defaultReserve').value=save.defaults.reserve;$('defaultInvest').value=save.defaults.invest}
-  render();return true;
+  history.unshift('Recovered saved match from this browser.');render();return true;
  }catch(e){console.warn('Could not restore save',e);return false}
 }
 window.addEventListener('beforeunload',event=>{
