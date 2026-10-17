@@ -18,7 +18,7 @@ A small, experimental graph-based strategy game. **The game's final name is unde
 
 ## Status and limitations
 
-This is a gameplay experiment, not finalized balancing. The AI is deliberately simple. Persistent automation policies are not implemented yet. There is no save game, multiplayer, seeded replay, or independent engine test suite yet. The rules can change based on playtests.
+This is a gameplay experiment, not finalized balancing. The AI is deliberately simple. Persistent node policies are supported: defense reserve, surplus reinvestment percentage, and optional one-edge friendly transfer. Policies can be copied, disabled, removed, or paused for one round. Manual allocations take priority over policies. There is no save game, multiplayer, seeded replay, or independent engine test suite yet. The rules can change based on playtests.
 
 ## Hosting
 
