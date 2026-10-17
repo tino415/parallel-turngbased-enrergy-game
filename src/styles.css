@@ -44,3 +44,32 @@ dialog#newGameDialog::backdrop{background:#050a13b8}
  #mapViewport.touch-pan-mode,#mapViewport.touch-pan-mode svg{touch-action:none;cursor:grab}
  #panMode[aria-pressed=true]{background:#285e99;border-color:#80b9f5}
 }
+
+#mobileSettings,.mobile-sidebar-heading{display:none}
+@media(max-width:760px){
+ body{min-height:100dvh}
+ header{padding:8px 12px;gap:5px;align-items:center}
+ header h1{font-size:16px;white-space:nowrap}
+ header .muted{font-size:10px;line-height:1.15}
+ #version{margin-left:3px!important;padding:0 4px!important}
+ header>div:last-child{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+ #score{font-size:12px;width:100%;white-space:nowrap}
+ header button{font-size:12px;padding:6px 9px}
+ #mobileSettings{display:inline-block}
+ .toolbar{padding:6px 10px;gap:4px}
+ .view-tabs{width:100%;gap:4px}
+ .view-tabs button{font-size:12px;padding:7px 4px}
+ .toolbar label{display:none}
+ .layout{display:block;padding:5px}
+ .layout>.panel{padding:4px;border:0;border-radius:6px}
+ #mapViewport{height:calc(100dvh - 183px);min-height:260px;max-height:none;border-radius:6px}
+ #mapViewport svg{width:100%;height:100%;min-height:0}
+ .map-explanation{display:none}
+ #gameSidebar{display:none}
+ #gameSidebar.settings-open{display:block;position:fixed;inset:0;z-index:60;overflow-y:auto;overscroll-behavior:contain;background:#182538;border:0;border-radius:0;padding:12px 14px 36px}
+ .mobile-sidebar-heading{display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#182538;z-index:1;padding:5px 0 10px}
+ body.settings-active{overflow:hidden}
+ .map-zoom-controls{gap:4px}
+ .map-zoom-controls button{min-width:42px;min-height:42px;font-size:18px;padding:5px}
+ .map-zoom-controls #fit,.map-zoom-controls #panMode{font-size:12px}
+}
