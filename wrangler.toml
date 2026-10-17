@@ -1,0 +1,5 @@
+name = "pteg"
+compatibility_date = "2026-10-17"
+
+[assets]
+directory = "./dist"
