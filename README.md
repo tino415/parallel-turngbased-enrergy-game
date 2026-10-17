@@ -3,7 +3,7 @@
 A browser-based, simultaneous-turn, graph strategy game. The final game name is not settled.
 
 **Play:** https://pteg.otin.dev  
-**Current version:** v0.8.0
+**Current version:** v0.8.1
 
 ## Play and rules
 
@@ -26,11 +26,11 @@ The main content has three tabs:
 | **Dashboard** | Review your nodes' energy, defense and production; apply bulk policies or manual investments; edit each node's policy investment %, reserve and enabled state directly in the table. |
 | **Messages** | See combat events and round summaries (the most recent 70 entries). |
 
-The sidebar contains the selected node's manual allocations, its persistent policy editor, the default policy for newly captured nodes, and a summary of planned orders.
+On desktop, the sidebar contains the selected node's manual allocations and persistent policy editor. On narrow screens, tapping a blue node opens those details in a modal instead of requiring scrolling below the map. Default conquest settings and planned orders remain in the sidebar area.
 
 **Persistent policies:** For each blue node, reserve some active energy, invest a specified percentage of the remaining surplus, and optionally transfer the rest to **one adjacent friendly node**. Policies do not initiate attacks. Manual orders take priority; a policy can be disabled, removed, copied, pasted, or paused for one round. The dashboard can apply reserve/invest percentages to multiple selected nodes at once; doing so clears their transfer destinations.
 
-**Map navigation:** Drag empty map space to pan. Use the **+ / −** buttons or **Ctrl/Cmd + scroll** to zoom; ordinary scrolling scrolls the page. **Fit map** resets the camera. The overlay selector controls displayed manual and policy flows.
+**Map navigation:** Drag empty map space to pan. Use the **+ / −** buttons or **Ctrl/Cmd + scroll** to zoom; ordinary scrolling scrolls the page. On mobile, vertical swipes over the map scroll the page too. **Fit map** resets the camera. The overlay selector controls displayed manual and policy flows.
 
 **New game:** The New game dialog offers a live graph preview and a reproducible seed, with 10–120 nodes, 2–6 players, and sparse/normal/dense connection density. Generated maps use a jittered grid for spacing. Canceling the dialog leaves the current match intact. Confirming a new game after round 1 replaces the current match.
 
@@ -88,6 +88,7 @@ The deployed content comes from `dist/`; the Workers configuration is in `wrangl
 - **v0.6.1:** Independent map and economy calculations with tests.
 - **v0.7.0:** AI and round resolution moved to the testable engine; explicit zoom controls.
 - **v0.8.0:** Map/Dashboard/Messages tabs, per-node dashboard policy settings, local autosave and reload recovery.
+- **v0.8.1:** Fixed a startup JavaScript global-name collision that left the map blank, added a mobile node-details modal, and restored vertical touch scrolling over the map.
 
 ## Known limitations
 
