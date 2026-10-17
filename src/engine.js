@@ -130,11 +130,11 @@
       next: 0.9 * (defense + incoming) + 1 + 0.1 * (node.invested + invest),
     };
   }
-  function aiOrders(nodes, links) {
+  function aiOrders(nodes, links, includePlayerZero = false) {
     const planned = {};
     const ns = nodes;
     const neighbors = (i) => links.flatMap(([a, b]) => (a === i ? [b] : b === i ? [a] : []));
-    for (const node of ns.filter((n) => n.owner !== null && n.owner !== 0)) {
+    for (const node of ns.filter((n) => n.owner !== null && (includePlayerZero || n.owner !== 0))) {
       const adj = neighbors(node.id),
         foes = adj.filter((id) => ns[id].owner !== node.owner),
         friends = adj.filter((id) => ns[id].owner === node.owner);
