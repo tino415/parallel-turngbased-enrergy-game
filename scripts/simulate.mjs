@@ -16,7 +16,10 @@ function parse(args) {
   const options = {};
   for (const arg of args) {
     if (arg === '--help' || arg === '-h') return null;
-    if (arg === '--json') { options.json = true; continue; }
+    if (arg === '--json') {
+      options.json = true;
+      continue;
+    }
     const match = /^--(matches|rounds|nodes|players|density|seed)=(.+)$/.exec(arg);
     if (!match) throw new Error('Unrecognized option: ' + arg);
     const [, key, value] = match;
@@ -24,7 +27,9 @@ function parse(args) {
     else {
       const number = Number(value);
       if (!Number.isSafeInteger(number)) throw new Error('Expected integer for --' + key);
-      options[{ rounds: 'maxRounds', nodes: 'count', matches: 'matches', players: 'players' }[key]] = number;
+      options[
+        { rounds: 'maxRounds', nodes: 'count', matches: 'matches', players: 'players' }[key]
+      ] = number;
     }
   }
   return options;
@@ -32,19 +37,35 @@ function parse(args) {
 
 try {
   const options = parse(process.argv.slice(2));
-  if (options === null) { process.stdout.write(usage); process.exit(0); }
+  if (options === null) {
+    process.stdout.write(usage);
+    process.exit(0);
+  }
   const { json, ...simulationOptions } = options;
   const report = simulateBatch(simulationOptions);
   if (json) console.log(JSON.stringify(report, null, 2));
   else {
     console.log('Seed: ' + report.seed + ' | Matches: ' + report.matches);
-    console.log('AI wins per player: ' + report.wins.map((value, id) => 'P' + id + '=' + value).join(' '));
+    console.log(
+      'AI wins per player: ' + report.wins.map((value, id) => 'P' + id + '=' + value).join(' '),
+    );
     console.log('Unresolved by round cap: ' + report.unresolved);
-    console.log('Rounds: average=' + report.averageRounds +
-      ', min=' + report.minRounds + ', max=' + report.maxRounds);
-    console.log('First match: map=' + report.results[0].mapSeed +
-      ', combat=' + report.results[0].combatSeed +
-      ', checksum=' + report.results[0].checksum);
+    console.log(
+      'Rounds: average=' +
+        report.averageRounds +
+        ', min=' +
+        report.minRounds +
+        ', max=' +
+        report.maxRounds,
+    );
+    console.log(
+      'First match: map=' +
+        report.results[0].mapSeed +
+        ', combat=' +
+        report.results[0].combatSeed +
+        ', checksum=' +
+        report.results[0].checksum,
+    );
   }
 } catch (error) {
   console.error(error.message);
