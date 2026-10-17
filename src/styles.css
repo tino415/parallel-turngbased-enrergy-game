@@ -32,11 +32,3 @@ dialog#newGameDialog::backdrop{background:#050a13b8}
  #nodeDialog{width:96vw}
 }
 
-.mobile-detail-actions{display:none}
-@media(max-width:760px){
- #mapViewport{touch-action:pan-y;cursor:default;height:60vh;min-height:280px}
- #nodeSidebar{display:none}
- #nodeSidebar.mobile-open{display:block;position:fixed;inset:0;z-index:50;overflow-y:auto;overscroll-behavior:contain;border:0;border-radius:0;background:#182538;padding:16px 16px 40px}
- .mobile-detail-actions{display:flex;justify-content:flex-end;position:sticky;top:0;z-index:2;background:#182538;padding:4px 0 10px}
- body.node-details-open{overflow:hidden}
-}
