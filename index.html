@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Parallel Energy Game</title><style>
-:root{font-family:system-ui,sans-serif;color:#e7eef9;background:#0e1625}*{box-sizing:border-box}body{margin:0}header{padding:16px 20px;border-bottom:1px solid #334155;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}h1{font-size:21px;margin:0}.muted{color:#abb9ce;font-size:13px}.layout{display:grid;grid-template-columns:minmax(320px,1fr) 300px;gap:15px;max-width:1200px;margin:auto;padding:15px}.panel{padding:15px;background:#182538;border:1px solid #384960;border-radius:12px}svg{width:100%;height:auto;min-height:340px}button,input,select{background:#263a56;border:1px solid #637891;color:white;border-radius:7px;padding:8px;font:inherit}button{cursor:pointer}button:disabled{opacity:.4;cursor:default}.primary{background:#285e99}.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.order-row{border:1px solid #435570;background:#203149;border-radius:9px;padding:9px;margin:8px 0}.order-row .order-fields{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.order-row label{display:flex;flex-direction:column;gap:3px;font-size:12px}.order-row input,.order-row select{width:100%;min-width:0}.order-row button{padding:5px 9px}.order-top{display:flex;align-items:center;justify-content:space-between}.order-selected{outline:2px solid #8ebdff}.node-ordered{stroke:#f8d278;stroke-width:4}.allocation-line{display:grid;grid-template-columns:1fr 100px;align-items:center;gap:8px;margin-top:10px}.allocation-line input{width:100%}.log{max-height:230px;overflow:auto;font-size:12px;line-height:1.7}input{width:90px}.node{cursor:pointer;stroke:#d2daea;stroke-width:2}.selected{stroke:#fff;stroke-width:5}svg text{fill:#fff;pointer-events:none;text-anchor:middle;font-weight:700}@media(max-width:760px){.layout{grid-template-columns:1fr}svg{min-height:260px}}
+:root{font-family:system-ui,sans-serif;color:#e7eef9;background:#0e1625}*{box-sizing:border-box}body{margin:0}header{padding:16px 20px;border-bottom:1px solid #334155;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}h1{font-size:21px;margin:0}.muted{color:#abb9ce;font-size:13px}.layout{display:grid;grid-template-columns:minmax(320px,1fr) 300px;gap:15px;max-width:1200px;margin:auto;padding:15px}.panel{padding:15px;background:#182538;border:1px solid #384960;border-radius:12px}svg{width:100%;height:auto;min-height:340px}button,input,select{background:#263a56;border:1px solid #637891;color:white;border-radius:7px;padding:8px;font:inherit}button{cursor:pointer}button:disabled{opacity:.4;cursor:default}.primary{background:#285e99}.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.order-row{border:1px solid #435570;background:#203149;border-radius:9px;padding:9px;margin:8px 0}.order-row .order-fields{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.order-row label{display:flex;flex-direction:column;gap:3px;font-size:12px}.order-row input,.order-row select{width:100%;min-width:0}.order-row button{padding:5px 9px}.order-top{display:flex;align-items:center;justify-content:space-between}.order-selected{outline:2px solid #8ebdff}.node-ordered{stroke:#f8d278;stroke-width:4}.allocation-line{display:grid;grid-template-columns:1fr 100px;align-items:center;gap:8px;margin-top:10px}.allocation-line input{width:100%}.policy-box{border:1px solid #3e6a7a;background:#182f3d;border-radius:10px;padding:12px;margin:12px 0}.policy-box label{display:block;font-size:13px;margin:8px 0}.policy-box input[type=number],.policy-box select{width:100%}.policy-box input[type=checkbox]{width:auto}.policy-actions{display:flex;gap:6px;flex-wrap:wrap}.log{max-height:230px;overflow:auto;font-size:12px;line-height:1.7}input{width:90px}.node{cursor:pointer;stroke:#d2daea;stroke-width:2}.selected{stroke:#fff;stroke-width:5}svg text{fill:#fff;pointer-events:none;text-anchor:middle;font-weight:700}@media(max-width:760px){.layout{grid-template-columns:1fr}svg{min-height:260px}}
 </style></head><body>
-<header><div><h1>⚡ Parallel Energy Game</h1><div class="muted">Simultaneous orders • Local energy • Prototype <span id="version" title="Game build version" style="display:inline-block;padding:2px 7px;margin-left:7px;border:1px solid #637891;border-radius:5px;color:#f8d278;font-weight:700">v0.3.2</span></div></div><div><span id="score"></span> <button class="primary" id="resolve">Resolve round</button> <button id="reset">New game</button></div></header>
-<div class="layout"><div class="panel"><svg id="map" viewBox="0 0 800 460"></svg><p class="muted">Blue = you · Red = AI · Gray = neutral. Node label shows active energy and invested energy (I). Select a blue node to allocate its energy among investment and connected neighbors. Unallocated energy remains for defense.</p></div><aside class="panel"><h3 id="selectedTitle">Select a blue node</h3><p id="details" class="muted"></p><p id="hint" class="muted"></p><div id="allocator"></div><h3>Planned orders <span id="orderCount" class="muted"></span></h3><p class="muted">Review allocations below. Select any node to edit all of its allocations. Nothing executes until Resolve round.</p><div id="orders"></div><button id="clearAll">Clear all orders</button><h3>Round log</h3><div id="log" class="log"></div><details><summary>Prototype rules</summary><p class="muted">Nodes start with active and invested energy. Invested principal is locked and earns 10% in active energy. Active energy decays 10% each round. Each node naturally generates 1 active energy. Energy transfers only across one edge. Each node may invest once and allocate energy to any number of neighboring nodes, retaining unallocated energy for defense. Attacks are grouped by destination and attacker, then shuffled; attack power uses an independent ±20% modifier for each combatant. Captured nodes lose a random 25–75% of investment. Victory is achieved by eliminating the opposing player. Neutral nodes do not have to be conquered.</p></details></aside></div>
+<header><div><h1>⚡ Parallel Energy Game</h1><div class="muted">Simultaneous orders • Local energy • Prototype <span id="version" title="Game build version" style="display:inline-block;padding:2px 7px;margin-left:7px;border:1px solid #637891;border-radius:5px;color:#f8d278;font-weight:700">v0.4.0</span></div></div><div><span id="score"></span> <button class="primary" id="resolve">Resolve round</button> <button id="reset">New game</button></div></header>
+<div class="layout"><div class="panel"><svg id="map" viewBox="0 0 800 460"></svg><p class="muted">Blue = you · Red = AI · Gray = neutral. Node label shows active energy and invested energy (I). Select a blue node to allocate its energy among investment and connected neighbors. Unallocated energy remains for defense. Optional policies persist across rounds.</p></div><aside class="panel"><h3 id="selectedTitle">Select a blue node</h3><p id="details" class="muted"></p><p id="hint" class="muted"></p><div id="allocator"></div><div id="policyEditor"></div><h3>Planned orders <span id="orderCount" class="muted"></span></h3><p class="muted">Review allocations below. Select any node to edit all of its allocations. Nothing executes until Resolve round.</p><div id="orders"></div><button id="clearAll">Clear all orders</button><h3>Round log</h3><div id="log" class="log"></div><details><summary>Prototype rules</summary><p class="muted">Nodes start with active and invested energy. Invested principal is locked and earns 10% in active energy. Active energy decays 10% each round. Each node naturally generates 1 active energy. Energy transfers only across one edge. Each node may invest once and allocate energy to any number of neighboring nodes, retaining unallocated energy for defense. Attacks are grouped by destination and attacker, then shuffled; attack power uses an independent ±20% modifier for each combatant. Captured nodes lose a random 25–75% of investment. Policies persist: reserve energy, invest surplus, and transfer to an adjacent friend. Manual allocations take priority. Victory is achieved by eliminating the opposing player. Neutral nodes do not have to be conquered.</p></details></aside></div>
 <script>
 "use strict";
 const N=14;
@@ -11,21 +11,21 @@ const edges=[[0,1],[0,2],[1,3],[1,4],[2,4],[2,5],[3,6],[4,6],[4,7],[5,7],[6,8],[
 const xy=[[70,230],[165,115],[165,355],[280,70],[290,210],[280,385],[415,105],[420,295],[520,170],[530,375],[630,220],[640,405],[725,300],[735,415]];
 const neighbors=i=>edges.flatMap(([a,b])=>a===i?[b]:b===i?[a]:[]);
 const $=id=>document.getElementById(id), clamp=v=>Math.max(0,v),rnd=(a,b)=>a+Math.random()*(b-a),fmt=v=>v.toFixed(1);
-let state,orders,selected=null,history=[];
-function fresh(){const nodes=Array.from({length:N},(_,id)=>({id,owner:null,active:rnd(3,7),invested:0}));nodes[0].owner=0;nodes[0].active=24;nodes[0].invested=14;nodes[13].owner=1;nodes[13].active=24;nodes[13].invested=14;state={round:1,nodes,finished:false};orders={};selected=null;history=['New match started. You are Blue.'];render()}
+let state,orders,policies,clipboard=null,selected=null,history=[];
+function fresh(){const nodes=Array.from({length:N},(_,id)=>({id,owner:null,active:rnd(3,7),invested:0}));nodes[0].owner=0;nodes[0].active=24;nodes[0].invested=14;nodes[13].owner=1;nodes[13].active=24;nodes[13].invested=14;state={round:1,nodes,finished:false};orders={};policies={};selected=null;history=['New match started. You are Blue.'];render()}
 function log(message){history.unshift(message);history=history.slice(0,70)}
 
 function plan(source){return orders[source]??{invest:0,edges:{}}}
 function allocated(source,p=plan(source)){return p.invest+Object.values(p.edges).reduce((sum,n)=>sum+n,0)}
 function setAllocation(source,destination,value){
  if(state.finished||state.nodes[source]?.owner!==0)return;
- const amount=Number(value),node=state.nodes[source],p={invest:plan(source).invest,edges:{...plan(source).edges}};
+ const amount=Number(value),node=state.nodes[source],p={invest:plan(source).invest,edges:{...plan(source).edges},hold:plan(source).hold||false};
  if(!Number.isFinite(amount)||amount<0)return;
  if(destination===null)p.invest=amount;
  else if(neighbors(source).includes(destination)){if(amount===0)delete p.edges[destination];else p.edges[destination]=amount}
  else return;
  if(allocated(source,p)>node.active+1e-8){$('hint').textContent='Over budget: total allocations cannot exceed '+fmt(node.active);return;}
- if(allocated(source,p)<1e-9)delete orders[source];else orders[source]=p;
+ if(allocated(source,p)<1e-9&&!p.hold)delete orders[source];else orders[source]=p;
  render();
 }
 function numberField(value,max,onChange){
@@ -49,9 +49,51 @@ function renderAllocator(){
  container.append(fields);
  const clear=document.createElement('button');clear.textContent='Clear node allocations';clear.onclick=()=>{delete orders[selected];render()};container.append(clear);
 }
+
+function defaultPolicy(){return {enabled:true,reserve:5,investPct:50,dest:null}}
+function policyOrders(source){
+ const p=policies[source],node=state.nodes[source],manual=plan(source);
+ if(!p||!p.enabled||!node||node.owner!==0||manual.hold)return [];
+ const surplus=Math.max(0,node.active-allocated(source)-p.reserve);
+ const invest=surplus*p.investPct/100;
+ const transfer=p.dest!==null&&neighbors(source).includes(p.dest)&&state.nodes[p.dest].owner===0?surplus-invest:0;
+ const out=[];if(invest>1e-9)out.push({source,type:'invest',amount:invest,dest:null,automatic:true});
+ if(transfer>1e-9)out.push({source,type:'transfer',amount:transfer,dest:p.dest,automatic:true});
+ return out;
+}
+function changePolicy(source,key,value){policies[source]={...defaultPolicy(),...policies[source],[key]:value};render()}
+function renderPolicyEditor(){
+ const container=$('policyEditor');container.replaceChildren();
+ if(selected===null||state.nodes[selected].owner!==0)return;
+ const source=selected,p=policies[source],box=document.createElement('div');box.className='policy-box';
+ const heading=document.createElement('h3');heading.textContent='Persistent policy';box.append(heading);
+ const actions=document.createElement('div');actions.className='policy-actions';
+ function button(label,fn){const b=document.createElement('button');b.textContent=label;b.onclick=fn;actions.append(b)}
+ button(p?'Remove policy':'Create policy',()=>{if(p)delete policies[source];else policies[source]=defaultPolicy();render()});
+ if(p)button('Copy',()=>{clipboard={...p};render()});
+ if(clipboard)button('Paste',()=>{policies[source]={...clipboard,dest:neighbors(source).includes(clipboard.dest)&&state.nodes[clipboard.dest].owner===0?clipboard.dest:null};render()});
+ box.append(actions);
+ if(p){
+  const add=(title,field)=>{const label=document.createElement('label');label.textContent=title;label.append(field);box.append(label)};
+  const enabled=document.createElement('input');enabled.type='checkbox';enabled.checked=p.enabled;enabled.onchange=()=>changePolicy(source,'enabled',enabled.checked);add(' Enabled every round ',enabled);
+  const reserve=numberField(p.reserve,100000,value=>changePolicy(source,'reserve',value));add('Active defense reserve',reserve);
+  const invest=numberField(p.investPct,100,value=>changePolicy(source,'investPct',value));add('Invest % of surplus',invest);
+  const dest=document.createElement('select');
+  for(const [value,title] of [['','Keep remaining surplus'],...neighbors(source).filter(id=>state.nodes[id].owner===0).map(id=>[String(id),'Transfer → Node '+id])]){
+   const opt=document.createElement('option');opt.value=value;opt.textContent=title;opt.selected=(value===''?null:Number(value))===p.dest;dest.append(opt)}
+  dest.onchange=()=>changePolicy(source,'dest',dest.value===''?null:Number(dest.value));add('Transfer destination',dest);
+  const pause=document.createElement('input');pause.type='checkbox';pause.checked=Boolean(plan(source).hold);
+  pause.onchange=()=>{const m={...plan(source),edges:{...plan(source).edges},hold:pause.checked};if(allocated(source,m)===0&&!m.hold)delete orders[source];else orders[source]=m;render()};
+  add(' Pause policy this round ',pause);
+ }
+ const automatic=policyOrders(source),spent=automatic.reduce((sum,o)=>sum+o.amount,0);
+ const preview=document.createElement('p');preview.className='muted';
+ preview.textContent='Preview: '+(automatic.length?automatic.map(o=>o.type+' '+fmt(o.amount)+(o.dest===null?'':' → '+o.dest)).join(' · '):'No automatic spending')+' · Defense '+fmt(Math.max(0,state.nodes[source].active-allocated(source)-spent));
+ box.append(preview);container.append(box);
+}
 function renderOrders(){
  const container=$('orders');container.replaceChildren();
- const ids=Object.keys(orders).map(Number).sort((a,b)=>a-b);
+ const ids=[...new Set([...Object.keys(orders),...Object.keys(policies)])].map(Number).filter(id=>state.nodes[id].owner===0).sort((a,b)=>a-b);
  $('orderCount').textContent='('+ids.length+' nodes)';
  if(!ids.length){const p=document.createElement('p');p.className='muted';p.textContent='No allocations planned.';container.append(p)}
  for(const id of ids){
@@ -63,7 +105,7 @@ function renderOrders(){
   const details=document.createElement('div');details.className='muted';
   const parts=[];if(p.invest>0)parts.push('Invest '+fmt(p.invest));
   for(const [dest,amount] of Object.entries(p.edges))parts.push((state.nodes[dest].owner===0?'Transfer':'Attack')+' '+dest+': '+fmt(amount));
-  details.textContent=parts.join(' · ')+' · Defense '+fmt(Math.max(0,state.nodes[id].active-allocated(id)));
+  const automatic=policyOrders(id),spent=automatic.reduce((sum,o)=>sum+o.amount,0);details.textContent=(p.hold?'Policy paused · ':'')+parts.join(' · ')+(automatic.length?' · Auto: '+automatic.map(o=>o.type+' '+fmt(o.amount)+(o.dest===null?'':' → '+o.dest)).join(', '):'')+' · Defense '+fmt(Math.max(0,state.nodes[id].active-allocated(id)-spent));
   row.append(details);container.append(row);
  }
 }
@@ -77,7 +119,8 @@ const manual=Object.entries(orders).flatMap(([source,p])=>[
  ...(p.invest>0?[{source:Number(source),type:'invest',amount:p.invest,dest:null}]:[]),
  ...Object.entries(p.edges).filter(([,amount])=>amount>0).map(([dest,amount])=>({source:Number(source),type:nodes[Number(dest)].owner===0?'transfer':'attack',amount,dest:Number(dest)}))
 ]);
-const all=[...manual,...Object.values(aiOrders())];const valid=[],spent={};for(const o of all){const n=nodes[o.source];if(!n||n.owner===null||o.amount<=0||(spent[o.source]||0)+o.amount>n.active+1e-8)continue;if(o.type!=='invest'&&!neighbors(o.source).includes(o.dest))continue;if(o.type==='transfer'&&nodes[o.dest].owner!==n.owner)continue;if(o.type==='attack'&&nodes[o.dest].owner===n.owner)continue;spent[o.source]=(spent[o.source]||0)+o.amount;valid.push({...o,owner:n.owner})}
+const automatic=Object.keys(policies).map(Number).flatMap(id=>policyOrders(id));
+const all=[...manual,...automatic,...Object.values(aiOrders())];const valid=[],spent={};for(const o of all){const n=nodes[o.source];if(!n||n.owner===null||o.amount<=0||(spent[o.source]||0)+o.amount>n.active+1e-8)continue;if(o.type!=='invest'&&!neighbors(o.source).includes(o.dest))continue;if(o.type==='transfer'&&nodes[o.dest].owner!==n.owner)continue;if(o.type==='attack'&&nodes[o.dest].owner===n.owner)continue;spent[o.source]=(spent[o.source]||0)+o.amount;valid.push({...o,owner:n.owner})}
 for(const o of valid)nodes[o.source].active=clamp(nodes[o.source].active-o.amount);
 for(const o of valid.filter(o=>o.type==='invest'))nodes[o.source].invested+=o.amount;
 for(const o of valid.filter(o=>o.type==='transfer'))nodes[o.dest].active+=o.amount;
@@ -107,6 +150,7 @@ for(const a of attacks){
  }
  if(node.owner!==original){node.invested*=rnd(.25,.75)}}
 for(const n of nodes){const income=1+n.invested*.1;n.active=clamp(n.active*.9+income)}
+for(const id of Object.keys(policies)){if(nodes[Number(id)].owner!==0)delete policies[id]}
 let blue=nodes.filter(n=>n.owner===0).length,red=nodes.filter(n=>n.owner===1).length;
 log('Round '+state.round+' complete: Blue '+blue+' nodes / Red '+red+' nodes.');state.round++;orders={};
 if(blue===0||red===0){state.finished=true;log(blue===0?'Red wins by elimination!':'Blue wins by elimination!')}render()}
@@ -120,8 +164,9 @@ for(const [a,b] of edges)element('line',{x1:xy[a][0],y1:xy[a][1],x2:xy[b][0],y2:
 for(const n of nodes){const [x,y]=xy[n.id],group=element('g',{});const cir=element('circle',{cx:x,cy:y,r:30,fill:n.owner===0?'#3278c8':n.owner===1?'#cc6255':'#768092',class:'node'+(selected===n.id?' selected':'')+(orders[n.id]?' node-ordered':'')},group);cir.addEventListener('click',()=>clickNode(n.id));const t=element('text',{x,y:y+2,'font-size':17},group);t.textContent=fmt(n.active);const t2=element('text',{x,y:y+18,'font-size':10},group);t2.textContent='I '+fmt(n.invested);const t3=element('text',{x,y:y-40,'font-size':12},group);t3.textContent=n.id;group.style.cursor='pointer';group.addEventListener('click',()=>clickNode(n.id))}
 let selectedNode=selected===null?null:nodes[selected];$('selectedTitle').textContent=selectedNode?'Node '+selected:'Select a blue node';
 $('details').textContent=selectedNode?'Active '+fmt(selectedNode.active)+' · Invested '+fmt(selectedNode.invested):'Choose a blue node to issue an order.';
-$('hint').textContent=state.finished?'Game over. Start a new game.':'Allocate energy across investment and edges; the rest is retained for defense.';
+$('hint').textContent=state.finished?'Game over. Start a new game.':'Manual allocations take priority; policies automatically use remaining energy. Unspent energy defends.';
 renderAllocator();
+renderPolicyEditor();
 renderOrders();
 $('log').innerHTML=history.map(line=>'<div>'+line+'</div>').join('');
 }
