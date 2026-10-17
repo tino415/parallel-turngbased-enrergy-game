@@ -1,76 +1,98 @@
-# Parallel turn-based energy game
+# Parallel Energy Game
 
-A small, experimental graph-based strategy game. **The game's final name is undecided.**
+A browser-based, simultaneous-turn, graph strategy game. The final game name is not settled.
 
-[Play locally](index.html) by opening `index.html` in a browser. No build tools or dependencies required.
+**Play:** https://pteg.otin.dev  
+**Current version:** v0.8.0
 
-## Current prototype rules
+## Play and rules
 
-- Configurable map of 10–120 nodes and 2–6 players (one human and AI opponents). Rounds continue until only one player owns nodes.
-- Every node stores **active** and **invested** energy.
-- Invested energy earns 10% per round, paid as active energy; principal is locked.
-- Active energy decays 10% per round; natural +1 active energy appears per node per round.
-- Allocate active energy between one investment allocation and any number of adjacent transfers or attacks in a single round; unallocated energy stays for defense. All allocations from a node must fit within its starting active-energy balance.
-- Attacks from the same player against the same target are grouped. Attack groups are randomized within each target.
-- Combat uses ±20% independent random effective-strength modifiers; casualties are based on effective strengths.
-- A changed final owner triggers random destruction of 25–75% of invested energy.
-- Eliminate all opponents by capturing all their owned nodes to win. Combat log reports each side's energy losses.
+You control the blue nodes. Other player colors are AI opponents; gray nodes are neutral. Each node has its own **active energy** and **invested energy**—there is no shared resource pool.
 
-## Status and limitations
+- Each round, you may allocate a node's current active energy among **investment**, **transfers to adjacent friendly nodes**, and **attacks on adjacent nonfriendly nodes**. Any unallocated active energy defends the node.
+- All allocations from a node must fit within the active energy available **at the start of the round**. Incoming transfers cannot fund outgoing orders in the same round.
+- Invested principal is locked. Each round, invested energy earns **10%** as active energy; active energy decays **10%**; every node also produces **+1 active energy**.
+- Rounds resolve simultaneously. Attack orders from the same player targeting the same node combine; competing attack groups are shuffled. Attack and defense receive independent random strength modifiers between **0.8× and 1.2×**. The surviving side retains energy based on the resulting effective strengths.
+- When a node changes owner, its investment is reduced by a random **25–75%**. A player wins by eliminating all other players' owned nodes; neutral nodes need not be captured.
+- An AI player chooses attacks, transfers, or investments automatically each round. AI behavior is intentionally simple; the game is not balance-tested.
 
-This is a gameplay experiment, not finalized balancing. The AI is deliberately simple. Persistent node policies are supported: defense reserve, surplus reinvestment percentage, and optional one-edge friendly transfer. Policies can be copied, disabled, removed, or paused for one round. Manual allocations take priority over policies. Procedural graph maps use a configurable seed for reproducible map topology and initial positions, but combat randomness is not seeded. There is no save game, online multiplayer, seeded replay, or independent engine test suite yet. The rules can change based on playtests.
+## Interface
 
-## Hosting
+The main content has three tabs:
 
-Cloudflare Pages: set build command to `npm run build`, build output directory to `dist`, and root directory to repository root. The build copies only `index.html`, `_headers`, and `src/` into `dist/`, avoiding development assets and `node_modules`. If using Cloudflare Workers Builds instead, set its deploy command/assets directory appropriately (for example, Workers static assets `directory = "./dist"` in Wrangler configuration).
+| View | What it does |
+| --- | --- |
+| **Map** | Select blue nodes, inspect connections and order-flow overlays, pan and zoom. |
+| **Dashboard** | Review your nodes' energy, defense and production; apply bulk policies or manual investments; edit each node's policy investment %, reserve and enabled state directly in the table. |
+| **Messages** | See combat events and round summaries (the most recent 70 entries). |
 
-## v0.5.0: Visualization and map management
+The sidebar contains the selected node's manual allocations, its persistent policy editor, the default policy for newly captured nodes, and a summary of planned orders.
 
-- Map arrows show planned transfer/attack energy. Solid lines represent manual orders; dashed lines are automatic policy transfers. Filter manual/policy/all/none using the overlay selector.
-- Selected-node planning previews reflect manual allocations plus policy-generated investment/transfer; dashboard includes interest-based gross income, retained defense and an approximate next-round active balance (ignoring combat and enemy orders).
-- Node Dashboard shows owned nodes in a table and can bulk-apply reserve and reinvestment settings. Existing transfer destinations are cleared by the bulk operation.
-- Generate maps with 10–120 nodes, 2–6 players, density and a string seed. Use mouse-wheel zoom, drag-to-pan, and Fit map.
-- Optionally apply a default reserve/reinvestment policy to newly conquered nodes. This template does not automatically select a supply route.
+**Persistent policies:** For each blue node, reserve some active energy, invest a specified percentage of the remaining surplus, and optionally transfer the rest to **one adjacent friendly node**. Policies do not initiate attacks. Manual orders take priority; a policy can be disabled, removed, copied, pasted, or paused for one round. The dashboard can apply reserve/invest percentages to multiple selected nodes at once; doing so clears their transfer destinations.
 
-This remains a single-file zero-dependency prototype. A modular engine and automated test suite are planned, not yet implemented.
+**Map navigation:** Drag empty map space to pan. Use the **+ / −** buttons or **Ctrl/Cmd + scroll** to zoom; ordinary scrolling scrolls the page. **Fit map** resets the camera. The overlay selector controls displayed manual and policy flows.
 
-## Development architecture (v0.5.1)
+**New game:** The New game dialog offers a live graph preview and a reproducible seed, with 10–120 nodes, 2–6 players, and sparse/normal/dense connection density. Generated maps use a jittered grid for spacing. Canceling the dialog leaves the current match intact. Confirming a new game after round 1 replaces the current match.
 
-- `index.html` — HTML shell, which loads the CSS and game script.
-- `src/styles.css` — presentation styles.
-- `src/game.js` — current game, round resolution, policies, AI, generator and UI logic. Further engine/UI separation remains future work.
-- `tests/smoke.test.mjs` — dependency-free structural and parsing checks.
-- Run `npm test` (requires Node.js) or `npm run check` locally. Use `npm run build` and deploy `dist/` to Cloudflare Pages.
+## Saving and recovery
 
-This refactor is intended to preserve v0.5.0 gameplay behavior; the larger domain/UI split is not yet complete.
+- The game **automatically saves** its current match to the browser's `localStorage`, including topology, round state, pending orders, policies, recent messages and default conquest-policy settings.
+- Reloading or returning in the **same browser profile and origin** automatically restores the saved match. There is currently **one save slot**: starting another match overwrites it.
+- For an active match, the game asks the browser to confirm navigation away or refresh using `beforeunload`. **Browsers may skip the prompt**, especially on mobile; autosave is the main recovery mechanism.
+- Saves are **not synchronized across devices or browsers**, and deleting site data/private browsing cleanup can erase them. No account, server-side persistence, or save export/import is implemented.
 
-## v0.6.0: New-game modal and map placement
+## Run and test locally
 
-- `New game` opens a modal with node count, player count, density, seed, and a live, deterministic graph preview.
-- The current match is preserved when the dialog is closed or cancelled; choosing `Start game` replaces it.
-- Generated node positions use a jittered grid that keeps nodes from overlapping, even with 120 nodes. Regression tests check spacing, connectivity, and reproducibility.
-- Map-generation controls no longer take up permanent toolbar space.
+This is a static site; **no game server or runtime dependency** is required. Serve the repository with a simple local static web server and open `index.html`. (Directly opening `file://` may have browser-dependent storage behavior.)
 
-## v0.6.1: Engine extraction (first phase)
+Node.js is used only for the development commands:
 
-- `src/engine.js` exposes pure deterministic map generation, persistent policy evaluation and next-round economic forecasts, with no browser dependencies.
-- `src/game.js` consumes these functions and continues to own UI, combat resolution, and AI. Full combat/UI isolation remains an open task.
-- `tests/engine.test.mjs` verifies policy priorities, pause behavior, friendly routing, and production forecasts.
-- `tests/map-generation.test.mjs` runs against the extracted engine. Use `npm run check` locally.
-- `scripts/build.mjs` already copies the entire `src/` folder, so the deployment command is unchanged.
+```sh
+npm test        # Node's built-in test runner
+npm run check   # Syntax checks for both scripts, then tests
+npm run build   # Copy deployable static assets to dist/
+```
 
-## v0.7.0: Browser-independent round resolution
+The build copies `index.html`, `_headers`, and `src/` into `dist/`. No bundling is performed.
 
-- `src/engine.js` now contains AI order selection and the full round resolver, including investment, simultaneous transfers, random combat, captured-capital damage, default conquest policies, energy income and multiplayer elimination.
-- The resolver accepts an injectable random function, and returns updated state, updated policies and event-log entries without modifying the input state or using browser APIs.
-- `src/game.js` only supplies player inputs, configures conquest defaults, updates application state and renders the result.
-- `tests/round.test.mjs` covers multi-orders, automatic AI response, one-hop transfers, conquest defaults, multiplayer termination and repeatability.
-- Page scrolling over the map no longer zooms it unintentionally; use Ctrl/Cmd + scroll or the new ± buttons. Dragging still pans.
+## Source layout
 
-## v0.8.0: Navigation, policies and match recovery
+| Path | Responsibility |
+| --- | --- |
+| `index.html` | Page, tabs, map area, dashboard container and New game dialog |
+| `src/styles.css` | Responsive layout and styling |
+| `src/game.js` | Browser UI, order entry, map rendering, autosave and view navigation |
+| `src/engine.js` | Browser-independent map generation, policy evaluation, forecasts, AI and full round resolution; accepts injected RNG for reproducible tests |
+| `tests/*.test.mjs` | Syntax/structure, graph generation, economy/policy and round-resolution regression tests |
+| `scripts/build.mjs` | Prepare `dist/` |
+| `wrangler.toml` | Cloudflare Worker name and static assets directory |
 
-- Map, Dashboard and Messages are three views. Battle history is no longer in the node sidebar.
-- Dashboard supports directly setting an investment-policy percentage and defense reserve on each owned node, as well as enabling/disabling that node's persistent policy. Bulk policy editing remains available.
-- Matches are automatically saved in this browser using localStorage, including map topology, state, pending manual orders, node policies, round history and conquest defaults. The browser automatically restores the match after a reload.
-- A native beforeunload confirmation is requested for active games when the browser supports it; some browsers, especially on mobile, may not display one. Autosave is the recovery mechanism.
-- Starting a new game requires confirmation once the current match has advanced beyond round 1. This replaces the local autosave. Browser storage is local to the device/profile and can be cleared by browser privacy settings.
+The game engine is extracted from the DOM. However, the application is still a prototype: UI state is managed in `game.js`, combat randomness during normal play is not seeded for replays, and there is no online multiplayer.
+
+## Deployment: Cloudflare Workers Builds
+
+This repository deploys to **Cloudflare Workers**, not Pages. Wrangler is configured with the existing Worker name `parallel-turngbased-enrergy-game` and `[assets] directory = "./dist"`.
+
+Use these Workers Builds settings:
+
+- **Build command:** `npm run build`
+- **Deploy command:** `npx wrangler deploy`
+- **Root directory:** repository root
+
+The deployed content comes from `dist/`; the Workers configuration is in `wrangler.toml`. The live domain is https://pteg.otin.dev.
+
+## Development history
+
+- **v0.5.x:** Manual and automated order overlays, dashboard, procedural maps and initial build configuration.
+- **v0.6.0:** Non-overlapping generated node layouts and New game preview dialog.
+- **v0.6.1:** Independent map and economy calculations with tests.
+- **v0.7.0:** AI and round resolution moved to the testable engine; explicit zoom controls.
+- **v0.8.0:** Map/Dashboard/Messages tabs, per-node dashboard policy settings, local autosave and reload recovery.
+
+## Known limitations
+
+- Simple AI and experimental balance.
+- Browser-local **single-slot** saves; no cross-device sync, backup/export or server persistence.
+- No deterministic full-game replay from the map seed alone: only procedural generation uses the seed, while live combat uses unseeded randomness.
+- Navigation prompts are browser-dependent; game preservation relies on `localStorage`.
+- Tests cover important engine scenarios, but this does not replace interactive browser testing.
