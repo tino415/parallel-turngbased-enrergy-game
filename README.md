@@ -50,3 +50,11 @@ This refactor is intended to preserve v0.5.0 gameplay behavior; the larger domai
 - The current match is preserved when the dialog is closed or cancelled; choosing `Start game` replaces it.
 - Generated node positions use a jittered grid that keeps nodes from overlapping, even with 120 nodes. Regression tests check spacing, connectivity, and reproducibility.
 - Map-generation controls no longer take up permanent toolbar space.
+
+## v0.6.1: Engine extraction (first phase)
+
+- `src/engine.js` exposes pure deterministic map generation, persistent policy evaluation and next-round economic forecasts, with no browser dependencies.
+- `src/game.js` consumes these functions and continues to own UI, combat resolution, and AI. Full combat/UI isolation remains an open task.
+- `tests/engine.test.mjs` verifies policy priorities, pause behavior, friendly routing, and production forecasts.
+- `tests/map-generation.test.mjs` runs against the extracted engine. Use `npm run check` locally.
+- `scripts/build.mjs` already copies the entire `src/` folder, so the deployment command is unchanged.
