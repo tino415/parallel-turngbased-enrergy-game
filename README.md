@@ -58,3 +58,11 @@ This refactor is intended to preserve v0.5.0 gameplay behavior; the larger domai
 - `tests/engine.test.mjs` verifies policy priorities, pause behavior, friendly routing, and production forecasts.
 - `tests/map-generation.test.mjs` runs against the extracted engine. Use `npm run check` locally.
 - `scripts/build.mjs` already copies the entire `src/` folder, so the deployment command is unchanged.
+
+## v0.7.0: Browser-independent round resolution
+
+- `src/engine.js` now contains AI order selection and the full round resolver, including investment, simultaneous transfers, random combat, captured-capital damage, default conquest policies, energy income and multiplayer elimination.
+- The resolver accepts an injectable random function, and returns updated state, updated policies and event-log entries without modifying the input state or using browser APIs.
+- `src/game.js` only supplies player inputs, configures conquest defaults, updates application state and renders the result.
+- `tests/round.test.mjs` covers multi-orders, automatic AI response, one-hop transfers, conquest defaults, multiplayer termination and repeatability.
+- Page scrolling over the map no longer zooms it unintentionally; use Ctrl/Cmd + scroll or the new ± buttons. Dragging still pans.
