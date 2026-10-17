@@ -33,3 +33,13 @@ Static site: deploy repository root with no build command using Cloudflare Pages
 - Optionally apply a default reserve/reinvestment policy to newly conquered nodes. This template does not automatically select a supply route.
 
 This remains a single-file zero-dependency prototype. A modular engine and automated test suite are planned, not yet implemented.
+
+## Development architecture (v0.5.1)
+
+- `index.html` — HTML shell, which loads the CSS and game script.
+- `src/styles.css` — presentation styles.
+- `src/game.js` — current game, round resolution, policies, AI, generator and UI logic. Further engine/UI separation remains future work.
+- `tests/smoke.test.mjs` — dependency-free structural and parsing checks.
+- Run `npm test` (requires Node.js) or `npm run check` locally. Cloudflare Pages can continue publishing the repository root with no build command.
+
+This refactor is intended to preserve v0.5.0 gameplay behavior; the larger domain/UI split is not yet complete.
