@@ -1,7 +1,7 @@
 {
   "name": "parallel-turn-based-energy-game",
   "private": true,
-  "version": "0.6.1",
+  "version": "0.7.0",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
     "check": "node --check src/engine.js && node --check src/game.js && npm test",
