@@ -92,6 +92,8 @@ The deployed content comes from `dist/`; the Workers configuration is in `wrangl
 
 - **v0.8.2:** On-map zoom buttons sized for touch and touch gesture handling to preserve vertical scrolling without pinch-zooming the browser page over the map.
 
+- **v0.8.3:** Mobile map has a **Pan / Scroll** toggle. Scroll mode allows normal browser page gestures; Pan mode allows one-finger dragging horizontally or vertically across the map. On-map zoom and Fit buttons still work.
+
 ## Known limitations
 
 - Simple AI and experimental balance.
