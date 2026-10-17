@@ -5,7 +5,7 @@ let edges=[[0,1],[0,2],[1,3],[1,4],[2,4],[2,5],[3,6],[4,6],[4,7],[5,7],[6,8],[7,
 let xy=[[70,230],[165,115],[165,355],[280,70],[290,210],[280,385],[415,105],[420,295],[520,170],[530,375],[630,220],[640,405],[725,300],[735,415]];
 const neighbors=i=>edges.flatMap(([a,b])=>a===i?[b]:b===i?[a]:[]);
 const $=id=>document.getElementById(id), clamp=v=>Math.max(0,v),rnd=(a,b)=>a+Math.random()*(b-a),fmt=v=>v.toFixed(1);
-let state,orders,policies,clipboard=null,selected=null,history=[],playerCount=2,mapSeed="classic",camera={x:0,y:0,scale:1},viewDashboard=false;
+let state,orders,policies,clipboard=null,selected=null,history=[],playerCount=2,mapSeed="classic",camera={x:0,y:0,scale:1},viewDashboard=false,currentView="map",autosaveAvailable=false;
 function fresh(){
  const nodes=Array.from({length:N},(_,id)=>({id,owner:null,active:rnd(3,7),invested:0}));
  const starts=playerCount===2?[0,N-1]:Array.from({length:playerCount},(_,i)=>Math.floor(i*N/playerCount));
@@ -24,7 +24,7 @@ function previewMap(){
 function generate(){
  const options=mapOptions(),map=buildMap(options);
  mapSeed=map.seed;N=map.nodes.length;playerCount=map.players;xy=map.positions;edges=map.links;
- state={round:1,nodes:map.nodes,finished:false};orders={};policies={};selected=null;history=['Generated '+N+' nodes, '+playerCount+' players, seed '+map.seed];camera={x:0,y:0,scale:1};viewDashboard=false;$('tableView').textContent='Node dashboard';$('newGameDialog').close();render();
+ state={round:1,nodes:map.nodes,finished:false};orders={};policies={};selected=null;history=['Generated '+N+' nodes, '+playerCount+' players, seed '+map.seed];camera={x:0,y:0,scale:1};currentView='map';viewDashboard=false;$('newGameDialog').close();render();
 }
 function openNewGame(){previewMap();$('newGameDialog').showModal()}
 
@@ -154,21 +154,23 @@ function renderFlows(svg,graph,element){
  for(const n of state.nodes){if(n.owner!==0)continue;const p=projection(n.id),[x,y]=xy[n.id];const t=element('text',{x,y:y+53,'font-size':12,fill:'#92ebc9'},graph);t.textContent='+'+fmt(p.income)+' / I '+fmt(p.invest)}
 }
 function renderDashboard(){
- $('mapViewport').hidden=viewDashboard;$('dashboard').hidden=!viewDashboard;
- if(!viewDashboard)return;
+ $('mapViewport').hidden=currentView!=='map';$('dashboard').hidden=currentView!=='dashboard';$('messagesView').hidden=currentView!=='messages';
+ if(currentView!=='dashboard')return;
  const dashboard=$('dashboard');dashboard.replaceChildren();
  const title=document.createElement('h3');title.textContent='Node dashboard — select several nodes for bulk policies';dashboard.append(title);
  const bulk=document.createElement('div');bulk.className='policy-box';
  bulk.innerHTML='<label>Reserve <input id="bulkReserve" type="number" min="0" value="5"></label><label>Invest % <input id="bulkInvest" type="number" min="0" max="100" value="70"></label><button id="bulkApply">Apply policy to selected</button><hr><label>One-time investment energy per selected node <input id="bulkManualInvest" type="number" min="0" value="5"></label><button id="bulkManualApply">Set manual investments</button>';
  dashboard.append(bulk);
  const table=document.createElement('table'),head=document.createElement('tr');
- for(const h of ['Select','Node','Active','Invested','Income','Defense','Invest next','Next active','Policy']){const th=document.createElement('th');th.textContent=h;head.append(th)}table.append(head);
+ for(const h of ['Select','Node','Active','Invested','Income','Defense','Invest next','Next active','Invest %','Reserve','Policy']){const th=document.createElement('th');th.textContent=h;head.append(th)}table.append(head);
  for(const n of state.nodes.filter(n=>n.owner===0)){const p=projection(n.id),tr=document.createElement('tr');
  const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.dataset.node=n.id;checkbox.className='bulk-node';
  const makeCell=child=>{const td=document.createElement('td');if(typeof child==='string')td.textContent=child;else td.append(child);tr.append(td)};
- makeCell(checkbox);const select=document.createElement('button');select.textContent=n.id;select.onclick=()=>{selected=n.id;viewDashboard=false;render()};makeCell(select);
+ makeCell(checkbox);const select=document.createElement('button');select.textContent=n.id;select.onclick=()=>{selected=n.id;switchView('map')};makeCell(select);
  for(const value of [n.active,n.invested,p.income,p.defense,p.invest,p.next])makeCell(fmt(value));
- makeCell(policies[n.id]?(policies[n.id].enabled?'On':'Off'):'None');table.append(tr)}
+ const pct=document.createElement('input');pct.type='number';pct.min=0;pct.max=100;pct.step=5;pct.value=policies[n.id]?.investPct??0;pct.title='Persistent investment percentage';pct.onchange=()=>{const val=Number(pct.value);if(!Number.isFinite(val)||val<0||val>100){render();return}policies[n.id]={...defaultPolicy(),...policies[n.id],enabled:true,investPct:val};render()};makeCell(pct);
+ const reserve=document.createElement('input');reserve.type='number';reserve.min=0;reserve.step=1;reserve.value=policies[n.id]?.reserve??5;reserve.onchange=()=>{const val=Number(reserve.value);if(!Number.isFinite(val)||val<0){render();return}policies[n.id]={...defaultPolicy(),...policies[n.id],enabled:true,reserve:val};render()};makeCell(reserve);
+ const toggle=document.createElement('input');toggle.type='checkbox';toggle.checked=Boolean(policies[n.id]?.enabled);toggle.setAttribute('aria-label','Enable policy for node '+n.id);toggle.onchange=()=>{if(toggle.checked)policies[n.id]={...defaultPolicy(),...policies[n.id],enabled:true};else if(policies[n.id])policies[n.id].enabled=false;render()};makeCell(toggle);table.append(tr)}
  dashboard.append(table);
  $('bulkApply').onclick=()=>{const selectedIds=[...dashboard.querySelectorAll('.bulk-node:checked')].map(x=>Number(x.dataset.node));for(const id of selectedIds)policies[id]={enabled:true,reserve:Math.max(0,Number($('bulkReserve').value)||0),investPct:Math.max(0,Math.min(100,Number($('bulkInvest').value)||0)),dest:null};render()};
  $('bulkManualApply').onclick=()=>{const ids=[...dashboard.querySelectorAll('.bulk-node:checked')].map(x=>Number(x.dataset.node)),amount=Math.max(0,Number($('bulkManualInvest').value)||0);for(const id of ids){const p={...plan(id),edges:{...plan(id).edges}},available=state.nodes[id].active-Object.values(p.edges).reduce((a,b)=>a+b,0);if(amount<=available+1e-8){p.invest=amount;if(allocated(id,p)<1e-9&&!p.hold)delete orders[id];else orders[id]=p}}render()};
@@ -202,6 +204,40 @@ function attachNavigation(){
  window.addEventListener('pointerup',stop);
 }
 
+
+const SAVE_KEY='parallel-energy-game-v1';
+function switchView(view){currentView=view;render()}
+function setActiveTab(){
+ for(const [id,view] of [['mapTab','map'],['tableView','dashboard'],['messagesTab','messages']]){
+  const button=$(id);button.classList.toggle('active',view===currentView);button.setAttribute('aria-selected',String(view===currentView));
+ }
+ $('overlay').closest('label').hidden=currentView!=='map';
+ for(const id of ['fit','zoomIn','zoomOut'])$(id).hidden=currentView!=='map';
+}
+function saveGame(){
+ if(!state)return;
+ try{localStorage.setItem(SAVE_KEY,JSON.stringify({state,orders,policies,xy,edges,N,playerCount,mapSeed,history,selected,
+  defaults:{enabled:$('autoConquer').checked,reserve:$('defaultReserve').value,invest:$('defaultInvest').value}}))}
+ catch(e){console.warn('Autosave unavailable',e)}
+}
+function restoreGame(){
+ try{
+  const raw=localStorage.getItem(SAVE_KEY);if(!raw)return false;
+  const save=JSON.parse(raw);
+  if(!save.state||!Array.isArray(save.state.nodes)||!Array.isArray(save.xy)||!Array.isArray(save.edges))return false;
+  if(!confirm('Resume your saved match (round '+save.state.round+')? Choose Cancel for a fresh game.'))return false;
+  ({state,orders,policies,xy,edges,N,playerCount,mapSeed,history,selected}=save);
+  orders??={};policies??={};history??=[];selected??=null;
+  if(save.defaults){$('autoConquer').checked=Boolean(save.defaults.enabled);$('defaultReserve').value=save.defaults.reserve;$('defaultInvest').value=save.defaults.invest}
+  render();return true;
+ }catch(e){console.warn('Could not restore save',e);return false}
+}
+window.addEventListener('beforeunload',event=>{
+ if(!state||state.finished)return;
+ saveGame();event.preventDefault();event.returnValue='';
+});
+window.addEventListener('pagehide',saveGame);
+
 function render(){const nodes=state.nodes,blue=nodes.filter(n=>n.owner===0).length,red=nodes.filter(n=>n.owner!==null&&n.owner!==0).length;
 $('score').textContent='Round '+state.round+' · Blue '+blue+' · Opponents '+red;
 $('resolve').disabled=state.finished;
@@ -219,13 +255,14 @@ renderPolicyEditor();
 renderOrders();
 renderFlows(svg,graph,element);
 renderDashboard();
-$('log').innerHTML=history.map(line=>'<div>'+line+'</div>').join('');
+$('log').replaceChildren();for(const line of history){const entry=document.createElement('div');entry.textContent=line;$('log').append(entry)}
+setActiveTab();saveGame();
 }
 $('clearAll').onclick=()=>{orders={};render()};
 $('resolve').onclick=resolve;$('reset').onclick=openNewGame;
-$('generate').onclick=generate;for(const id of ['nodeCount','playerCount','density','seed'])$(id).addEventListener('input',previewMap);$('cancelNewGame').onclick=()=>$('newGameDialog').close();$('tableView').onclick=()=>{viewDashboard=!viewDashboard;$('tableView').textContent=viewDashboard?'Map view':'Node dashboard';render()};
+$('generate').onclick=()=>{if(state.round>1&&!confirm('Start a new game? Your current match will be replaced (autosave will also be replaced).'))return;generate()};for(const id of ['nodeCount','playerCount','density','seed'])$(id).addEventListener('input',previewMap);$('cancelNewGame').onclick=()=>$('newGameDialog').close();$('tableView').onclick=()=>switchView('dashboard');$('mapTab').onclick=()=>switchView('map');$('messagesTab').onclick=()=>switchView('messages');
 $('overlay').onchange=render;
 $('zoomIn').onclick=()=>{camera.scale=Math.min(5,camera.scale*1.25);render()};
 $('zoomOut').onclick=()=>{camera.scale=Math.max(.3,camera.scale/1.25);render()};
 $('fit').onclick=()=>{camera={x:0,y:0,scale:1};render()};
-fresh();attachNavigation();
+if(!restoreGame())fresh();attachNavigation();
