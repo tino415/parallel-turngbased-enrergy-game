@@ -37,3 +37,10 @@ dialog#newGameDialog::backdrop{background:#050a13b8}
 .map-zoom-controls button{min-width:48px;min-height:48px;font-size:23px;font-weight:700;background:#203956e8;box-shadow:0 2px 10px #0009;touch-action:manipulation}
 .map-zoom-controls #fit{font-size:14px}
 @media(max-width:760px){.desktop-zoom-hint{display:none}.map-zoom-controls{right:10px;bottom:10px}}
+
+/* Mobile: normal mode permits browser scrolling; Pan mode captures one-finger drags. */
+@media(max-width:760px){
+ #mapViewport:not(.touch-pan-mode),#mapViewport:not(.touch-pan-mode) svg{touch-action:auto;cursor:default}
+ #mapViewport.touch-pan-mode,#mapViewport.touch-pan-mode svg{touch-action:none;cursor:grab}
+ #panMode[aria-pressed=true]{background:#285e99;border-color:#80b9f5}
+}
