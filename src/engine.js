@@ -1,4 +1,6 @@
 "use strict";
+// Keep engine declarations out of the global lexical scope used by game.js.
+(()=>{
 // Pure, browser-independent map and economy functions.
 function seeded(seed){let h=2166136261;for(const c of String(seed)){h=Math.imul(h^c.charCodeAt(0),16777619)}return ()=>{h+=0x6D2B79F5;let t=h;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296}}
 
@@ -90,3 +92,5 @@ log('Round '+state.round+' complete: Blue '+blue+' nodes / Red '+red+' nodes.');
 const alive=new Set(nodes.filter(n=>n.owner!==null).map(n=>n.owner));if(alive.size<=1){nextState.finished=true;log(alive.has(0)?'Blue wins by elimination!':'An AI player wins by elimination!')}return {state:nextState,policies:nextPolicies,events};}
 
 globalThis.GameEngine=Object.freeze({seeded,buildMap,evaluatePolicy,forecast,aiOrders,resolveRound});
+
+})();
