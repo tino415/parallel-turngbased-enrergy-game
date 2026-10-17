@@ -51,6 +51,8 @@ Node.js is used only for the development commands:
 npm test        # Node's built-in test runner
 npm run check   # Syntax checks for both scripts, then tests
 npm run build   # Copy deployable static assets to dist/
+npm run format # Apply Prettier to source, styles, markup, tests and docs
+npm run format:check # Verify formatting without changing files
 ```
 
 The build copies `index.html`, `_headers`, and `src/` into `dist/`. No bundling is performed.
