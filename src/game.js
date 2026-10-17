@@ -117,7 +117,7 @@ function renderOrders(){
   row.append(details);container.append(row);
  }
 }
-function clickNode(id){if(state.nodes[id].owner===0){selected=id;render()}else if(selected!==null&&neighbors(selected).includes(id)){$('hint').textContent='Set the attack amount for node '+id+' in the selected node allocation panel.'}}
+function clickNode(id){if(state.nodes[id].owner===0){selected=id;render();showNodeOnMobile()}else if(selected!==null&&neighbors(selected).includes(id)){$('hint').textContent='Set the attack amount for node '+id+' in the selected node allocation panel.'}}
 
 function resolve(){
  if(state.finished)return;
@@ -166,7 +166,7 @@ function renderDashboard(){
  for(const n of state.nodes.filter(n=>n.owner===0)){const p=projection(n.id),tr=document.createElement('tr');
  const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.dataset.node=n.id;checkbox.className='bulk-node';
  const makeCell=child=>{const td=document.createElement('td');if(typeof child==='string')td.textContent=child;else td.append(child);tr.append(td)};
- makeCell(checkbox);const select=document.createElement('button');select.textContent=n.id;select.onclick=()=>{selected=n.id;switchView('map')};makeCell(select);
+ makeCell(checkbox);const select=document.createElement('button');select.textContent=n.id;select.onclick=()=>{selected=n.id;switchView('map');showNodeOnMobile()};makeCell(select);
  for(const value of [n.active,n.invested,p.income,p.defense,p.invest,p.next])makeCell(fmt(value));
  const pct=document.createElement('input');pct.type='number';pct.min=0;pct.max=100;pct.step=5;pct.value=policies[n.id]?.investPct??0;pct.title='Persistent investment percentage';pct.onchange=()=>{const val=Number(pct.value);if(!Number.isFinite(val)||val<0||val>100){render();return}policies[n.id]={...defaultPolicy(),...policies[n.id],enabled:true,investPct:val};render()};makeCell(pct);
  const reserve=document.createElement('input');reserve.type='number';reserve.min=0;reserve.step=1;reserve.value=policies[n.id]?.reserve??5;reserve.onchange=()=>{const val=Number(reserve.value);if(!Number.isFinite(val)||val<0){render();return}policies[n.id]={...defaultPolicy(),...policies[n.id],enabled:true,reserve:val};render()};makeCell(reserve);
@@ -204,6 +204,19 @@ function attachNavigation(){
  window.addEventListener('pointerup',stop);
 }
 
+
+const mobileNodeQuery=window.matchMedia('(max-width:760px)');
+function positionNodeDetails(){
+ const target=mobileNodeQuery.matches?$('mobileNodeContent'):$('nodeDetailsSlot');
+ if(!target)return;
+ for(const id of ['selectedTitle','details','hint','allocator','policyEditor'])target.append($(id));
+ if(!mobileNodeQuery.matches&&$('nodeDialog').open)$('nodeDialog').close();
+}
+function showNodeOnMobile(){
+ if(mobileNodeQuery.matches&&selected!==null&&!$('nodeDialog').open)$('nodeDialog').showModal();
+}
+$('closeNodeDialog').onclick=()=>$('nodeDialog').close();
+window.addEventListener('resize',positionNodeDetails);
 
 const SAVE_KEY='parallel-energy-game-v1';
 function switchView(view){currentView=view;render()}
@@ -265,4 +278,4 @@ $('overlay').onchange=render;
 $('zoomIn').onclick=()=>{camera.scale=Math.min(5,camera.scale*1.25);render()};
 $('zoomOut').onclick=()=>{camera.scale=Math.max(.3,camera.scale/1.25);render()};
 $('fit').onclick=()=>{camera={x:0,y:0,scale:1};render()};
-if(!restoreGame())fresh();attachNavigation();
+positionNodeDetails();if(!restoreGame())fresh();attachNavigation();
