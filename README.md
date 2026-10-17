@@ -6,7 +6,7 @@ A small, experimental graph-based strategy game. **The game's final name is unde
 
 ## Current prototype rules
 
-- Two players (human blue, basic AI red), 14 nodes, 20 simultaneous rounds.
+- Two players (human blue, basic AI red), 14 nodes, unlimited simultaneous rounds, until one player is eliminated.
 - Every node stores **active** and **invested** energy.
 - Invested energy earns 10% per round, paid as active energy; principal is locked.
 - Active energy decays 10% per round; natural +1 active energy appears per node per round.
@@ -14,7 +14,7 @@ A small, experimental graph-based strategy game. **The game's final name is unde
 - Attacks from the same player against the same target are grouped. Attack groups are randomized within each target.
 - Combat uses ±20% independent random effective-strength modifiers; casualties are based on effective strengths.
 - A changed final owner triggers random destruction of 25–75% of invested energy.
-- Most nodes at the end of round 20 wins.
+- Eliminate the opponent by capturing all their owned nodes to win. Combat log reports each side's energy losses.
 
 ## Status and limitations
 
