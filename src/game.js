@@ -223,11 +223,31 @@ function renderDashboard(){
 }
 function attachNavigation(){
  const svg=$('map');let drag=null;
- svg.addEventListener('wheel',e=>{e.preventDefault();camera.scale=Math.max(.3,Math.min(5,camera.scale*(e.deltaY<0?1.12:.89)));render()},{passive:false});
- svg.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,ox:camera.x,oy:camera.y};svg.setPointerCapture(e.pointerId)});
- svg.addEventListener('pointermove',e=>{if(!drag)return;const factor=(xy.length===14&&mapSeed==='classic'?800:1800)/svg.clientWidth;camera.x=drag.ox+(e.clientX-drag.x)*factor;camera.y=drag.oy+(e.clientY-drag.y)*factor;const g=svg.querySelector('g');if(g)g.setAttribute('transform','translate('+camera.x+' '+camera.y+') scale('+camera.scale+')')});
- svg.addEventListener('pointerup',()=>drag=null);svg.addEventListener('pointercancel',()=>drag=null);
+ svg.addEventListener('wheel',e=>{
+   e.preventDefault();
+   camera.scale=Math.max(.3,Math.min(5,camera.scale*(e.deltaY<0?1.12:.89)));
+   render();
+ },{passive:false});
+ svg.addEventListener('pointerdown',e=>{
+   // Node clicks must remain native click events. Only pan on empty background.
+   if(e.button!==0 || e.target.closest('.node-hit'))return;
+   drag={x:e.clientX,y:e.clientY,ox:camera.x,oy:camera.y,id:e.pointerId};
+ });
+ svg.addEventListener('pointermove',e=>{
+   if(!drag||e.pointerId!==drag.id)return;
+   const rect=svg.getBoundingClientRect();
+   const factor=(xy.length===14&&mapSeed==='classic'?800:1800)/rect.width;
+   camera.x=drag.ox+(e.clientX-drag.x)*factor;
+   camera.y=drag.oy+(e.clientY-drag.y)*factor;
+   const g=svg.querySelector('g');
+   if(g)g.setAttribute('transform','translate('+camera.x+' '+camera.y+') scale('+camera.scale+')');
+ });
+ const stop=e=>{if(drag&&e.pointerId===drag.id)drag=null};
+ svg.addEventListener('pointerup',stop);
+ svg.addEventListener('pointercancel',stop);
+ window.addEventListener('pointerup',stop);
 }
+
 function render(){const nodes=state.nodes,blue=nodes.filter(n=>n.owner===0).length,red=nodes.filter(n=>n.owner!==null&&n.owner!==0).length;
 $('score').textContent='Round '+state.round+' · Blue '+blue+' · Opponents '+red;
 $('resolve').disabled=state.finished;
@@ -236,7 +256,7 @@ const ns='http://www.w3.org/2000/svg';
 const element=(name,attrs,parent=svg)=>{const e=document.createElementNS(ns,name);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,v);parent.append(e);return e};
 const graph=element('g',{transform:'translate('+camera.x+' '+camera.y+') scale('+camera.scale+')'});
 for(const [a,b] of edges)element('line',{x1:xy[a][0],y1:xy[a][1],x2:xy[b][0],y2:xy[b][1],stroke:'#71849d','stroke-width':3,opacity:.55},graph);
-for(const n of nodes){const [x,y]=xy[n.id],group=element('g',{},graph);const cir=element('circle',{cx:x,cy:y,r:30,fill:n.owner===null?'#768092':(['#3278c8','#cc6255','#b18adc','#d9a44d','#72b995','#da7dba'][n.owner%6]),class:'node'+(selected===n.id?' selected':'')+(orders[n.id]?' node-ordered':'')},group);cir.addEventListener('click',()=>clickNode(n.id));const t=element('text',{x,y:y+2,'font-size':17},group);t.textContent=fmt(n.active);const t2=element('text',{x,y:y+18,'font-size':10},group);t2.textContent='I '+fmt(n.invested);const t3=element('text',{x,y:y-40,'font-size':12},group);t3.textContent=n.id;group.style.cursor='pointer';group.addEventListener('click',()=>clickNode(n.id))}
+for(const n of nodes){const [x,y]=xy[n.id],group=element('g',{},graph);const cir=element('circle',{cx:x,cy:y,r:30,fill:n.owner===null?'#768092':(['#3278c8','#cc6255','#b18adc','#d9a44d','#72b995','#da7dba'][n.owner%6]),class:'node node-hit'+(selected===n.id?' selected':'')+(orders[n.id]?' node-ordered':'')},group);const t=element('text',{x,y:y+2,'font-size':17},group);t.textContent=fmt(n.active);const t2=element('text',{x,y:y+18,'font-size':10},group);t2.textContent='I '+fmt(n.invested);const t3=element('text',{x,y:y-40,'font-size':12},group);t3.textContent=n.id;group.style.cursor='pointer';group.addEventListener('click',()=>clickNode(n.id))}
 let selectedNode=selected===null?null:nodes[selected];$('selectedTitle').textContent=selectedNode?'Node '+selected:'Select a blue node';
 $('details').textContent=selectedNode?'Active '+fmt(selectedNode.active)+' · Invested '+fmt(selectedNode.invested):'Choose a blue node to issue an order.';
 $('hint').textContent=state.finished?'Game over. Start a new game.':'Manual allocations take priority; policies automatically use remaining energy. Unspent energy defends.';
