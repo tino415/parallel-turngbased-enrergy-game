@@ -186,7 +186,7 @@ function attachNavigation(){
  },{passive:false});
  svg.addEventListener('pointerdown',e=>{
    // Node clicks must remain native click events. Only pan on empty background.
-   if(e.button!==0 || e.target.closest('.node-hit'))return;
+   if(e.button!==0 || e.target.closest('.node-hit') || e.pointerType==='touch')return;
    drag={x:e.clientX,y:e.clientY,ox:camera.x,oy:camera.y,id:e.pointerId};
  });
  svg.addEventListener('pointermove',e=>{
