@@ -214,7 +214,7 @@ function renderDashboard(){
  const dashboard=$('dashboard');dashboard.replaceChildren();
  const title=document.createElement('h3');title.textContent='Node dashboard — select several nodes for bulk policies';dashboard.append(title);
  const bulk=document.createElement('div');bulk.className='policy-box';
- bulk.innerHTML='<label>Reserve <input id="bulkReserve" type="number" min="0" value="5"></label><label>Invest % <input id="bulkInvest" type="number" min="0" max="100" value="70"></label><button id="bulkApply">Apply policy to selected</button>';
+ bulk.innerHTML='<label>Reserve <input id="bulkReserve" type="number" min="0" value="5"></label><label>Invest % <input id="bulkInvest" type="number" min="0" max="100" value="70"></label><button id="bulkApply">Apply policy to selected</button><hr><label>One-time investment energy per selected node <input id="bulkManualInvest" type="number" min="0" value="5"></label><button id="bulkManualApply">Set manual investments</button>';
  dashboard.append(bulk);
  const table=document.createElement('table'),head=document.createElement('tr');
  for(const h of ['Select','Node','Active','Invested','Income','Defense','Invest next','Next active','Policy']){const th=document.createElement('th');th.textContent=h;head.append(th)}table.append(head);
@@ -226,6 +226,7 @@ function renderDashboard(){
  makeCell(policies[n.id]?(policies[n.id].enabled?'On':'Off'):'None');table.append(tr)}
  dashboard.append(table);
  $('bulkApply').onclick=()=>{const selectedIds=[...dashboard.querySelectorAll('.bulk-node:checked')].map(x=>Number(x.dataset.node));for(const id of selectedIds)policies[id]={enabled:true,reserve:Math.max(0,Number($('bulkReserve').value)||0),investPct:Math.max(0,Math.min(100,Number($('bulkInvest').value)||0)),dest:null};render()};
+ $('bulkManualApply').onclick=()=>{const ids=[...dashboard.querySelectorAll('.bulk-node:checked')].map(x=>Number(x.dataset.node)),amount=Math.max(0,Number($('bulkManualInvest').value)||0);for(const id of ids){const p={...plan(id),edges:{...plan(id).edges}},available=state.nodes[id].active-Object.values(p.edges).reduce((a,b)=>a+b,0);if(amount<=available+1e-8){p.invest=amount;if(allocated(id,p)<1e-9&&!p.hold)delete orders[id];else orders[id]=p}}render()};
 }
 function attachNavigation(){
  const svg=$('map');let drag=null;
