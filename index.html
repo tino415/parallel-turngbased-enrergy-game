@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Parallel Energy Game</title><style>
-:root{font-family:system-ui,sans-serif;color:#e7eef9;background:#0e1625}*{box-sizing:border-box}body{margin:0}header{padding:16px 20px;border-bottom:1px solid #334155;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}h1{font-size:21px;margin:0}.muted{color:#abb9ce;font-size:13px}.layout{display:grid;grid-template-columns:minmax(320px,1fr) 300px;gap:15px;max-width:1200px;margin:auto;padding:15px}.panel{padding:15px;background:#182538;border:1px solid #384960;border-radius:12px}svg{width:100%;height:auto;min-height:340px}button,input,select{background:#263a56;border:1px solid #637891;color:white;border-radius:7px;padding:8px;font:inherit}button{cursor:pointer}button:disabled{opacity:.4;cursor:default}.primary{background:#285e99}.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.order-row{border:1px solid #435570;background:#203149;border-radius:9px;padding:9px;margin:8px 0}.order-row .order-fields{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.order-row label{display:flex;flex-direction:column;gap:3px;font-size:12px}.order-row input,.order-row select{width:100%;min-width:0}.order-row button{padding:5px 9px}.order-top{display:flex;align-items:center;justify-content:space-between}.order-selected{outline:2px solid #8ebdff}.node-ordered{stroke:#f8d278;stroke-width:4}.log{max-height:230px;overflow:auto;font-size:12px;line-height:1.7}input{width:90px}.node{cursor:pointer;stroke:#d2daea;stroke-width:2}.selected{stroke:#fff;stroke-width:5}svg text{fill:#fff;pointer-events:none;text-anchor:middle;font-weight:700}@media(max-width:760px){.layout{grid-template-columns:1fr}svg{min-height:260px}}
+:root{font-family:system-ui,sans-serif;color:#e7eef9;background:#0e1625}*{box-sizing:border-box}body{margin:0}header{padding:16px 20px;border-bottom:1px solid #334155;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}h1{font-size:21px;margin:0}.muted{color:#abb9ce;font-size:13px}.layout{display:grid;grid-template-columns:minmax(320px,1fr) 300px;gap:15px;max-width:1200px;margin:auto;padding:15px}.panel{padding:15px;background:#182538;border:1px solid #384960;border-radius:12px}svg{width:100%;height:auto;min-height:340px}button,input,select{background:#263a56;border:1px solid #637891;color:white;border-radius:7px;padding:8px;font:inherit}button{cursor:pointer}button:disabled{opacity:.4;cursor:default}.primary{background:#285e99}.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.order-row{border:1px solid #435570;background:#203149;border-radius:9px;padding:9px;margin:8px 0}.order-row .order-fields{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.order-row label{display:flex;flex-direction:column;gap:3px;font-size:12px}.order-row input,.order-row select{width:100%;min-width:0}.order-row button{padding:5px 9px}.order-top{display:flex;align-items:center;justify-content:space-between}.order-selected{outline:2px solid #8ebdff}.node-ordered{stroke:#f8d278;stroke-width:4}.allocation-line{display:grid;grid-template-columns:1fr 100px;align-items:center;gap:8px;margin-top:10px}.allocation-line input{width:100%}.log{max-height:230px;overflow:auto;font-size:12px;line-height:1.7}input{width:90px}.node{cursor:pointer;stroke:#d2daea;stroke-width:2}.selected{stroke:#fff;stroke-width:5}svg text{fill:#fff;pointer-events:none;text-anchor:middle;font-weight:700}@media(max-width:760px){.layout{grid-template-columns:1fr}svg{min-height:260px}}
 </style></head><body>
 <header><div><h1>⚡ Parallel Energy Game</h1><div class="muted">Simultaneous orders • Local energy • Prototype</div></div><div><span id="score"></span> <button class="primary" id="resolve">Resolve round</button> <button id="reset">New game</button></div></header>
-<div class="layout"><div class="panel"><svg id="map" viewBox="0 0 800 460"></svg><p class="muted">Blue = you · Red = AI · Gray = neutral. Node label shows active energy and invested energy (I). Select your node, select an action, then choose a connected destination.</p></div><aside class="panel"><h3 id="selectedTitle">Select a blue node</h3><p id="details" class="muted"></p><label>Energy <input id="amount" type="number" min="0.1" step="0.1" value="5"></label><p class="actions"><button id="invest">Invest</button><button id="clear">Clear order</button><button id="transfer">Transfer →</button><button id="attack">Attack →</button></p><p id="hint" class="muted"></p><h3>Planned orders <span id="orderCount" class="muted"></span></h3><p class="muted">Edit any order below. Changes are not executed until you resolve the round.</p><div id="orders"></div><button id="clearAll">Clear all orders</button><h3>Round log</h3><div id="log" class="log"></div><details><summary>Prototype rules</summary><p class="muted">Nodes start with active and invested energy. Invested principal is locked and earns 10% in active energy. Active energy decays 10% each round. Each node naturally generates 1 active energy. Energy transfers only across one edge. Each node may issue one order. Attacks are grouped by destination and attacker, then shuffled; attack power uses an independent ±20% modifier for each combatant. Captured nodes lose a random 25–75% of investment. The player owning more nodes after round 20 wins.</p></details></aside></div>
+<div class="layout"><div class="panel"><svg id="map" viewBox="0 0 800 460"></svg><p class="muted">Blue = you · Red = AI · Gray = neutral. Node label shows active energy and invested energy (I). Select a blue node to allocate its energy among investment and connected neighbors. Unallocated energy remains for defense.</p></div><aside class="panel"><h3 id="selectedTitle">Select a blue node</h3><p id="details" class="muted"></p><p id="hint" class="muted"></p><div id="allocator"></div><h3>Planned orders <span id="orderCount" class="muted"></span></h3><p class="muted">Review allocations below. Select any node to edit all of its allocations. Nothing executes until Resolve round.</p><div id="orders"></div><button id="clearAll">Clear all orders</button><h3>Round log</h3><div id="log" class="log"></div><details><summary>Prototype rules</summary><p class="muted">Nodes start with active and invested energy. Invested principal is locked and earns 10% in active energy. Active energy decays 10% each round. Each node naturally generates 1 active energy. Energy transfers only across one edge. Each node may invest once and allocate energy to any number of neighboring nodes, retaining unallocated energy for defense. Attacks are grouped by destination and attacker, then shuffled; attack power uses an independent ±20% modifier for each combatant. Captured nodes lose a random 25–75% of investment. The player owning more nodes after round 20 wins.</p></details></aside></div>
 <script>
 "use strict";
 const N=14,MAX_ROUNDS=20;
@@ -11,60 +11,73 @@ const edges=[[0,1],[0,2],[1,3],[1,4],[2,4],[2,5],[3,6],[4,6],[4,7],[5,7],[6,8],[
 const xy=[[70,230],[165,115],[165,355],[280,70],[290,210],[280,385],[415,105],[420,295],[520,170],[530,375],[630,220],[640,405],[725,300],[735,415]];
 const neighbors=i=>edges.flatMap(([a,b])=>a===i?[b]:b===i?[a]:[]);
 const $=id=>document.getElementById(id), clamp=v=>Math.max(0,v),rnd=(a,b)=>a+Math.random()*(b-a),fmt=v=>v.toFixed(1);
-let state,orders,selected=null,mode=null,history=[];
-function fresh(){const nodes=Array.from({length:N},(_,id)=>({id,owner:null,active:rnd(3,7),invested:0}));nodes[0].owner=0;nodes[0].active=24;nodes[0].invested=14;nodes[13].owner=1;nodes[13].active=24;nodes[13].invested=14;state={round:1,nodes,finished:false};orders={};selected=null;mode=null;history=['New match started. You are Blue.'];render()}
+let state,orders,selected=null,history=[];
+function fresh(){const nodes=Array.from({length:N},(_,id)=>({id,owner:null,active:rnd(3,7),invested:0}));nodes[0].owner=0;nodes[0].active=24;nodes[0].invested=14;nodes[13].owner=1;nodes[13].active=24;nodes[13].invested=14;state={round:1,nodes,finished:false};orders={};selected=null;history=['New match started. You are Blue.'];render()}
 function log(message){history.unshift(message);history=history.slice(0,70)}
-function order(source,type,amount,dest){orders[source]={source,type,amount,dest};render()}
-function destinations(source,type){const owner=state.nodes[source].owner;return neighbors(source).filter(id=>type==='transfer'?state.nodes[id].owner===owner:state.nodes[id].owner!==owner)}
-function updateQueued(source,property,value){
- const o=orders[source];if(!o)return;
- if(property==='type'){
-   o.type=value;o.dest=value==='invest'?null:(destinations(source,value)[0]??null);
-   if(value!=='invest'&&o.dest===null){delete orders[source];}
- }else if(property==='amount'){
-   const amount=Number(value);
-   if(!Number.isFinite(amount)||amount<=0||amount>state.nodes[source].active){render();return;}
-   o.amount=amount;
- }else if(property==='dest'){
-   const dest=Number(value);
-   if(!destinations(source,o.type).includes(dest))return;
-   o.dest=dest;
- }
+
+function plan(source){return orders[source]??{invest:0,edges:{}}}
+function allocated(source,p=plan(source)){return p.invest+Object.values(p.edges).reduce((sum,n)=>sum+n,0)}
+function setAllocation(source,destination,value){
+ if(state.finished||state.nodes[source]?.owner!==0)return;
+ const amount=Number(value),node=state.nodes[source],p={invest:plan(source).invest,edges:{...plan(source).edges}};
+ if(!Number.isFinite(amount)||amount<0)return;
+ if(destination===null)p.invest=amount;
+ else if(neighbors(source).includes(destination)){if(amount===0)delete p.edges[destination];else p.edges[destination]=amount}
+ else return;
+ if(allocated(source,p)>node.active+1e-8){$('hint').textContent='Over budget: total allocations cannot exceed '+fmt(node.active);return;}
+ if(allocated(source,p)<1e-9)delete orders[source];else orders[source]=p;
  render();
+}
+function numberField(value,max,onChange){
+ const input=document.createElement('input');input.type='number';input.min='0';input.max=String(max);
+ input.step='0.1';input.value=String(Number(value.toFixed(2)));
+ input.addEventListener('change',()=>{const amount=Number(input.value);if(!Number.isFinite(amount)||amount<0||amount>max+1e-8){input.value=String(Number(value.toFixed(2)));$('hint').textContent='Invalid amount';return}onChange(amount)});
+ return input;
+}
+function renderAllocator(){
+ const container=$('allocator');container.replaceChildren();
+ if(selected===null||state.nodes[selected].owner!==0)return;
+ const n=state.nodes[selected],p=plan(selected),used=allocated(selected),remain=Math.max(0,n.active-used);
+ const summary=document.createElement('div');summary.className='order-row';
+ summary.textContent='Allocated '+fmt(used)+' / '+fmt(n.active)+' · Defense reserve '+fmt(remain);
+ container.append(summary);
+ const fields=document.createElement('div');fields.className='order-row';
+ const heading=document.createElement('strong');heading.textContent='Energy allocation';fields.append(heading);
+ const makeRow=(label,amount,target)=>{const row=document.createElement('div');row.className='allocation-line';const name=document.createElement('label');name.textContent=label;const input=numberField(amount,n.active,value=>setAllocation(selected,target,value));row.append(name,input);fields.append(row)};
+ makeRow('Invest',p.invest,null);
+ for(const dest of neighbors(selected))makeRow((state.nodes[dest].owner===0?'Transfer':'Attack')+' → Node '+dest,p.edges[dest]||0,dest);
+ container.append(fields);
+ const clear=document.createElement('button');clear.textContent='Clear node allocations';clear.onclick=()=>{delete orders[selected];render()};container.append(clear);
 }
 function renderOrders(){
  const container=$('orders');container.replaceChildren();
- const items=Object.values(orders).sort((a,b)=>a.source-b.source);
- $('orderCount').textContent='('+items.length+')';
- if(!items.length){const p=document.createElement('p');p.className='muted';p.textContent='No orders planned.';container.append(p)}
- for(const o of items){
-   const box=document.createElement('div');box.className='order-row'+(selected===o.source?' order-selected':'');
-   const top=document.createElement('div');top.className='order-top';
-   const title=document.createElement('button');title.textContent='Node '+o.source;title.onclick=()=>{selected=o.source;mode=null;render()};
-   const remove=document.createElement('button');remove.textContent='Remove ×';remove.onclick=()=>{delete orders[o.source];render()};
-   top.append(title,remove);box.append(top);
-   const fields=document.createElement('div');fields.className='order-fields';
-   const makeLabel=(name,control)=>{const label=document.createElement('label');label.textContent=name;label.append(control);fields.append(label)};
-   const type=document.createElement('select');
-   for(const t of ['invest','transfer','attack']){const opt=document.createElement('option');opt.value=t;opt.textContent=t[0].toUpperCase()+t.slice(1);opt.selected=o.type===t;opt.disabled=t!=='invest'&&destinations(o.source,t).length===0;type.append(opt)}
-   type.onchange=()=>updateQueued(o.source,'type',type.value);makeLabel('Action',type);
-   const amount=document.createElement('input');amount.type='number';amount.min='0.1';amount.step='0.1';amount.max=String(state.nodes[o.source].active);amount.value=String(Number(o.amount.toFixed(2)));
-   amount.onchange=()=>updateQueued(o.source,'amount',amount.value);makeLabel('Energy (max '+fmt(state.nodes[o.source].active)+')',amount);
-   if(o.type!=='invest'){
-     const dest=document.createElement('select');
-     for(const id of destinations(o.source,o.type)){const opt=document.createElement('option');opt.value=id;opt.textContent='Node '+id;opt.selected=id===o.dest;dest.append(opt)}
-     dest.onchange=()=>updateQueued(o.source,'dest',dest.value);makeLabel('Destination',dest);
-   }
-   box.append(fields);container.append(box);
+ const ids=Object.keys(orders).map(Number).sort((a,b)=>a-b);
+ $('orderCount').textContent='('+ids.length+' nodes)';
+ if(!ids.length){const p=document.createElement('p');p.className='muted';p.textContent='No allocations planned.';container.append(p)}
+ for(const id of ids){
+  const p=plan(id),row=document.createElement('div');row.className='order-row'+(selected===id?' order-selected':'');
+  const top=document.createElement('div');top.className='order-top';
+  const choose=document.createElement('button');choose.textContent='Edit node '+id;choose.onclick=()=>{selected=id;render()};
+  const remove=document.createElement('button');remove.textContent='Clear ×';remove.onclick=()=>{delete orders[id];render()};
+  top.append(choose,remove);row.append(top);
+  const details=document.createElement('div');details.className='muted';
+  const parts=[];if(p.invest>0)parts.push('Invest '+fmt(p.invest));
+  for(const [dest,amount] of Object.entries(p.edges))parts.push((state.nodes[dest].owner===0?'Transfer':'Attack')+' '+dest+': '+fmt(amount));
+  details.textContent=parts.join(' · ')+' · Defense '+fmt(Math.max(0,state.nodes[id].active-allocated(id)));
+  row.append(details);container.append(row);
  }
 }
-function clickNode(id){const node=state.nodes[id];if(mode&&selected!==null){const from=state.nodes[selected];const valid=neighbors(selected).includes(id)&&(mode==='transfer'?node.owner===0:node.owner!==0);if(valid){const value=Number($('amount').value);if(value>0&&value<=from.active){order(selected,mode,value,id);mode=null;return}}}
-if(node.owner===0){selected=id;mode=null;if(orders[id])$('amount').value=String(Number(orders[id].amount.toFixed(2)));render()}else{$('hint').textContent='Select one of your blue nodes first.'}}
-function action(type){if(state.finished||selected===null)return;const node=state.nodes[selected],value=Number($('amount').value);if(type==='clear'){delete orders[selected];mode=null;render();return}if(!Number.isFinite(value)||value<=0||value>node.active){$('hint').textContent='Enter a positive amount up to '+fmt(node.active);return}if(type==='invest'){order(selected,'invest',value,null);return}mode=type;render()}
+function clickNode(id){if(state.nodes[id].owner===0){selected=id;render()}else if(selected!==null&&neighbors(selected).includes(id)){$('hint').textContent='Set the attack amount for node '+id+' in the selected node allocation panel.'}}
+
 function aiOrders(){const planned={};const ns=state.nodes;for(const node of ns.filter(n=>n.owner===1)){const adj=neighbors(node.id),foes=adj.filter(id=>ns[id].owner!==1),friends=adj.filter(id=>ns[id].owner===1);let active=node.active;if(foes.length){foes.sort((a,b)=>ns[a].active-ns[b].active);const t=foes[0];if(active>ns[t].active*0.9+2){planned[node.id]={source:node.id,type:'attack',amount:Math.min(active,ns[t].active*1.4+3),dest:t};continue}}
 if(friends.length&&active>10){const towards=friends.sort((a,b)=>neighbors(b).filter(k=>ns[k].owner!==1).length-neighbors(a).filter(k=>ns[k].owner!==1).length);if(neighbors(towards[0]).some(k=>ns[k].owner!==1)){planned[node.id]={source:node.id,type:'transfer',amount:active*0.5,dest:towards[0]};continue}}
 if(active>3)planned[node.id]={source:node.id,type:'invest',amount:active*0.6,dest:null};}return planned}
-function resolve(){if(state.finished)return;const nodes=state.nodes,all=[...Object.values(orders),...Object.values(aiOrders())];const valid=[];for(const o of all){const n=nodes[o.source];if(!n||n.owner===null||o.amount<=0||o.amount>n.active+1e-8)continue;if(o.type!=='invest'&&!neighbors(o.source).includes(o.dest))continue;if(o.type==='transfer'&&nodes[o.dest].owner!==n.owner)continue;if(o.type==='attack'&&nodes[o.dest].owner===n.owner)continue;valid.push({...o,owner:n.owner})}
+function resolve(){if(state.finished)return;const nodes=state.nodes;
+const manual=Object.entries(orders).flatMap(([source,p])=>[
+ ...(p.invest>0?[{source:Number(source),type:'invest',amount:p.invest,dest:null}]:[]),
+ ...Object.entries(p.edges).filter(([,amount])=>amount>0).map(([dest,amount])=>({source:Number(source),type:nodes[Number(dest)].owner===0?'transfer':'attack',amount,dest:Number(dest)}))
+]);
+const all=[...manual,...Object.values(aiOrders())];const valid=[],spent={};for(const o of all){const n=nodes[o.source];if(!n||n.owner===null||o.amount<=0||(spent[o.source]||0)+o.amount>n.active+1e-8)continue;if(o.type!=='invest'&&!neighbors(o.source).includes(o.dest))continue;if(o.type==='transfer'&&nodes[o.dest].owner!==n.owner)continue;if(o.type==='attack'&&nodes[o.dest].owner===n.owner)continue;spent[o.source]=(spent[o.source]||0)+o.amount;valid.push({...o,owner:n.owner})}
 for(const o of valid)nodes[o.source].active=clamp(nodes[o.source].active-o.amount);
 for(const o of valid.filter(o=>o.type==='invest'))nodes[o.source].invested+=o.amount;
 for(const o of valid.filter(o=>o.type==='transfer'))nodes[o.dest].active+=o.amount;
@@ -74,7 +87,7 @@ for(const [destination,attacks] of Object.entries(byTarget)){const node=nodes[Nu
 for(const a of attacks){if(node.owner===a.owner){node.active+=a.amount;continue}const atk=a.amount*rnd(.8,1.2),def=node.active*rnd(.8,1.2);if(atk>def){const survivors=a.amount*(1-def/atk);node.owner=a.owner;node.active=survivors;log('Node '+node.id+' captured by '+(a.owner===0?'Blue':'Red')+'.')}else{node.active=node.active*(1-atk/Math.max(def,1e-10));log('Attack on node '+node.id+' repelled.')}}if(node.owner!==original){node.invested*=rnd(.25,.75)}}
 for(const n of nodes){const income=1+n.invested*.1;n.active=clamp(n.active*.9+income)}
 let blue=nodes.filter(n=>n.owner===0).length,red=nodes.filter(n=>n.owner===1).length;
-log('Round '+state.round+' complete: Blue '+blue+' nodes / Red '+red+' nodes.');state.round++;orders={};mode=null;
+log('Round '+state.round+' complete: Blue '+blue+' nodes / Red '+red+' nodes.');state.round++;orders={};
 if(state.round>MAX_ROUNDS){state.finished=true;log(blue===red?'Draw!':blue>red?'Blue wins!':'Red wins!')}render()}
 function render(){const nodes=state.nodes,blue=nodes.filter(n=>n.owner===0).length,red=nodes.filter(n=>n.owner===1).length;
 $('score').textContent='Round '+Math.min(state.round,MAX_ROUNDS)+' / '+MAX_ROUNDS+' · Blue '+blue+' · Red '+red;
@@ -86,11 +99,11 @@ for(const [a,b] of edges)element('line',{x1:xy[a][0],y1:xy[a][1],x2:xy[b][0],y2:
 for(const n of nodes){const [x,y]=xy[n.id],group=element('g',{});const cir=element('circle',{cx:x,cy:y,r:30,fill:n.owner===0?'#3278c8':n.owner===1?'#cc6255':'#768092',class:'node'+(selected===n.id?' selected':'')+(orders[n.id]?' node-ordered':'')},group);cir.addEventListener('click',()=>clickNode(n.id));const t=element('text',{x,y:y+2,'font-size':17},group);t.textContent=fmt(n.active);const t2=element('text',{x,y:y+18,'font-size':10},group);t2.textContent='I '+fmt(n.invested);const t3=element('text',{x,y:y-40,'font-size':12},group);t3.textContent=n.id;group.style.cursor='pointer';group.addEventListener('click',()=>clickNode(n.id))}
 let selectedNode=selected===null?null:nodes[selected];$('selectedTitle').textContent=selectedNode?'Node '+selected:'Select a blue node';
 $('details').textContent=selectedNode?'Active '+fmt(selectedNode.active)+' · Invested '+fmt(selectedNode.invested):'Choose a blue node to issue an order.';
-$('hint').textContent=state.finished?'Game over. Start a new game.':mode?'Select an adjacent '+(mode==='attack'?'enemy or neutral':'friendly')+' node.':'Orders are committed simultaneously; one order per source node.';
+$('hint').textContent=state.finished?'Game over. Start a new game.':'Allocate energy across investment and edges; the rest is retained for defense.';
+renderAllocator();
 renderOrders();
 $('log').innerHTML=history.map(line=>'<div>'+line+'</div>').join('');
 }
-for(const id of ['invest','transfer','attack','clear'])$(id).onclick=()=>action(id);
-$('clearAll').onclick=()=>{orders={};mode=null;render()};
+$('clearAll').onclick=()=>{orders={};render()};
 $('resolve').onclick=resolve;$('reset').onclick=fresh;fresh();
 </script></body></html>
