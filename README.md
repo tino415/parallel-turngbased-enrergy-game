@@ -94,6 +94,8 @@ The deployed content comes from `dist/`; the Workers configuration is in `wrangl
 
 - **v0.8.3:** Mobile map has a **Pan / Scroll** toggle. Scroll mode allows normal browser page gestures; Pan mode allows one-finger dragging horizontally or vertically across the map. On-map zoom and Fit buttons still work.
 
+- **v0.8.4:** Compact mobile header, full-height map area and an explicit Settings panel for orders and conquest defaults.
+
 ## Known limitations
 
 - Simple AI and experimental balance.
