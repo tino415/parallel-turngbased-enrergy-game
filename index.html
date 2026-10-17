@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Parallel Energy Game</title><style>
-:root{font-family:system-ui,sans-serif;color:#e7eef9;background:#0e1625}*{box-sizing:border-box}body{margin:0}header{padding:16px 20px;border-bottom:1px solid #334155;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}h1{font-size:21px;margin:0}.muted{color:#abb9ce;font-size:13px}.layout{display:grid;grid-template-columns:minmax(320px,1fr) 300px;gap:15px;max-width:1200px;margin:auto;padding:15px}.panel{padding:15px;background:#182538;border:1px solid #384960;border-radius:12px}svg{width:100%;height:auto;min-height:340px}button,input{background:#263a56;border:1px solid #637891;color:white;border-radius:7px;padding:8px;font:inherit}button{cursor:pointer}button:disabled{opacity:.4;cursor:default}.primary{background:#285e99}.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.log{max-height:230px;overflow:auto;font-size:12px;line-height:1.7}input{width:90px}.node{cursor:pointer;stroke:#d2daea;stroke-width:2}.selected{stroke:#fff;stroke-width:5}svg text{fill:#fff;pointer-events:none;text-anchor:middle;font-weight:700}@media(max-width:760px){.layout{grid-template-columns:1fr}svg{min-height:260px}}
+:root{font-family:system-ui,sans-serif;color:#e7eef9;background:#0e1625}*{box-sizing:border-box}body{margin:0}header{padding:16px 20px;border-bottom:1px solid #334155;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}h1{font-size:21px;margin:0}.muted{color:#abb9ce;font-size:13px}.layout{display:grid;grid-template-columns:minmax(320px,1fr) 300px;gap:15px;max-width:1200px;margin:auto;padding:15px}.panel{padding:15px;background:#182538;border:1px solid #384960;border-radius:12px}svg{width:100%;height:auto;min-height:340px}button,input,select{background:#263a56;border:1px solid #637891;color:white;border-radius:7px;padding:8px;font:inherit}button{cursor:pointer}button:disabled{opacity:.4;cursor:default}.primary{background:#285e99}.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.order-row{border:1px solid #435570;background:#203149;border-radius:9px;padding:9px;margin:8px 0}.order-row .order-fields{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.order-row label{display:flex;flex-direction:column;gap:3px;font-size:12px}.order-row input,.order-row select{width:100%;min-width:0}.order-row button{padding:5px 9px}.order-top{display:flex;align-items:center;justify-content:space-between}.order-selected{outline:2px solid #8ebdff}.node-ordered{stroke:#f8d278;stroke-width:4}.log{max-height:230px;overflow:auto;font-size:12px;line-height:1.7}input{width:90px}.node{cursor:pointer;stroke:#d2daea;stroke-width:2}.selected{stroke:#fff;stroke-width:5}svg text{fill:#fff;pointer-events:none;text-anchor:middle;font-weight:700}@media(max-width:760px){.layout{grid-template-columns:1fr}svg{min-height:260px}}
 </style></head><body>
 <header><div><h1>⚡ Parallel Energy Game</h1><div class="muted">Simultaneous orders • Local energy • Prototype</div></div><div><span id="score"></span> <button class="primary" id="resolve">Resolve round</button> <button id="reset">New game</button></div></header>
-<div class="layout"><div class="panel"><svg id="map" viewBox="0 0 800 460"></svg><p class="muted">Blue = you · Red = AI · Gray = neutral. Node label shows active energy and invested energy (I). Select your node, select an action, then choose a connected destination.</p></div><aside class="panel"><h3 id="selectedTitle">Select a blue node</h3><p id="details" class="muted"></p><label>Energy <input id="amount" type="number" min="0.1" step="0.1" value="5"></label><p class="actions"><button id="invest">Invest</button><button id="clear">Clear order</button><button id="transfer">Transfer →</button><button id="attack">Attack →</button></p><p id="hint" class="muted"></p><h3>Your orders</h3><div id="orders" class="muted"></div><h3>Round log</h3><div id="log" class="log"></div><details><summary>Prototype rules</summary><p class="muted">Nodes start with active and invested energy. Invested principal is locked and earns 10% in active energy. Active energy decays 10% each round. Each node naturally generates 1 active energy. Energy transfers only across one edge. Each node may issue one order. Attacks are grouped by destination and attacker, then shuffled; attack power uses an independent ±20% modifier for each combatant. Captured nodes lose a random 25–75% of investment. The player owning more nodes after round 20 wins.</p></details></aside></div>
+<div class="layout"><div class="panel"><svg id="map" viewBox="0 0 800 460"></svg><p class="muted">Blue = you · Red = AI · Gray = neutral. Node label shows active energy and invested energy (I). Select your node, select an action, then choose a connected destination.</p></div><aside class="panel"><h3 id="selectedTitle">Select a blue node</h3><p id="details" class="muted"></p><label>Energy <input id="amount" type="number" min="0.1" step="0.1" value="5"></label><p class="actions"><button id="invest">Invest</button><button id="clear">Clear order</button><button id="transfer">Transfer →</button><button id="attack">Attack →</button></p><p id="hint" class="muted"></p><h3>Planned orders <span id="orderCount" class="muted"></span></h3><p class="muted">Edit any order below. Changes are not executed until you resolve the round.</p><div id="orders"></div><button id="clearAll">Clear all orders</button><h3>Round log</h3><div id="log" class="log"></div><details><summary>Prototype rules</summary><p class="muted">Nodes start with active and invested energy. Invested principal is locked and earns 10% in active energy. Active energy decays 10% each round. Each node naturally generates 1 active energy. Energy transfers only across one edge. Each node may issue one order. Attacks are grouped by destination and attacker, then shuffled; attack power uses an independent ±20% modifier for each combatant. Captured nodes lose a random 25–75% of investment. The player owning more nodes after round 20 wins.</p></details></aside></div>
 <script>
 "use strict";
 const N=14,MAX_ROUNDS=20;
@@ -15,8 +15,51 @@ let state,orders,selected=null,mode=null,history=[];
 function fresh(){const nodes=Array.from({length:N},(_,id)=>({id,owner:null,active:rnd(3,7),invested:0}));nodes[0].owner=0;nodes[0].active=24;nodes[0].invested=14;nodes[13].owner=1;nodes[13].active=24;nodes[13].invested=14;state={round:1,nodes,finished:false};orders={};selected=null;mode=null;history=['New match started. You are Blue.'];render()}
 function log(message){history.unshift(message);history=history.slice(0,70)}
 function order(source,type,amount,dest){orders[source]={source,type,amount,dest};render()}
+function destinations(source,type){const owner=state.nodes[source].owner;return neighbors(source).filter(id=>type==='transfer'?state.nodes[id].owner===owner:state.nodes[id].owner!==owner)}
+function updateQueued(source,property,value){
+ const o=orders[source];if(!o)return;
+ if(property==='type'){
+   o.type=value;o.dest=value==='invest'?null:(destinations(source,value)[0]??null);
+   if(value!=='invest'&&o.dest===null){delete orders[source];}
+ }else if(property==='amount'){
+   const amount=Number(value);
+   if(!Number.isFinite(amount)||amount<=0||amount>state.nodes[source].active){render();return;}
+   o.amount=amount;
+ }else if(property==='dest'){
+   const dest=Number(value);
+   if(!destinations(source,o.type).includes(dest))return;
+   o.dest=dest;
+ }
+ render();
+}
+function renderOrders(){
+ const container=$('orders');container.replaceChildren();
+ const items=Object.values(orders).sort((a,b)=>a.source-b.source);
+ $('orderCount').textContent='('+items.length+')';
+ if(!items.length){const p=document.createElement('p');p.className='muted';p.textContent='No orders planned.';container.append(p)}
+ for(const o of items){
+   const box=document.createElement('div');box.className='order-row'+(selected===o.source?' order-selected':'');
+   const top=document.createElement('div');top.className='order-top';
+   const title=document.createElement('button');title.textContent='Node '+o.source;title.onclick=()=>{selected=o.source;mode=null;render()};
+   const remove=document.createElement('button');remove.textContent='Remove ×';remove.onclick=()=>{delete orders[o.source];render()};
+   top.append(title,remove);box.append(top);
+   const fields=document.createElement('div');fields.className='order-fields';
+   const makeLabel=(name,control)=>{const label=document.createElement('label');label.textContent=name;label.append(control);fields.append(label)};
+   const type=document.createElement('select');
+   for(const t of ['invest','transfer','attack']){const opt=document.createElement('option');opt.value=t;opt.textContent=t[0].toUpperCase()+t.slice(1);opt.selected=o.type===t;opt.disabled=t!=='invest'&&destinations(o.source,t).length===0;type.append(opt)}
+   type.onchange=()=>updateQueued(o.source,'type',type.value);makeLabel('Action',type);
+   const amount=document.createElement('input');amount.type='number';amount.min='0.1';amount.step='0.1';amount.max=String(state.nodes[o.source].active);amount.value=String(Number(o.amount.toFixed(2)));
+   amount.onchange=()=>updateQueued(o.source,'amount',amount.value);makeLabel('Energy (max '+fmt(state.nodes[o.source].active)+')',amount);
+   if(o.type!=='invest'){
+     const dest=document.createElement('select');
+     for(const id of destinations(o.source,o.type)){const opt=document.createElement('option');opt.value=id;opt.textContent='Node '+id;opt.selected=id===o.dest;dest.append(opt)}
+     dest.onchange=()=>updateQueued(o.source,'dest',dest.value);makeLabel('Destination',dest);
+   }
+   box.append(fields);container.append(box);
+ }
+}
 function clickNode(id){const node=state.nodes[id];if(mode&&selected!==null){const from=state.nodes[selected];const valid=neighbors(selected).includes(id)&&(mode==='transfer'?node.owner===0:node.owner!==0);if(valid){const value=Number($('amount').value);if(value>0&&value<=from.active){order(selected,mode,value,id);mode=null;return}}}
-if(node.owner===0){selected=id;mode=null;render()}else{$('hint').textContent='Select one of your blue nodes first.'}}
+if(node.owner===0){selected=id;mode=null;if(orders[id])$('amount').value=String(Number(orders[id].amount.toFixed(2)));render()}else{$('hint').textContent='Select one of your blue nodes first.'}}
 function action(type){if(state.finished||selected===null)return;const node=state.nodes[selected],value=Number($('amount').value);if(type==='clear'){delete orders[selected];mode=null;render();return}if(!Number.isFinite(value)||value<=0||value>node.active){$('hint').textContent='Enter a positive amount up to '+fmt(node.active);return}if(type==='invest'){order(selected,'invest',value,null);return}mode=type;render()}
 function aiOrders(){const planned={};const ns=state.nodes;for(const node of ns.filter(n=>n.owner===1)){const adj=neighbors(node.id),foes=adj.filter(id=>ns[id].owner!==1),friends=adj.filter(id=>ns[id].owner===1);let active=node.active;if(foes.length){foes.sort((a,b)=>ns[a].active-ns[b].active);const t=foes[0];if(active>ns[t].active*0.9+2){planned[node.id]={source:node.id,type:'attack',amount:Math.min(active,ns[t].active*1.4+3),dest:t};continue}}
 if(friends.length&&active>10){const towards=friends.sort((a,b)=>neighbors(b).filter(k=>ns[k].owner!==1).length-neighbors(a).filter(k=>ns[k].owner!==1).length);if(neighbors(towards[0]).some(k=>ns[k].owner!==1)){planned[node.id]={source:node.id,type:'transfer',amount:active*0.5,dest:towards[0]};continue}}
@@ -40,13 +83,14 @@ const svg=$('map');svg.innerHTML='';
 const ns='http://www.w3.org/2000/svg';
 const element=(name,attrs,parent=svg)=>{const e=document.createElementNS(ns,name);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,v);parent.append(e);return e};
 for(const [a,b] of edges)element('line',{x1:xy[a][0],y1:xy[a][1],x2:xy[b][0],y2:xy[b][1],stroke:'#71849d','stroke-width':3,opacity:.55});
-for(const n of nodes){const [x,y]=xy[n.id],group=element('g',{});const cir=element('circle',{cx:x,cy:y,r:30,fill:n.owner===0?'#3278c8':n.owner===1?'#cc6255':'#768092',class:'node'+(selected===n.id?' selected':'')},group);cir.addEventListener('click',()=>clickNode(n.id));const t=element('text',{x,y:y+2,'font-size':17},group);t.textContent=fmt(n.active);const t2=element('text',{x,y:y+18,'font-size':10},group);t2.textContent='I '+fmt(n.invested);const t3=element('text',{x,y:y-40,'font-size':12},group);t3.textContent=n.id;group.style.cursor='pointer';group.addEventListener('click',()=>clickNode(n.id))}
+for(const n of nodes){const [x,y]=xy[n.id],group=element('g',{});const cir=element('circle',{cx:x,cy:y,r:30,fill:n.owner===0?'#3278c8':n.owner===1?'#cc6255':'#768092',class:'node'+(selected===n.id?' selected':'')+(orders[n.id]?' node-ordered':'')},group);cir.addEventListener('click',()=>clickNode(n.id));const t=element('text',{x,y:y+2,'font-size':17},group);t.textContent=fmt(n.active);const t2=element('text',{x,y:y+18,'font-size':10},group);t2.textContent='I '+fmt(n.invested);const t3=element('text',{x,y:y-40,'font-size':12},group);t3.textContent=n.id;group.style.cursor='pointer';group.addEventListener('click',()=>clickNode(n.id))}
 let selectedNode=selected===null?null:nodes[selected];$('selectedTitle').textContent=selectedNode?'Node '+selected:'Select a blue node';
 $('details').textContent=selectedNode?'Active '+fmt(selectedNode.active)+' · Invested '+fmt(selectedNode.invested):'Choose a blue node to issue an order.';
 $('hint').textContent=state.finished?'Game over. Start a new game.':mode?'Select an adjacent '+(mode==='attack'?'enemy or neutral':'friendly')+' node.':'Orders are committed simultaneously; one order per source node.';
-$('orders').innerHTML=Object.values(orders).map(o=>'Node '+o.source+': '+o.type+' '+fmt(o.amount)+(o.dest===null?'':' → '+o.dest)).join('<br>')||'No orders';
+renderOrders();
 $('log').innerHTML=history.map(line=>'<div>'+line+'</div>').join('');
 }
 for(const id of ['invest','transfer','attack','clear'])$(id).onclick=()=>action(id);
+$('clearAll').onclick=()=>{orders={};mode=null;render()};
 $('resolve').onclick=resolve;$('reset').onclick=fresh;fresh();
 </script></body></html>
