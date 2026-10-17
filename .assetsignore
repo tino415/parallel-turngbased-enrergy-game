@@ -1,0 +1,12 @@
+# Keep only the playable website in Workers static assets.
+.git/
+node_modules/
+tests/
+README.md
+package.json
+package-lock.json
+wrangler.toml
+wrangler.json
+wrangler.jsonc
+.github/
+.env*
