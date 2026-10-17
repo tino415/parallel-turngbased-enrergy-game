@@ -43,3 +43,10 @@ This remains a single-file zero-dependency prototype. A modular engine and autom
 - Run `npm test` (requires Node.js) or `npm run check` locally. Use `npm run build` and deploy `dist/` to Cloudflare Pages.
 
 This refactor is intended to preserve v0.5.0 gameplay behavior; the larger domain/UI split is not yet complete.
+
+## v0.6.0: New-game modal and map placement
+
+- `New game` opens a modal with node count, player count, density, seed, and a live, deterministic graph preview.
+- The current match is preserved when the dialog is closed or cancelled; choosing `Start game` replaces it.
+- Generated node positions use a jittered grid that keeps nodes from overlapping, even with 120 nodes. Regression tests check spacing, connectivity, and reproducibility.
+- Map-generation controls no longer take up permanent toolbar space.
