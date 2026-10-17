@@ -3,9 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 
-const src=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
-const functions=src.slice(src.indexOf('function seeded('),src.indexOf('function previewMap('));
-const buildMap=runInNewContext(functions+';buildMap');
+const src=readFileSync(new URL('../src/engine.js',import.meta.url),'utf8');
+const buildMap=runInNewContext(src+';GameEngine.buildMap');
 
 test('generated maps keep nodes visually separated',()=>{
  for(const count of [10,30,60,90,120])for(let i=0;i<10;i++){
