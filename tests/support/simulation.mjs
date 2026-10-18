@@ -219,8 +219,20 @@ export function simulateMatch({
       nodes: owned.length,
       active: Number(owned.reduce((total, n) => total + n.active, 0).toFixed(3)),
       invested: Number(owned.reduce((total, n) => total + n.invested, 0).toFixed(3)),
+      // Snapshot after the last resolved round, before next-round orders.
+      // Base income is +1 per owned node; invested principal earns 10%.
+      // Gross income excludes next-round active-energy decay and battle losses.
+      totalEnergy: Number(owned.reduce((total, n) => total + n.active + n.invested, 0).toFixed(3)),
+      baseIncome: owned.length,
+      investmentIncome: Number((owned.reduce((total, n) => total + n.invested, 0) * 0.1).toFixed(3)),
+      grossIncome: Number((owned.length + owned.reduce((total, n) => total + n.invested, 0) * 0.1).toFixed(3)),
     };
   });
+  const allIncome = standings.reduce((sum, player) => sum + player.grossIncome, 0);
+  for (const entry of standings) {
+    entry.incomeSharePct = allIncome > 0
+      ? Number((entry.grossIncome * 100 / allIncome).toFixed(3)) : 0;
+  }
   const playerStats = playerProgress.map((progress) => ({
     ...progress,
     survived: alive.has(progress.player),
@@ -249,6 +261,17 @@ export function simulateMatch({
   };
 }
 
+function median(sorted) {
+  const midpoint = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[midpoint]
+    : (sorted[midpoint - 1] + sorted[midpoint]) / 2;
+}
+
+function medianEndingField(results, player, field) {
+  const values = results.map((result) => result.standings[player][field]).sort((a, b) => a - b);
+  return Number(median(values).toPrecision(8));
+}
+
 export function simulateBatch({ matches = 20, seed = 'balance', ...options } = {}) {
   assert.ok(
     Number.isInteger(matches) && matches > 0 && matches <= 10000,
@@ -272,6 +295,19 @@ export function simulateBatch({ matches = 20, seed = 'balance', ...options } = {
   return {
     seed: String(seed),
     strategies,
+    // Medians describe a typical match and avoid a few massive turtle economies
+    // masking the rest. Per-match raw values remain available in results.
+    medianEndingEconomy: strategies.map((strategy, player) => ({
+      player, strategy,
+      nodes: medianEndingField(results, player, 'nodes'),
+      active: medianEndingField(results, player, 'active'),
+      invested: medianEndingField(results, player, 'invested'),
+      totalEnergy: medianEndingField(results, player, 'totalEnergy'),
+      baseIncome: medianEndingField(results, player, 'baseIncome'),
+      investmentIncome: medianEndingField(results, player, 'investmentIncome'),
+      grossIncome: medianEndingField(results, player, 'grossIncome'),
+      incomeSharePct: medianEndingField(results, player, 'incomeSharePct'),
+    })),
     turtleRounds: options.turtleRounds ?? 150,
     attackPct: options.attackPct ?? 5,
     expansionCounts: strategies.map(
