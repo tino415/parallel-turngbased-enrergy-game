@@ -205,7 +205,7 @@ function numberField(value, max, onChange) {
   input.max = String(max);
   input.step = '0.1';
   input.value = String(Number(value.toFixed(2)));
-  input.addEventListener('change', () => {
+  input.onchange = () => {
     const amount = Number(input.value);
     if (!Number.isFinite(amount) || amount < 0 || amount > max + 1e-8) {
       input.value = String(Number(value.toFixed(2)));
@@ -213,13 +213,15 @@ function numberField(value, max, onChange) {
       return;
     }
     onChange(amount);
-  });
+  };
   return input;
 }
 function renderAllocator() {
-  const container = $('allocator');
-  container.replaceChildren();
-  if (selected === null || state.nodes[selected].owner !== 0) return;
+  updateChildrenInPlace($('allocator'), allocatorControls());
+}
+function allocatorControls() {
+  if (selected === null || state.nodes[selected].owner !== 0) return [];
+  const container = document.createElement('div');
   const n = state.nodes[selected],
     p = plan(selected),
     used = allocated(selected),
@@ -252,6 +254,7 @@ function renderAllocator() {
     const input = numberField(amount, max, (value) => setAllocation(selected, target, value));
     input.dataset.allocation =
       target === null ? 'invest' : target === 'withdraw' ? 'withdraw' : 'edge-' + target;
+    input.dataset.key = selected + ':' + input.dataset.allocation;
     row.append(name, input);
     fields.append(row);
   };
@@ -282,6 +285,7 @@ function renderAllocator() {
     render();
   };
   container.append(clear);
+  return [...container.childNodes];
 }
 
 function defaultPolicy() {
@@ -303,9 +307,10 @@ function changePolicy(source, key, value) {
   render();
 }
 function renderPolicyEditor() {
-  const container = $('policyEditor');
-  container.replaceChildren();
-  if (selected === null || state.nodes[selected].owner !== 0) return;
+  updateChildrenInPlace($('policyEditor'), policyControls());
+}
+function policyControls() {
+  if (selected === null || state.nodes[selected].owner !== 0) return [];
   const source = selected,
     p = { ...defaultPolicy(), enabled: false, ...policies[source] },
     box = document.createElement('div');
@@ -355,10 +360,12 @@ function renderPolicyEditor() {
     const reserve = numberField(p.reserve, 100000, (value) =>
       changePolicy(source, 'reserve', value),
     );
+    reserve.dataset.key = source + ':reserve';
     add('Active defense reserve', reserve);
     const invest = numberField(p.investPct, 100, (value) =>
       changePolicy(source, 'investPct', value),
     );
+    invest.dataset.key = source + ':investPct';
     add('Invest % of surplus', invest);
     const dest = document.createElement('select');
     for (const [value, title] of [
@@ -401,7 +408,86 @@ function renderPolicyEditor() {
     ' · Defense ' +
     fmt(Math.max(0, availableEnergy(source) - allocated(source) - spent));
   box.append(preview);
-  container.append(box);
+  return [box];
+}
+function updateChildrenInPlace(parent, nextChildren) {
+  let index = 0;
+  for (const next of nextChildren) {
+    const match = reusableChild(parent, index, next);
+    if (match) {
+      while (parent.childNodes[index] !== match) parent.childNodes[index].remove();
+      updateInPlace(match, next);
+    } else parent.insertBefore(next, parent.childNodes[index] ?? null);
+    index++;
+  }
+  while (parent.childNodes.length > index) parent.lastChild.remove();
+}
+function reusableChild(parent, from, next) {
+  for (const current of [...parent.childNodes].slice(from)) {
+    if (sameControl(current, next)) return current;
+    if (current.contains(document.activeElement)) return null;
+  }
+  return null;
+}
+function sameControl(current, next) {
+  if (current.nodeType !== next.nodeType) return false;
+  if (current.nodeType !== Node.ELEMENT_NODE) return true;
+  return (
+    current.tagName === next.tagName &&
+    current.id === next.id &&
+    current.type === next.type &&
+    current.dataset.key === next.dataset.key
+  );
+}
+function updateInPlace(current, next) {
+  if (current.nodeType !== Node.ELEMENT_NODE) {
+    if (current.nodeValue !== next.nodeValue) current.nodeValue = next.nodeValue;
+    return;
+  }
+  updateAttributes(current, next);
+  for (const handler of ['onclick', 'onchange', 'oninput', 'ontoggle'])
+    current[handler] = next[handler] && handlerSeeingLiveState(current, next, next[handler]);
+  if (!next.hasAttribute('data-mount')) updateChildrenInPlace(current, [...next.childNodes]);
+  if (isDraftBeingTyped(current)) return;
+  if ('checked' in next && current.checked !== next.checked) current.checked = next.checked;
+  if (isFormValue(next) && current.value !== next.value) current.value = next.value;
+}
+function handlerSeeingLiveState(current, next, respond) {
+  return (event) => {
+    copyFormState(current, next);
+    const before = formState(next);
+    respond(event);
+    const after = formState(next);
+    for (const property of Object.keys(after))
+      if (after[property] !== before[property]) current[property] = after[property];
+  };
+}
+function formState(element) {
+  return Object.fromEntries(
+    ['value', 'checked', 'open']
+      .filter((property) => property in element)
+      .map((property) => [property, element[property]]),
+  );
+}
+function copyFormState(from, to) {
+  for (const [property, value] of Object.entries(formState(from)))
+    if (to[property] !== value) to[property] = value;
+}
+function updateAttributes(current, next) {
+  for (const { name } of [...current.attributes])
+    if (!next.hasAttribute(name)) current.removeAttribute(name);
+  for (const { name, value } of next.attributes)
+    if (current.getAttribute(name) !== value) current.setAttribute(name, value);
+}
+function isDraftBeingTyped(element) {
+  return (
+    element === document.activeElement &&
+    element.tagName === 'INPUT' &&
+    ['number', 'text'].includes(element.type)
+  );
+}
+function isFormValue(element) {
+  return ['INPUT', 'SELECT', 'TEXTAREA'].includes(element.tagName);
 }
 function renderOrders() {
   const container = $('orders');

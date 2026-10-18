@@ -410,7 +410,7 @@
     const details = document.createElement('details');
     details.open = isOpen;
     details.append(textElement('summary', title), child);
-    details.addEventListener('toggle', () => onToggle(details.open));
+    details.ontoggle = () => onToggle(details.open);
     body.append(details);
   }
 
@@ -476,6 +476,7 @@
     percent.step = '1';
     percent.value = String(pct);
     percent.id = 'tacticalPolicyPercent';
+    percent.dataset.key = String(id);
     percent.setAttribute('aria-label', 'Invest surplus percent');
     const slider = document.createElement('input');
     slider.type = 'range';
@@ -485,7 +486,7 @@
     slider.value = String(pct);
     slider.setAttribute('aria-label', 'Investment percentage slider');
     slider.oninput = () => {
-      percent.value = slider.value;
+      byId('tacticalPolicyPercent').value = slider.value;
     };
     slider.onchange = () => changePolicy(id, 'investPct', Number(slider.value));
     percent.onchange = () => {
@@ -519,12 +520,12 @@
       if (item.textContent.includes('Invest % of surplus')) item.hidden = true;
     }
     const policyHolder = document.createElement('div');
-    policyHolder.append(policySection);
+    policyHolder.dataset.mount = 'policy';
     addDetails(body, 'Other policy settings', policyHolder, advancedOpen, (open) => {
       advancedOpen = open;
     });
     const manualHolder = document.createElement('div');
-    manualHolder.append(manualSection);
+    manualHolder.dataset.mount = 'manual';
     addDetails(
       body,
       'Manual investment, withdrawal and allocations',
@@ -613,8 +614,10 @@
     input.max = String(Math.max(0, budget - allocated(source) + value));
     input.value = String(value);
     input.id = 'tacticalEdgeAmount';
+    input.dataset.key = source + '-' + destination;
     input.setAttribute('aria-label', 'Order energy amount');
     const error = textElement('small', '', 'tactical-warning');
+    error.id = 'tacticalEdgeError';
     input.onchange = () => {
       const amount = Number(input.value);
       if (
@@ -622,7 +625,7 @@
         amount < 0 ||
         amount > budget - allocated(source) + value + 1e-8
       ) {
-        error.textContent = 'Amount exceeds the available allocation budget.';
+        byId('tacticalEdgeError').textContent = 'Amount exceeds the available allocation budget.';
         input.value = String(value);
         return;
       }
@@ -785,9 +788,6 @@
   }
 
   function showInspector() {
-    // A detached control breaks getElementById during the next game render.
-    // Stash the legacy controls first; showNode takes them back when it uses them.
-    nodeControls.append(policySection, manualSection);
     // The first tap highlights only. The second tap opens the editor above
     // the unchanged mobile Orders/Resolve dock, or near the edge on desktop.
     root.hidden =
@@ -796,7 +796,10 @@
       !editing ||
       Boolean(document.querySelector('dialog[open]'));
     document.body.classList.toggle('tactical-selection-active', !root.hidden);
-    if (root.hidden) return;
+    if (root.hidden) {
+      mountLegacyControls();
+      return;
+    }
     root.classList.toggle('is-editing', editing);
     const subject =
       active.kind === 'node' ? 'Node ' + active.id : 'Connection ' + active.a + ' — ' + active.b;
@@ -815,8 +818,20 @@
     else showEdge(body, active.a, active.b);
     // No duplicate Orders/Resolve/Collapse buttons. The original bottom dock
     // remains reachable below this editor; × and outside-click dismiss it.
-    root.replaceChildren(header, body);
+    updateChildrenInPlace(root, [header, body]);
+    mountLegacyControls();
     positionInspector();
+  }
+
+  function mountLegacyControls() {
+    // A detached control breaks getElementById during the next game render.
+    for (const [section, slot] of [
+      [policySection, root.hidden ? null : root.querySelector('[data-mount="policy"]')],
+      [manualSection, root.hidden ? null : root.querySelector('[data-mount="manual"]')],
+    ]) {
+      const home = slot ?? nodeControls;
+      if (section.parentNode !== home) home.append(section);
+    }
   }
 
   const oldRender = render;
