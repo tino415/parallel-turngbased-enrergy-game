@@ -786,6 +786,9 @@
   }
 
   function showInspector() {
+    // A detached control breaks getElementById during the next game render.
+    // Stash the legacy controls first; showNode takes them back when it uses them.
+    nodeControls.append(policySection, manualSection);
     // The first tap highlights only. The second tap opens the editor above
     // the unchanged mobile Orders/Resolve dock, or near the edge on desktop.
     root.hidden =
@@ -807,9 +810,6 @@
     close.setAttribute('aria-label', 'Clear map selection');
     close.onclick = dismiss;
     header.append(close);
-    // A detached control breaks getElementById during the next game render.
-    // Keep legacy controls mounted in the hidden stash unless editing a node.
-    if (active.kind !== 'node' || !editing) nodeControls.append(policySection, manualSection);
     const body = document.createElement('div');
     body.className = 'tactical-inspector-body';
     if (active.kind === 'node') showNode(body, active.id);
