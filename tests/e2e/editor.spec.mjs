@@ -1,0 +1,182 @@
+import {
+  test,
+  expect,
+  inspector,
+  openNodeEditor,
+  openEdgeEditor,
+  annotateSimulatedKeyboard,
+} from './support/game.mjs';
+
+test('policy draft and focus survive a flow filter change', async ({ page }) => {
+  await openNodeEditor(page);
+  const percent = page.locator('#tacticalPolicyPercent');
+  await percent.fill('61');
+  await page.locator('#overlay').selectOption('manual');
+  await expect(percent).toHaveValue('61');
+  await expect(percent).toBeFocused();
+});
+
+test('policy draft and focus survive a simulated keyboard shrink and restore', async ({ page }) => {
+  annotateSimulatedKeyboard();
+  await openNodeEditor(page);
+  const percent = page.locator('#tacticalPolicyPercent');
+  await percent.fill('64');
+  const viewport = page.viewportSize();
+  await page.setViewportSize({ width: viewport.width, height: viewport.height - 220 });
+  await expect(percent).toBeFocused();
+  await page.setViewportSize(viewport);
+  await expect(percent).toBeFocused();
+  await expect(percent).toHaveValue('64');
+  await percent.blur();
+  expect(await page.evaluate(() => policies[0].investPct)).toBe(64);
+});
+
+test('edge draft and focus survive crossing the mobile breakpoint both ways', async ({ page }) => {
+  await openEdgeEditor(page, '0-1');
+  const amount = page.locator('#tacticalEdgeAmount');
+  await amount.fill('2.5');
+  const viewport = page.viewportSize();
+  const across = viewport.width > 760 ? 700 : 1024;
+  await page.setViewportSize({ width: across, height: viewport.height });
+  await expect(inspector(page)).toBeVisible();
+  await expect(amount).toBeFocused();
+  await page.setViewportSize(viewport);
+  await expect(inspector(page)).toBeVisible();
+  await expect(amount).toBeFocused();
+  await expect(amount).toHaveValue('2.5');
+});
+
+test('a full render while typing keeps the draft and focus', async ({ page }) => {
+  test.fail(
+    true,
+    'render() rebuilds the inspector: the panel shows the old value and focus drops to <body>. ' +
+      'Todoist 6hp82xQRQGvWqV64 "Keep editor inputs, drafts and focus stable during UI updates".',
+  );
+  await openEdgeEditor(page, '0-1');
+  const amount = page.locator('#tacticalEdgeAmount');
+  await amount.fill('2.5');
+  await page.evaluate(() => render());
+  await expect(amount).toHaveValue('2.5', { timeout: 1000 });
+  await expect(amount).toBeFocused({ timeout: 1000 });
+});
+
+test('invalid policy percent reverts to the committed value', async ({ page }) => {
+  await openNodeEditor(page);
+  const percent = page.locator('#tacticalPolicyPercent');
+  await percent.fill('62');
+  await percent.blur();
+  for (const invalid of ['150', '-1']) {
+    await percent.fill(invalid);
+    await percent.blur();
+    await expect(percent).toHaveValue('62');
+  }
+  expect(await page.evaluate(() => policies[0].investPct)).toBe(62);
+});
+
+test('policy slider and enable toggle commit to the node policy', async ({ page }) => {
+  await openNodeEditor(page);
+  const slider = page.getByRole('slider', { name: 'Investment percentage slider' });
+  await slider.fill('30');
+  await expect(page.locator('#tacticalPolicyPercent')).toHaveValue('30');
+  expect(await page.evaluate(() => policies[0].investPct)).toBe(30);
+  await page.getByRole('checkbox', { name: 'Enable policy for node 0' }).uncheck();
+  expect(await page.evaluate(() => policies[0])).toMatchObject({ enabled: false, investPct: 30 });
+  await expect(inspector(page)).toContainText('Policy: Disabled');
+});
+
+test('edge amount over budget shows an error and keeps the committed order', async ({ page }) => {
+  await openEdgeEditor(page, '0-1');
+  const amount = page.locator('#tacticalEdgeAmount');
+  await amount.fill('1.5');
+  await amount.blur();
+  await amount.fill('999');
+  await amount.blur();
+  await expect(amount).toHaveValue('1.5');
+  await expect(inspector(page)).toContainText('Amount exceeds the available allocation budget.');
+  expect(await page.evaluate(() => orders[0].edges[1])).toBe(1.5);
+});
+
+test('manual allocation rejects an invalid amount and keeps valid orders', async ({ page }) => {
+  await openNodeEditor(page);
+  await page.getByText('Manual investment, withdrawal and allocations').click();
+  const invest = page.locator('#allocator input[data-allocation="invest"]');
+  await invest.fill('3');
+  await invest.blur();
+  await expect(invest).toHaveValue('3');
+  await invest.fill('-2');
+  await invest.blur();
+  await expect(page.locator('#allocator input[data-allocation="invest"]')).toHaveValue('3');
+  const attack = page.locator('#allocator input[data-allocation="edge-1"]');
+  await attack.fill('4');
+  await attack.blur();
+  expect(await page.evaluate(() => orders[0])).toMatchObject({ invest: 3, edges: { 1: 4 } });
+});
+
+test('closing and reopening the editor shows committed values and section state resets', async ({
+  page,
+}) => {
+  await openNodeEditor(page);
+  await page.locator('#tacticalPolicyPercent').fill('44');
+  await page.locator('#tacticalPolicyPercent').blur();
+  await page.getByText('Manual investment, withdrawal and allocations').click();
+  await inspector(page).getByRole('button', { name: 'Clear map selection' }).click();
+  await expect(inspector(page)).toBeHidden();
+  await openNodeEditor(page);
+  await expect(page.locator('#tacticalPolicyPercent')).toHaveValue('44');
+  await expect(inspector(page).locator('details').nth(1)).not.toHaveAttribute('open');
+});
+
+test('committed policy, manual orders and defaults persist across reload', async ({ page }) => {
+  await openNodeEditor(page);
+  await page.locator('#tacticalPolicyPercent').fill('37');
+  await page.locator('#tacticalPolicyPercent').blur();
+  await page.keyboard.press('Escape');
+  await openEdgeEditor(page, '0-1');
+  await page.locator('#tacticalEdgeAmount').fill('2');
+  await page.locator('#tacticalEdgeAmount').blur();
+  await page.keyboard.press('Escape');
+  await page.locator('#tacticalMenu summary').click();
+  await page.locator('#tacticalMenu button').filter({ hasText: 'Settings' }).click();
+  await page.locator('#uxSettingsDialog #defaultReserve').fill('8');
+  await page.locator('#uxSettingsDialog #defaultReserve').blur();
+  await page.locator('#uxSettingsDialog .ux-dialog-close').click();
+  await page.evaluate(() => render());
+  const before = await page.evaluate(() => ({ orders, policies }));
+
+  await page.reload();
+  expect(await page.evaluate(() => ({ orders, policies }))).toEqual(before);
+  expect(await page.evaluate(() => policies[0].investPct)).toBe(37);
+  await expect(page.locator('#defaultReserve')).toHaveValue('8');
+  await openEdgeEditor(page, '0-1');
+  await expect(page.locator('#tacticalEdgeAmount')).toHaveValue('2');
+});
+
+test('Settings closes with Escape and reopens with its values', async ({ page }) => {
+  await page.locator('#tacticalMenu summary').click();
+  await page.locator('#tacticalMenu button').filter({ hasText: 'Settings' }).click();
+  const settings = page.locator('#uxSettingsDialog');
+  await expect(settings).toBeVisible();
+  await settings.locator('#defaultInvest').fill('40');
+  await page.keyboard.press('Escape');
+  await expect(settings).toBeHidden();
+  await page.locator('#tacticalMenu summary').click();
+  await page.locator('#tacticalMenu button').filter({ hasText: 'Settings' }).click();
+  await expect(settings.locator('#defaultInvest')).toHaveValue('40');
+});
+
+test('Orders closes with Escape and reopens with the planned order', async ({ page }) => {
+  await openEdgeEditor(page, '0-1');
+  await page.locator('#tacticalEdgeAmount').fill('2');
+  await page.locator('#tacticalEdgeAmount').blur();
+  await page.keyboard.press('Escape');
+  const ordersDialog = page.locator('#uxOrdersDialog');
+  for (let round = 0; round < 2; round++) {
+    await page.locator('#tacticalMenu summary').click();
+    await page.locator('#tacticalMenu button').filter({ hasText: 'Orders' }).click();
+    await expect(ordersDialog).toBeVisible();
+    await expect(ordersDialog).toContainText('Attack 1: 2.0');
+    await page.keyboard.press('Escape');
+    await expect(ordersDialog).toBeHidden();
+    await expect(inspector(page)).toBeHidden();
+  }
+});
