@@ -119,7 +119,7 @@
         </section>
         <p class="muted map-explanation">
           Blue = you · Other colors = AI players · Gray = neutral. Node label shows active energy
-          and invested energy (I). Select a blue node to allocate its energy among investment and
+          and invested energy (I). Select a blue node to withdraw invested reserves or allocate active energy among investment and
           connected neighbors. Unallocated energy remains for defense. Optional policies persist
           across rounds.
         </p>
@@ -157,9 +157,12 @@
         <details>
           <summary>Prototype rules</summary>
           <p class="muted">
-            Nodes start with active and invested energy. Invested principal is locked and earns 10%
-            in active energy. Active energy decays 10% each round. Each node naturally generates 1
-            active energy. Energy transfers only across one edge. Each node may invest once and
+            Nodes start with active and invested energy. Each new match has 250 sustainable
+            total energy per owned node (active + invested); additional energy is allowed,
+            but 25% of the excess decays after production and normal active decay each round,
+            proportionally from active and invested. Withdraw invested energy into immediately
+            spendable active energy with a 5% fee. Remaining invested principal earns 10%
+            as active income each turn. Active energy decays 10% and each node produces +1. Energy transfers only across one edge. Each node may invest once and
             allocate energy to any number of neighboring nodes, retaining unallocated energy for
             defense. Attacks are grouped by destination and attacker, then shuffled; attack power
             uses an independent ±20% modifier for each combatant. Captured nodes lose a random
