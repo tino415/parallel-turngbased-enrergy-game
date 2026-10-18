@@ -33,7 +33,7 @@ test('node tap highlights only and opens policy editor on second selection', asy
   }
   await inspector.getByRole('button', { name: 'Clear map selection' }).click();
   await expect(inspector).toBeHidden();
-  await expect(page.locator('#map .tactical-node-selected')).toHaveCount(1);
+  await expect(page.locator('#map .tactical-node-selected')).toHaveCount(0);
 });
 
 test('edge selection highlights only then edits amount on second selection', async ({ page }) => {
