@@ -42,7 +42,7 @@ jobs:
           mkdir -p reports
           node scripts/economy-experiment.mjs --matches=30 --rounds=300 --nodes=${{ matrix.nodes }} --players=${{ matrix.players }} --opponent=${{ matrix.opponent }} --seed=${{ matrix.seed }} > reports/summary.md
           node scripts/economy-experiment.mjs --matches=30 --rounds=300 --nodes=${{ matrix.nodes }} --players=${{ matrix.players }} --opponent=${{ matrix.opponent }} --seed=${{ matrix.seed }} --json=true > reports/full.json
-          cat reports/summary.md >> "$GITHUB_STEP_SUMMARY"
+          cat reports/summary.md | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Archive raw seeded runs
         uses: actions/upload-artifact@v4
         with:
