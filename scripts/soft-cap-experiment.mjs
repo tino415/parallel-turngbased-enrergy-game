@@ -249,9 +249,7 @@ for (const config of configurations) {
       ? ['superturtle', 'compoundexpand']
       : ['superturtle', 'compoundexpand', 'withdrawexpand'];
   for (const strategy of modes) {
-    const results = Array.from({ length: matches }, (_, index) =>
-      play(config, strategy, index),
-    );
+    const results = Array.from({ length: matches }, (_, index) => play(config, strategy, index));
     cases[strategy] = {
       results,
       summary: {
@@ -326,7 +324,9 @@ if (args.json === 'true') {
             precision(summary.medianTotal),
             precision(summary.medianGross),
             summary.medianIncomeSharePct.toFixed(2) + '%',
-            strategy === 'compoundexpand' ? cases.expanderVsTurtle.medianGrossRatio.toFixed(3) : '—',
+            strategy === 'compoundexpand'
+              ? cases.expanderVsTurtle.medianGrossRatio.toFixed(3)
+              : '—',
           ].join(' | ') +
           ' |',
       );
@@ -334,5 +334,7 @@ if (args.json === 'true') {
   }
   console.log('');
   console.log('Gross income is measured after the last resolved round and overflow deduction.');
-  console.log('Paired ratios use equal-length runs only; full per-seed data is in the JSON artifact.');
+  console.log(
+    'Paired ratios use equal-length runs only; full per-seed data is in the JSON artifact.',
+  );
 }

@@ -44,7 +44,9 @@ for (const [name, { cases }] of Object.entries(data.configurations)) {
           compact(summary.medianTotal),
           compact(summary.medianGross),
           ratio === null ? '—' : ratio.toFixed(3) + '×',
-          strategy === 'compoundexpand' ? cases.expanderVsTurtle.medianGrossRatio.toFixed(3) + '×' : '—',
+          strategy === 'compoundexpand'
+            ? cases.expanderVsTurtle.medianGrossRatio.toFixed(3) + '×'
+            : '—',
         ].join(' | ') +
         ' |',
     );

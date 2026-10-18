@@ -1,11 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { engine } from './support/simulation.mjs';
-import {
-  decayOverflow,
-  fundWithdrawals,
-  resolveSoftCapRound,
-} from './support/soft-cap.mjs';
+import { decayOverflow, fundWithdrawals, resolveSoftCapRound } from './support/soft-cap.mjs';
 
 const close = (actual, expected) =>
   assert.ok(Math.abs(actual - expected) < 1e-8, actual + ' != ' + expected);
@@ -140,10 +136,7 @@ test('normal active decay and income precede end-round overflow loss', () => {
     aiOrdersOverride: [],
   });
   close(result.economy.overflowLoss, (221 - 100) * 0.25);
-  close(
-    result.state.nodes[0].active + result.state.nodes[0].invested,
-    221 - (221 - 100) * 0.25,
-  );
+  close(result.state.nodes[0].active + result.state.nodes[0].invested, 221 - (221 - 100) * 0.25);
   assert.ok(result.state.nodes[0].invested < 200);
 });
 
