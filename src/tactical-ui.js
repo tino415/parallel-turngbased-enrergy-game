@@ -525,6 +525,9 @@
     close.setAttribute('aria-label', 'Clear map selection');
     close.onclick = dismiss;
     header.append(close);
+    // A detached control breaks getElementById during the next game render.
+    // Keep legacy controls mounted in the hidden stash unless editing a node.
+    if (active.kind !== 'node' || !editing) nodeControls.append(policySection, manualSection);
     const body = document.createElement('div');
     body.className = 'tactical-inspector-body';
     if (active.kind === 'node') showNode(body, active.id);
