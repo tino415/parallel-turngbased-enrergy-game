@@ -1,0 +1,96 @@
+name: Run balance simulations
+
+on:
+  workflow_dispatch:
+    inputs:
+      matches:
+        description: 'Number of matches (1-1000)'
+        required: true
+        default: '100'
+        type: string
+      nodes:
+        description: 'Map nodes (10-120)'
+        required: true
+        default: '40'
+        type: string
+      players:
+        description: 'Players'
+        required: true
+        default: '4'
+        type: choice
+        options: ['2', '3', '4', '5', '6']
+      rounds:
+        description: 'Maximum rounds per match (1-500)'
+        required: true
+        default: '200'
+        type: string
+      density:
+        description: 'Map density'
+        required: true
+        default: normal
+        type: choice
+        options: [sparse, normal, dense]
+      player0:
+        description: 'Strategy for player 0 (blue)'
+        required: true
+        default: superturtle
+        type: choice
+        options: [default, aggressive, balanced, turtle, superturtle]
+      opponents:
+        description: 'Strategy for all other players'
+        required: true
+        default: default
+        type: choice
+        options: [default, aggressive, balanced, turtle, superturtle]
+      seed:
+        description: 'Reproducible batch seed'
+        required: true
+        default: turtle-v1
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Run deterministic simulation batch
+        env:
+          MATCHES: ${{ inputs.matches }}
+          NODES: ${{ inputs.nodes }}
+          PLAYERS: ${{ inputs.players }}
+          ROUNDS: ${{ inputs.rounds }}
+          DENSITY: ${{ inputs.density }}
+          PLAYER0: ${{ inputs.player0 }}
+          OPPONENTS: ${{ inputs.opponents }}
+          SEED: ${{ inputs.seed }}
+        run: |
+          set -euo pipefail
+          [[ "$MATCHES" =~ ^[0-9]+$ ]] && (( MATCHES >= 1 && MATCHES <= 1000 )) || { echo "Invalid matches"; exit 1; }
+          [[ "$NODES" =~ ^[0-9]+$ ]] && (( NODES >= 10 && NODES <= 120 )) || { echo "Invalid nodes"; exit 1; }
+          [[ "$ROUNDS" =~ ^[0-9]+$ ]] && (( ROUNDS >= 1 && ROUNDS <= 500 )) || { echo "Invalid rounds"; exit 1; }
+          strategies="$PLAYER0"
+          for ((i = 1; i < PLAYERS; i++)); do
+            strategies="$strategies,$OPPONENTS"
+          done
+          mkdir -p reports
+          node scripts/simulate.mjs --matches="$MATCHES" --nodes="$NODES" --players="$PLAYERS" \
+            --rounds="$ROUNDS" --density="$DENSITY" --seed="$SEED" \
+            --strategies="$strategies" --json > reports/simulation.json
+          node scripts/summarize-simulation.mjs reports/simulation.json |
+            tee reports/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload reproducible report
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: balance-simulations-${{ github.run_id }}
+          path: reports/
+          retention-days: 30
