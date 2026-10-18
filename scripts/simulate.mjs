@@ -22,7 +22,10 @@ function parse(args) {
       options.json = true;
       continue;
     }
-    const match = /^--(matches|rounds|nodes|players|density|seed|strategies|turtle-rounds|attack-pct)=(.+)$/.exec(arg);
+    const match =
+      /^--(matches|rounds|nodes|players|density|seed|strategies|turtle-rounds|attack-pct)=(.+)$/.exec(
+        arg,
+      );
     if (!match) throw new Error('Unrecognized option: ' + arg);
     const [, key, value] = match;
     if (key === 'density' || key === 'seed' || key === 'strategies') options[key] = value;
@@ -34,8 +37,13 @@ function parse(args) {
       } else {
         if (!Number.isSafeInteger(number)) throw new Error('Expected integer for --' + key);
         options[
-          { rounds: 'maxRounds', nodes: 'count', matches: 'matches',
-            players: 'players', 'turtle-rounds': 'turtleRounds' }[key]
+          {
+            rounds: 'maxRounds',
+            nodes: 'count',
+            matches: 'matches',
+            players: 'players',
+            'turtle-rounds': 'turtleRounds',
+          }[key]
         ] = number;
       }
     }
@@ -66,7 +74,7 @@ try {
     );
     console.log(
       'Expanded beyond home node: ' +
-      report.expansionCounts.map((count, player) => 'P' + player + '=' + count).join(' '),
+        report.expansionCounts.map((count, player) => 'P' + player + '=' + count).join(' '),
     );
     console.log(
       'Unresolved by round cap: ' + report.unresolved + ' (stalled: ' + report.stalledAtCap + ')',

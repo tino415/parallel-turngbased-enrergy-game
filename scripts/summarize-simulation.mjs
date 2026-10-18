@@ -29,11 +29,16 @@ const markdown = [
       report.survivalCounts[player] +
       ' | ' +
       pct(report.survivalRates[player]) +
-      ' | ' + report.expansionCounts[player] + ' |',
+      ' | ' +
+      report.expansionCounts[player] +
+      ' |',
   ),
   '',
-  '**Counterattack settings:** turtle for ' + report.turtleRounds +
-    ' rounds, then attack with at most ' + report.attackPct + '% of active energy per round',
+  '**Counterattack settings:** turtle for ' +
+    report.turtleRounds +
+    ' rounds, then attack with at most ' +
+    report.attackPct +
+    '% of active energy per round',
   '',
   '**Unresolved at round cap:** ' + report.unresolved + ' / ' + report.matches,
   '',

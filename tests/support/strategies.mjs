@@ -61,7 +61,7 @@ function planNode(node, name, nodes, adjacent, { round, turtleRounds, attackPct,
     // Attack at most this fraction of start-of-round ACTIVE energy.
     // Invested principal is locked and can never be spent directly.
     // Continue preserving the original dynamic defense reserve.
-    const budget = Math.min(free, node.active * attackPct / 100);
+    const budget = Math.min(free, (node.active * attackPct) / 100);
     const target = enemies.find((id) => budget > nodes[id].active * 1.5);
     const strike = target === undefined ? null : attack(target, budget);
     const savings = invest(free - (strike?.amount ?? 0));
@@ -102,8 +102,14 @@ function planNode(node, name, nodes, adjacent, { round, turtleRounds, attackPct,
 }
 
 export function planStrategyOrders({
-  engine, nodes, links, strategies, round = 1,
-  homeNodes = [], turtleRounds = 150, attackPct = 5,
+  engine,
+  nodes,
+  links,
+  strategies,
+  round = 1,
+  homeNodes = [],
+  turtleRounds = 150,
+  attackPct = 5,
 }) {
   // The default profile must behave identically to the pre-strategy harness.
   const defaults = engine.aiOrders(nodes, links, true);
@@ -121,7 +127,10 @@ export function planStrategyOrders({
       continue;
     }
     const order = planNode(node, name, nodes, adjacent[node.id], {
-      round, turtleRounds, attackPct, isHome: node.id === homeNodes[node.owner],
+      round,
+      turtleRounds,
+      attackPct,
+      isHome: node.id === homeNodes[node.owner],
     });
     if (order) result[node.id] = order;
   }

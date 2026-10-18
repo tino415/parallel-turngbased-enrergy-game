@@ -138,7 +138,6 @@ npm run simulate -- --matches=100 --nodes=20 --players=2 --rounds=250 \
 
 In the full JSON, `playerStats[0].firstAttackRound` and `firstConquestRound` show when the counterattack actually begins and when the first conquest occurs. The report's `expansionCounts` counts matches in which a player grew beyond their home node. These are measured outcomes, not assumptions of success.
 
-
 Reproduce the reported four-player turtle exploit with the following baseline scenario:
 
 ```sh

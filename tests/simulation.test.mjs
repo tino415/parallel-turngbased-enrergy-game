@@ -283,24 +283,33 @@ test('CLI accepts mixed strategies and rejects mismatched player count', () => {
   assert.match(invalid.stderr, /exactly 4 strategies/);
 });
 
-
 test('counterattack turns on only after the configured turtle phase', () => {
   const nodes = [
     { id: 0, owner: 0, active: 1000, invested: 3000 },
     { id: 1, owner: 1, active: 10, invested: 0 },
   ];
   const links = [[0, 1]];
-  const getOrders = (round) => planStrategyOrders({
-    engine, nodes, links, strategies: ['turtlecounter', 'default'],
-    homeNodes: [0, 1], round, turtleRounds: 150, attackPct: 5,
-  })[0];
+  const getOrders = (round) =>
+    planStrategyOrders({
+      engine,
+      nodes,
+      links,
+      strategies: ['turtlecounter', 'default'],
+      homeNodes: [0, 1],
+      round,
+      turtleRounds: 150,
+      attackPct: 5,
+    })[0];
   const reserve = defensiveReserve(nodes[0], nodes, [1]);
   assert.equal(reserve, 17);
   assert.equal(getOrders(1).type, 'invest');
   assert.equal(getOrders(150).type, 'invest');
   const phaseTwo = getOrders(151);
   assert.ok(Array.isArray(phaseTwo));
-  assert.deepEqual(phaseTwo.map((order) => order.type), ['invest', 'attack']);
+  assert.deepEqual(
+    phaseTwo.map((order) => order.type),
+    ['invest', 'attack'],
+  );
   assert.equal(phaseTwo[1].amount, 50);
   assert.equal(phaseTwo[1].dest, 1);
   assert.equal(phaseTwo[0].amount, 933);
@@ -314,12 +323,22 @@ test('counterattack never exceeds the five percent active-energy budget', () => 
     { id: 1, owner: 1, active: 90, invested: 0 },
   ];
   const choice = planStrategyOrders({
-    engine, nodes, links: [[0, 1]], strategies: ['turtlecounter', 'default'],
-    homeNodes: [0, 1], round: 151, turtleRounds: 150, attackPct: 5,
+    engine,
+    nodes,
+    links: [[0, 1]],
+    strategies: ['turtlecounter', 'default'],
+    homeNodes: [0, 1],
+    round: 151,
+    turtleRounds: 150,
+    attackPct: 5,
   })[0];
-  assert.ok(!choice || (Array.isArray(choice)
-    ? choice.every((order) => order.type === 'invest')
-    : choice.type === 'invest'), 'do not make a futile 5% attack');
+  assert.ok(
+    !choice ||
+      (Array.isArray(choice)
+        ? choice.every((order) => order.type === 'invest')
+        : choice.type === 'invest'),
+    'do not make a futile 5% attack',
+  );
   const budget = nodes[0].active * 0.05;
   assert.equal(budget, 5, 'budget derives from active energy, not invested capital');
 });
@@ -331,32 +350,56 @@ test('conquered nodes of turtlecounter use default AI from subsequent turns', ()
     { id: 2, owner: 0, active: 60, invested: 0 },
     { id: 3, owner: null, active: 4, invested: 0 },
   ];
-  const links = [[0, 1], [2, 3]];
+  const links = [
+    [0, 1],
+    [2, 3],
+  ];
   const planned = planStrategyOrders({
-    engine, nodes, links, strategies: ['turtlecounter', 'default'],
-    homeNodes: [0, 1], round: 40, turtleRounds: 150,
+    engine,
+    nodes,
+    links,
+    strategies: ['turtlecounter', 'default'],
+    homeNodes: [0, 1],
+    round: 40,
+    turtleRounds: 150,
   });
   const defaults = engine.aiOrders(nodes, links, true);
   assert.deepEqual(JSON.parse(JSON.stringify(planned[2])), JSON.parse(JSON.stringify(defaults[2])));
-  assert.equal(planned[2].type, 'attack', 'captured node may attack even during the home turtle phase');
+  assert.equal(
+    planned[2].type,
+    'attack',
+    'captured node may attack even during the home turtle phase',
+  );
   assert.equal(planned[0].type, 'invest', 'home must still turtle before round 151');
 });
 
 test('two-player 20-node counterattack matches are deterministic and keep valid allocations', () => {
   const options = {
-    count: 20, players: 2, maxRounds: 170, mapSeed: 'two-player-counter',
-    combatSeed: 'two-player-counter', strategies: ['turtlecounter', 'default'],
-    turtleRounds: 150, attackPct: 5,
+    count: 20,
+    players: 2,
+    maxRounds: 170,
+    mapSeed: 'two-player-counter',
+    combatSeed: 'two-player-counter',
+    strategies: ['turtlecounter', 'default'],
+    turtleRounds: 150,
+    attackPct: 5,
   };
-  const a = simulateMatch(options), b = simulateMatch(options);
+  const a = simulateMatch(options),
+    b = simulateMatch(options);
   assert.deepEqual(a, b);
   assert.equal(a.playerStats[0].strategy, 'turtlecounter');
   assert.ok(a.playerStats[0].firstAttackRound === null || a.playerStats[0].firstAttackRound >= 151);
   assert.ok(a.rounds <= 170);
   assert.equal(a.turtleRounds, 150);
   assert.equal(a.attackPct, 5);
-  const batch = simulateBatch({ matches: 3, count: 20, players: 2, maxRounds: 170,
-    strategies: ['turtlecounter', 'default'], seed: 'counter-batch' });
+  const batch = simulateBatch({
+    matches: 3,
+    count: 20,
+    players: 2,
+    maxRounds: 170,
+    strategies: ['turtlecounter', 'default'],
+    seed: 'counter-batch',
+  });
   assert.equal(batch.results.length, 3);
   assert.equal(batch.expansionCounts.length, 2);
   assert.equal(batch.firstAttackCounts.length, 2);
@@ -364,9 +407,12 @@ test('two-player 20-node counterattack matches are deterministic and keep valid 
 });
 
 test('counterattack CLI rejects nonsensical pivot and attack percentage', () => {
-  const run = (...params) => spawnSync(process.execPath,
-    [cli, '--players=2', '--strategies=turtlecounter,default', ...params],
-    { encoding: 'utf8' });
+  const run = (...params) =>
+    spawnSync(
+      process.execPath,
+      [cli, '--players=2', '--strategies=turtlecounter,default', ...params],
+      { encoding: 'utf8' },
+    );
   const badPercent = run('--attack-pct=101');
   assert.notEqual(badPercent.status, 0);
   assert.match(badPercent.stderr, /attackPct/);
