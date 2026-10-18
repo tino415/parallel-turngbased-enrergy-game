@@ -1,0 +1,75 @@
+name: Experimental soft-cap economy
+
+on:
+  pull_request:
+    paths:
+      - 'tests/support/soft-cap.mjs'
+      - 'tests/soft-cap.test.mjs'
+      - 'scripts/soft-cap-experiment.mjs'
+      - 'scripts/summarize-soft-cap.mjs'
+      - 'docs/SOFT_CAP_EXPERIMENT.md'
+      - '.github/workflows/soft-cap-experiment.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  paired-simulations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - scenario: duel-default
+            nodes: 20
+            players: 2
+            opponent: default
+            seed: invest-vs-expand-duel
+            handicap: 1
+          - scenario: duel-aggressive
+            nodes: 20
+            players: 2
+            opponent: aggressive
+            seed: invest-vs-expand-agg
+            handicap: 1
+          - scenario: field-default
+            nodes: 40
+            players: 4
+            opponent: default
+            seed: invest-vs-expand-field
+            handicap: 1
+          - scenario: disadvantaged-duel
+            nodes: 20
+            players: 2
+            opponent: aggressive
+            seed: invest-vs-expand-agg
+            handicap: 0.5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Validate format and engine regression tests
+        run: npm run check
+      - name: Run seeded baseline and parameter sweep
+        run: |
+          mkdir -p reports
+          node scripts/soft-cap-experiment.mjs \
+            --matches=30 --rounds=300 --nodes=${{ matrix.nodes }} \
+            --players=${{ matrix.players }} --opponent=${{ matrix.opponent }} \
+            --seed=${{ matrix.seed }} --handicap=${{ matrix.handicap }} \
+            --json=true > reports/full.json
+          node scripts/summarize-soft-cap.mjs reports/full.json |
+            tee reports/summary.md >> "$GITHUB_STEP_SUMMARY"
+          cat reports/summary.md
+      - name: Upload raw paired seeds and summary
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: soft-cap-${{ matrix.scenario }}-${{ github.run_id }}
+          path: reports/
+          retention-days: 30
