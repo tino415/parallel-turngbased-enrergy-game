@@ -57,6 +57,15 @@
   let focusedNode = state.nodes.find((node) => node.owner === 0)?.id ?? 0;
   const svg = byId('map');
   const viewport = byId('mapViewport');
+  const legacyNodeDialog = byId('nodeDialog');
+
+  // Never let the superseded full-screen node editor stack over the new
+  // contextual inspector. Other dialogs (Orders, Settings, New game) are still
+  // available from their explicit commands.
+  if (legacyNodeDialog.open) legacyNodeDialog.close();
+  legacyNodeDialog.addEventListener('toggle', () => {
+    if (legacyNodeDialog.open) legacyNodeDialog.close();
+  });
 
   // One-finger drag uses the existing pointer navigation. Two fingers zoom the
   // same camera; never ask the player to switch between Pan and Scroll modes.
@@ -474,6 +483,9 @@
     }
     const type = state.nodes[destination].owner === 0 ? 'Support transfer' : 'Attack';
     const value = plan(source).edges[destination] || 0;
+    const recurring = bothFriendly
+      ? policyOrders(source).find((o) => o.type === 'transfer' && o.dest === destination)
+      : null;
     const budget = availableEnergy(source);
     const remaining = Math.max(
       0,
@@ -485,6 +497,7 @@
       metrics([
         ['Source active', state.nodes[source].active],
         ['Planned ' + type.toLowerCase(), value],
+        ...(recurring ? [['Every round', recurring.amount]] : []),
         ['Defense', remaining],
       ]),
     );
@@ -516,6 +529,100 @@
     };
     field.append(input, error);
     body.append(field);
+    if (bothFriendly) {
+      const current = policies[source];
+      const targetsHere = Boolean(current?.enabled && current.dest === destination);
+      const policyBox = document.createElement('div');
+      policyBox.className = 'tactical-primary-control tactical-support-policy';
+      const toggle = document.createElement('label');
+      const caption = document.createElement('strong');
+      caption.textContent = 'Repeat this support every round';
+      const autoTransfer = document.createElement('input');
+      autoTransfer.type = 'checkbox';
+      autoTransfer.id = 'tacticalAutoTransfer';
+      autoTransfer.checked = targetsHere;
+      autoTransfer.setAttribute('aria-label', 'Automatically transfer surplus to node ' + destination);
+      autoTransfer.onchange = () => {
+        if (autoTransfer.checked) {
+          // Changing destination must never overwrite investment or reserve.
+          policies[source] = {
+            ...defaultPolicy(),
+            ...policies[source],
+            enabled: true,
+            dest: destination,
+          };
+        } else if (policies[source]?.dest === destination) {
+          // Disable only this route, leaving other policy settings intact.
+          policies[source] = { ...policies[source], dest: null };
+        }
+        render();
+      };
+      toggle.append(caption, autoTransfer);
+      policyBox.append(toggle);
+      if (current?.dest !== null && current?.dest !== undefined &&
+          current.dest !== destination) {
+        policyBox.append(
+          textElement(
+            'p',
+            'Node ' + source + ' currently routes its surplus to Node ' + current.dest +
+              '. Enabling this connection replaces that destination, not the investment policy.',
+            'tactical-secondary',
+          ),
+        );
+      }
+      if (targetsHere) {
+        const investments = document.createElement('label');
+        investments.append(textElement('span', 'Invest surplus before sending (%)'));
+        const pct = document.createElement('input');
+        pct.type = 'number';
+        pct.min = '0';
+        pct.max = '100';
+        pct.step = '1';
+        pct.value = String(current.investPct);
+        pct.id = 'tacticalSupportInvestPct';
+        pct.setAttribute('aria-label', 'Invest percentage before automatic transfer');
+        pct.onchange = () => {
+          const val = Number(pct.value);
+          if (!Number.isFinite(val) || val < 0 || val > 100) {
+            pct.value = String(current.investPct);
+            return;
+          }
+          changePolicy(source, 'investPct', val);
+        };
+        investments.append(pct);
+        policyBox.append(investments);
+        const nextTransfer = policyOrders(source).find(
+          (o) => o.type === 'transfer' && o.dest === destination,
+        );
+        policyBox.append(
+          textElement(
+            'p',
+            'Next-round automatic transfer: ' + numeric(nextTransfer?.amount ?? 0) +
+              ' energy · Reserve ' + numeric(current.reserve) +
+              '. Manual orders take priority.',
+            'tactical-secondary',
+          ),
+        );
+        if (!nextTransfer) {
+          policyBox.append(
+            textElement(
+              'p',
+              'No surplus to send. Lower the investment percentage, reserve, or manual allocations.',
+              'tactical-warning',
+            ),
+          );
+        }
+      } else {
+        policyBox.append(
+          textElement(
+            'p',
+            'Automatically send surplus after this node\'s reserve and investment every round.',
+            'tactical-secondary',
+          ),
+        );
+      }
+      body.append(policyBox);
+    }
     if (type === 'Attack') {
       body.append(
         textElement(
@@ -576,6 +683,7 @@
 
   function showInspector() {
     root.hidden = !active || currentView !== 'map';
+    document.body.classList.toggle('tactical-selection-active', !root.hidden);
     if (root.hidden) return;
     root.classList.toggle('is-editing', editing);
     const subject =
@@ -607,6 +715,18 @@
       render();
     };
     actions.append(action);
+    const review = document.createElement('button');
+    review.type = 'button';
+    review.textContent = 'Orders';
+    review.className = 'tactical-mobile-action';
+    review.onclick = () => byId('uxDockOrders').click();
+    const resolveRound = document.createElement('button');
+    resolveRound.type = 'button';
+    resolveRound.textContent = 'Resolve →';
+    resolveRound.className = 'primary tactical-mobile-action';
+    resolveRound.disabled = byId('resolve').disabled;
+    resolveRound.onclick = () => byId('resolve').click();
+    actions.append(review, resolveRound);
     root.replaceChildren(header, body, actions);
     positionInspector();
   }
