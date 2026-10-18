@@ -540,3 +540,59 @@ test('clicking toolbar outside a desktop editor dismisses selection', async ({
   await expect(page.locator('#tacticalInspector')).toBeHidden();
   expect(await page.evaluate(() => selected)).toBeNull();
 });
+
+test.describe('node editor keeps the shared policy and allocator controls mounted', () => {
+  const nodeOnMap = (page, id) => page.locator('#map .node-hit').nth(id);
+  const nodeOwnedBy = (page, owner) =>
+    page.evaluate((owner) => state.nodes.find((node) => node.owner === owner).id, owner);
+
+  async function openEditor(page, id) {
+    await page.locator('#fit').click();
+    await nodeOnMap(page, id).click();
+    await nodeOnMap(page, id).click();
+    await expect(page.locator('#tacticalInspector')).toContainText('Node ' + id);
+  }
+
+  async function closeEditor(page) {
+    await page.getByRole('button', { name: 'Clear map selection' }).click();
+  }
+
+  async function expectAllocatorUsableOnBlueNode(page, errors) {
+    expect(errors).toEqual([]);
+    await openEditor(page, await nodeOwnedBy(page, 0));
+    await page.getByText('Manual investment, withdrawal and allocations').click();
+    await expect(page.locator('#allocator')).toBeVisible();
+    await expect(page.locator('#policyEditor')).toBeAttached();
+    expect(errors).toEqual([]);
+  }
+
+  test('when the edited node is captured on resolve', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    const edited = await nodeOwnedBy(page, 0);
+    const opponentStart = await nodeOwnedBy(page, 1);
+    await openEditor(page, edited);
+    await page.evaluate(
+      ([edited, opponentStart]) => {
+        state.nodes[edited].owner = 1;
+        state.nodes[opponentStart].owner = 0;
+      },
+      [edited, opponentStart],
+    );
+    await page.locator('#uxDockResolve:visible, #resolve:visible').first().click();
+    await expect(page.locator('#score')).toContainText('Round 2');
+    await openEditor(page, edited);
+    await closeEditor(page);
+    await expectAllocatorUsableOnBlueNode(page, errors);
+  });
+
+  test('when an opponent node is opened after closing the editor', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await openEditor(page, await nodeOwnedBy(page, 0));
+    await closeEditor(page);
+    await openEditor(page, await nodeOwnedBy(page, 1));
+    await closeEditor(page);
+    await expectAllocatorUsableOnBlueNode(page, errors);
+  });
+});
