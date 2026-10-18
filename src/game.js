@@ -733,7 +733,7 @@ function attachNavigation() {
   svg.addEventListener('pointermove', (e) => {
     if (!drag || e.pointerId !== drag.id) return;
     const rect = svg.getBoundingClientRect();
-    const factor = (xy.length === 14 && mapSeed === 'classic' ? 800 : 1800) / rect.width;
+    const factor = svg.viewBox.baseVal.width / rect.width;
     camera.x = drag.ox + (e.clientX - drag.x) * factor;
     camera.y = drag.oy + (e.clientY - drag.y) * factor;
     const g = svg.querySelector('g');
