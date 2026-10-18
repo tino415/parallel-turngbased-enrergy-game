@@ -6,7 +6,7 @@
     "test": "node --test tests/*.test.mjs",
     "check": "node scripts/_format_capture.mjs && npm run format:check && node --check src/engine.js && node --check src/game.js && node --check src/tactical-ui.js && npm test",
     "build": "node scripts/build.mjs",
-    "test:ui": "playwright test",
+    "test:ui": "playwright test --max-failures=4 --timeout=12000",
     "test:ui:report": "playwright show-report",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
