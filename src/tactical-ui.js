@@ -621,6 +621,8 @@
     }
     if (active?.kind === 'node' && !state.nodes[active.id]) active = null;
     oldRender();
+    // The thumb-reachable control mirrors the authoritative round button.
+    byId('uxDockResolve').disabled = byId('resolve').disabled;
     drawSelection();
     showInspector();
   };
