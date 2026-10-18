@@ -22,7 +22,7 @@ on:
       rounds:
         description: 'Maximum rounds per match (1-500)'
         required: true
-        default: '200'
+        default: '300'
         type: string
       density:
         description: 'Map density'
