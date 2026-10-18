@@ -610,14 +610,14 @@
       policyBox.className = 'tactical-primary-control tactical-support-policy';
       const toggle = document.createElement('label');
       const caption = document.createElement('strong');
-      caption.textContent = 'Repeat this support every round';
+      caption.textContent = 'Send remaining surplus to Node ' + destination + ' each round';
       const autoTransfer = document.createElement('input');
       autoTransfer.type = 'checkbox';
       autoTransfer.id = 'tacticalAutoTransfer';
       autoTransfer.checked = targetsHere;
       autoTransfer.setAttribute(
         'aria-label',
-        'Automatically transfer surplus to node ' + destination,
+        'Automatically send remaining surplus to Node ' + destination + ' each round',
       );
       autoTransfer.onchange = () => {
         if (autoTransfer.checked) {
@@ -671,7 +671,7 @@
         policyBox.append(
           textElement(
             'p',
-            'Next-round automatic transfer: ' +
+            'Projected surplus transfer next round: ' +
               numeric(nextTransfer?.amount ?? 0) +
               ' energy · Reserve ' +
               numeric(current.reserve) +
@@ -692,7 +692,7 @@
         policyBox.append(
           textElement(
             'p',
-            "Automatically send surplus after this node's reserve and investment every round.",
+            "Send what remains after this source node's manual orders, reserve and investment. The amount can change each round.",
             'tactical-secondary',
           ),
         );
