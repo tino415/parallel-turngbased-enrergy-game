@@ -1,5 +1,5 @@
 'use strict';
-const { buildMap, evaluatePolicy, forecast } = GameEngine;
+const { buildMap, evaluatePolicy, forecast, playerColor } = GameEngine;
 let N = 14;
 let edges = [
   [0, 1],
@@ -117,10 +117,7 @@ function previewMap() {
       cx,
       cy,
       r: 24,
-      fill:
-        n.owner === null
-          ? '#768092'
-          : ['#3278c8', '#cc6255', '#b18adc', '#d9a44d', '#72b995', '#da7dba'][n.owner % 6],
+      fill: playerColor(n.owner),
       stroke: '#e0e9fa',
       'stroke-width': 2,
     });
@@ -457,6 +454,7 @@ function resolve() {
     : null;
   const result = GameEngine.resolveRound({
     state,
+    playerCount,
     orders,
     policies,
     links: edges,
@@ -928,10 +926,7 @@ function render() {
         cx: x,
         cy: y,
         r: 30,
-        fill:
-          n.owner === null
-            ? '#768092'
-            : ['#3278c8', '#cc6255', '#b18adc', '#d9a44d', '#72b995', '#da7dba'][n.owner % 6],
+        fill: playerColor(n.owner),
         // The modal identifies the node under inspection; a map selection
         // ring would be hidden behind that modal and adds no useful feedback.
         class: 'node node-hit' + (orders[n.id] ? ' node-ordered' : ''),

@@ -100,3 +100,122 @@ test('identical RNG produces repeatable rounds', () => {
     b = engine.resolveRound(args);
   assert.equal(JSON.stringify(a), JSON.stringify(b));
 });
+
+const playerNames = ['Blue', 'Red', 'Purple', 'Orange', 'Green', 'Pink'];
+const playerColors = ['#3278c8', '#cc6255', '#b18adc', '#d9a44d', '#72b995', '#da7dba'];
+
+test('player identities match the map palette and keep Neutral distinct', () => {
+  for (let owner = 0; owner < 6; owner++) {
+    assert.equal(engine.playerName(owner), playerNames[owner]);
+    assert.equal(engine.playerColor(owner), playerColors[owner]);
+  }
+  assert.equal(engine.playerName(null), 'Neutral');
+  assert.equal(engine.playerColor(null), '#768092');
+});
+
+for (let players = 2; players <= 6; players++) {
+  test(`${players}-player combat labels cover every attacker and defender, including Neutral`, () => {
+    for (let attacker = 0; attacker < players; attacker++) {
+      for (const defender of [null, ...Array.from({ length: players }, (_, i) => i)]) {
+        if (attacker === defender) continue;
+        for (const defendingEnergy of [1, 20]) {
+          const nodes = Array.from({ length: players }, (_, id) => node(id, id, 20));
+          const target = nodes.length;
+          nodes.push(node(target, defender, defendingEnergy, 10));
+          const result = engine.resolveRound({
+            state: { round: 4, finished: false, nodes },
+            orders: {},
+            policies: {},
+            links: [[attacker, target]],
+            aiOrdersOverride: [{ source: attacker, type: 'attack', amount: 10, dest: target }],
+            rng: () => 0.5,
+          });
+          const captured = defendingEnergy === 1;
+          const label = defender === null ? 'Neutral' : playerNames[defender];
+          assert.equal(
+            result.events[0],
+            `Round 4 · Node ${target}: ${playerNames[attacker]} attacks ${label} with 10.0 vs ${defendingEnergy.toFixed(1)}. ` +
+              (captured
+                ? 'Captured! Attacker lost 1.0, defender lost 1.0. Remaining 9.0.'
+                : 'Defended! Attacker lost 10.0, defender lost 10.0. Remaining 10.0.'),
+          );
+          // Labels must not affect ownership, losses, capital damage or production.
+          assert.equal(result.state.nodes[target].owner, captured ? attacker : defender);
+          assert.equal(result.state.nodes[target].invested, captured ? 5 : 10);
+          assert.equal(result.state.nodes[target].active, captured ? 9.6 : 11);
+          assert.equal(result.state.nodes[attacker].active, 10);
+          const summary = playerNames.slice(0, players).map((name, owner) => {
+            const extraNode = owner === (captured ? attacker : defender) ? 1 : 0;
+            return `${name} ${1 + extraNode} nodes`;
+          });
+          assert.equal(result.events[1], `Round 4 complete: ${summary.join(' / ')}.`);
+          assert.equal(result.state.finished, false);
+        }
+      }
+    }
+  });
+}
+
+test('successive attacks label the current defender after a neutral node changes hands', () => {
+  const result = engine.resolveRound({
+    state: {
+      round: 1,
+      finished: false,
+      nodes: [node(0, null, 1), node(1, 2, 10), node(2, 5, 20)],
+    },
+    orders: {},
+    policies: {},
+    links: [
+      [1, 0],
+      [2, 0],
+    ],
+    aiOrdersOverride: [
+      { source: 1, type: 'attack', amount: 10, dest: 0 },
+      { source: 2, type: 'attack', amount: 20, dest: 0 },
+    ],
+    rng: () => 0.5,
+  });
+  assert.match(result.events[0], /Purple attacks Neutral.*Captured!/);
+  assert.match(result.events[1], /Pink attacks Purple.*Captured!/);
+  assert.equal(result.state.nodes[0].owner, 5);
+});
+
+test('summaries retain eliminated players across rounds and accept saved-match player counts', () => {
+  let state = {
+    round: 1,
+    finished: false,
+    nodes: [node(0, 0, 20), node(1, 1, 20), node(2, 5, 1)],
+  };
+  const args = { orders: {}, policies: {}, links: [[0, 2]], rng: () => 0.5 };
+  const first = engine.resolveRound({
+    ...args,
+    state,
+    aiOrdersOverride: [{ source: 0, type: 'attack', amount: 10, dest: 2 }],
+  });
+  assert.match(
+    first.events[1],
+    /Purple 0 nodes \/ Orange 0 nodes \/ Green 0 nodes \/ Pink 0 nodes/,
+  );
+  state = first.state;
+  const second = engine.resolveRound({ ...args, state, aiOrdersOverride: [] });
+  assert.match(second.events[0], /Pink 0 nodes/);
+  // Old browser saves store playerCount separately from state.
+  delete state.playerCount;
+  const restored = engine.resolveRound({ ...args, state, playerCount: 6, aiOrdersOverride: [] });
+  assert.equal(restored.events[0], second.events[0]);
+});
+
+for (let winner = 0; winner < 6; winner++) {
+  test(`elimination message names ${playerNames[winner]}`, () => {
+    const result = engine.resolveRound({
+      state: { round: 1, finished: false, nodes: [node(0, winner, 20), node(1, null, 1)] },
+      playerCount: 6,
+      orders: {},
+      policies: {},
+      links: [],
+      aiOrdersOverride: [],
+    });
+    assert.equal(result.state.finished, true);
+    assert.equal(result.events.at(-1), `${playerNames[winner]} wins by elimination!`);
+  });
+}
