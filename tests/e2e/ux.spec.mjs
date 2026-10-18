@@ -51,7 +51,10 @@ test('edge selection highlights only then edits amount on second selection', asy
   await expect(page.locator('#tacticalInspector')).toContainText('Attack');
 
   // The map stays reachable after the inspector is dismissed.
-  await page.locator('#tacticalInspector').getByRole('button', { name: 'Clear map selection' }).click();
+  await page
+    .locator('#tacticalInspector')
+    .getByRole('button', { name: 'Clear map selection' })
+    .click();
   await page.locator('#fit').click();
   const next = page.locator('.tactical-edge-hit[data-edge="0-2"]');
   await next.click();
@@ -302,7 +305,9 @@ test('mobile bottom actions stay reachable and the page itself never scrolls', a
   const inspectorBox = await inspector.boundingBox();
   const dockAfter = await dock.boundingBox();
   expect(inspectorBox.y + inspectorBox.height).toBeLessThanOrEqual(dockAfter.y + 2);
-  const closeBox = await inspector.getByRole('button', { name: 'Clear map selection' }).boundingBox();
+  const closeBox = await inspector
+    .getByRole('button', { name: 'Clear map selection' })
+    .boundingBox();
   expect(closeBox.width).toBeLessThanOrEqual(45);
   expect(closeBox.height).toBeLessThanOrEqual(45);
   await expect(inspector.getByRole('button', { name: 'Orders' })).toHaveCount(0);
@@ -446,7 +451,10 @@ test('mobile connection editor keeps original dock and closes on outside map tap
   const layout = await page.evaluate(() => {
     const dock = document.querySelector('.ux-dock').getBoundingClientRect();
     const inspector = document.querySelector('#tacticalInspector').getBoundingClientRect();
-    return { overlap: inspector.bottom - dock.top, parent: document.querySelector('#tacticalInspector').parentElement.tagName };
+    return {
+      overlap: inspector.bottom - dock.top,
+      parent: document.querySelector('#tacticalInspector').parentElement.tagName,
+    };
   });
   expect(layout.parent).toBe('BODY');
   expect(layout.overlap).toBeLessThanOrEqual(2);
@@ -462,7 +470,9 @@ test('mobile connection editor keeps original dock and closes on outside map tap
   await expect(page.locator('#uxDockResolve')).toBeVisible();
 });
 
-test('clicking toolbar outside a desktop editor dismisses selection', async ({ page }, testInfo) => {
+test('clicking toolbar outside a desktop editor dismisses selection', async ({
+  page,
+}, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'Desktop modal dismissal');
   const node = page.locator('#map .node-hit[fill="#3278c8"]').first();
   await node.click();
