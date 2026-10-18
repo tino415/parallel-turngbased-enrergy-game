@@ -116,6 +116,27 @@ npm run check                  # Includes deterministic simulation regression te
 - The tests exercise multiple densities and player counts, graph connectivity, valid node IDs and edges, finite nonnegative energy, legitimate ownership, no eliminated player returning, and repeatability.
 - This is **not** a gameplay rebalance or a browser-save replay feature. It runs headlessly for testing and diagnosis.
 
+### Configurable AI strategies and GitHub Actions
+
+Simulation-only strategies are **default**, **aggressive**, **balanced**, **turtle**, and **superturtle**. Each player may use a different strategy, in player-index order (P0 is Blue). These affect only the harness, **not the live AI or game balance**.
+
+- **Default:** The current production AI.
+- **Aggressive:** Favors attacking and early expansion.
+- **Balanced:** Reserves energy against immediate threats, then attacks or invests.
+- **Turtle:** Heavy investment and defense, with occasional neutral-only expansion; never attacks an opposing player's node.
+- **Super Turtle:** Single starting node, no transfers and no attacks. It invests all energy above a dynamic defensive reserve (minimum 3 active, or approximately 1.5 times adjacent enemy active energy plus 2). The reserve is a heuristic, not a guarantee of survival.
+
+Reproduce the reported four-player turtle exploit with the following baseline scenario:
+
+```sh
+npm run simulate -- --matches=100 --nodes=40 --players=4 --rounds=200 \
+  --strategies=superturtle,default,default,default --seed=turtle-v1
+```
+
+The `--strategies` CSV must contain exactly one strategy per player. Add `--json` for machine-readable per-match details. Results include victory rates, survival rates, node count and peak investment per player, and matches unresolved by the round cap. A "stalled" match is unresolved with no captures in the last 25 rounds; it does **not** imply that the game has formally ended. Survival alone is not a win.
+
+To run simulations from GitHub, open **Actions → Run balance simulations → Run workflow**, select the number of games, map size, player count, round cap, P0 strategy and opponent strategy. GitHub provides a summary table and downloadable JSON/Markdown artifacts retained for 30 days. This workflow starts only when manually dispatched; it is not part of the game deployment. The GitHub UI offers P0 vs all other players; use the CLI for arbitrary per-player combinations.
+
 ## Known limitations
 
 - Simple AI and experimental balance.
