@@ -57,6 +57,22 @@
   let focusedNode = state.nodes.find((node) => node.owner === 0)?.id ?? 0;
   const svg = byId('map');
   const viewport = byId('mapViewport');
+  const mobileLayout = matchMedia('(max-width: 760px)');
+  const actionDock = byId('uxDockOrders').parentElement;
+
+  // Mobile has one bottom surface: render the contextual editor INSIDE the
+  // existing Orders/Resolve dock, rather than as a second fixed overlay.
+  // Desktop retains its independent floating inspector. Only move when the
+  // breakpoint changes, never on viewport-height/keyboard resize.
+  function placeInspector() {
+    const parent = mobileLayout.matches ? actionDock : document.body;
+    if (root.parentElement !== parent) parent.append(root);
+  }
+  placeInspector();
+  mobileLayout.addEventListener('change', () => {
+    placeInspector();
+    showInspector();
+  });
   const legacyNodeDialog = byId('nodeDialog');
 
   // Never let the superseded full-screen node editor stack over the new
