@@ -28,16 +28,14 @@ test('map controls change scale and Fit resets it', async ({ page }) => {
   expect(await graph.getAttribute('transform')).toBe(initial);
 });
 
-test('node selection exposes editable allocations', async ({ page }, testInfo) => {
-  await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
-  if (testInfo.project.name.startsWith('mobile')) {
-    await expect(page.locator('#nodeDialog')).toBeVisible();
-    await expect(page.locator('#mobileNodeContent input[type="number"]').first()).toBeVisible();
-    await page.screenshot({ path: testInfo.outputPath('node-details.png') });
-    await page.locator('#closeNodeDialog').click();
-  } else {
-    await expect(page.locator('#allocator input[type="number"]').first()).toBeVisible();
-  }
+test('node selection opens contextual policy controls on second click', async ({ page }, testInfo) => {
+  const node = page.locator('#map .node-hit[fill="#3278c8"]').first();
+  await node.click();
+  await expect(page.locator('#tacticalInspector')).toBeVisible();
+  await expect(page.locator('#tacticalInspector')).not.toHaveClass(/is-editing/);
+  await node.click();
+  await expect(page.locator('#tacticalPolicyPercent')).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('node-details.png') });
 });
 
 test('round state survives refresh using local save', async ({ page }) => {
@@ -56,13 +54,8 @@ test('viewport has no unexpected horizontal document overflow', async ({ page })
   expect(overflow.page).toBeLessThanOrEqual(overflow.viewport + 2);
 });
 
-test('mobile scrolling and map pan are explicit modes', async ({ page }, testInfo) => {
+test('mobile map captures natural touch gestures without a mode switch', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('mobile'), 'Touch-only behavior');
-  const viewport = page.locator('#mapViewport');
-  await expect(page.locator('#panMode')).toHaveAttribute('aria-pressed', 'false');
-  await page.locator('#panMode').click();
-  await expect(page.locator('#panMode')).toHaveAttribute('aria-pressed', 'true');
-  expect(await viewport.evaluate((el) => getComputedStyle(el).touchAction)).toBe('none');
-  await page.locator('#panMode').click();
-  expect(await viewport.evaluate((el) => getComputedStyle(el).touchAction)).not.toBe('none');
+  await expect(page.locator('#panMode')).toBeHidden();
+  expect(await page.locator('#mapViewport').evaluate((el) => getComputedStyle(el).touchAction)).toBe('none');
 });
