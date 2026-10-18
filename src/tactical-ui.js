@@ -4,9 +4,10 @@
 (() => {
   const byId = (id) => document.getElementById(id);
   const mobile = () => matchMedia('(max-width: 760px)').matches;
-  const numeric = (n) => Number(n || 0).toLocaleString('en-US', {
-    maximumFractionDigits: 1,
-  });
+  const numeric = (n) =>
+    Number(n || 0).toLocaleString('en-US', {
+      maximumFractionDigits: 1,
+    });
   const root = document.createElement('section');
   root.id = 'tacticalInspector';
   root.hidden = true;
@@ -20,7 +21,8 @@
 
   const menu = document.createElement('details');
   menu.id = 'tacticalMenu';
-  menu.innerHTML = '<summary aria-label="More actions">☰</summary><div class="tactical-menu-content"></div>';
+  menu.innerHTML =
+    '<summary aria-label="More actions">☰</summary><div class="tactical-menu-content"></div>';
   const menuItems = [
     ['Orders', 'uxReviewHead'],
     ['Settings', 'mobileSettings'],
@@ -98,14 +100,15 @@
       const center = midpoint(a, b);
       const rect = svg.getBoundingClientRect();
       const factor = svg.viewBox.baseVal.width / rect.width;
-      const scale = Math.min(6, Math.max(0.25, pinch.scale * distance(a, b) / pinch.distance));
+      const scale = Math.min(6, Math.max(0.25, (pinch.scale * distance(a, b)) / pinch.distance));
       const ratio = scale / pinch.scale;
       camera = {
         scale,
-        x: (center.x - rect.left) * factor -
+        x:
+          (center.x - rect.left) * factor -
           ((pinch.center.x - rect.left) * factor - pinch.x) * ratio,
-        y: (center.y - rect.top) * factor -
-          ((pinch.center.y - rect.top) * factor - pinch.y) * ratio,
+        y:
+          (center.y - rect.top) * factor - ((pinch.center.y - rect.top) * factor - pinch.y) * ratio,
       };
       const graph = svg.querySelector('g');
       graph?.setAttribute(
@@ -182,7 +185,7 @@
     const rect = viewport.getBoundingClientRect();
     const base = mobile() ? 800 : xy.length === 14 && mapSeed === 'classic' ? 800 : 1800;
     const vw = base;
-    const vh = vw * rect.height / rect.width;
+    const vh = (vw * rect.height) / rect.width;
     const scale = mobile() ? 2.35 : 1.75;
     camera = {
       scale,
@@ -209,28 +212,36 @@
       const dy = by - ay;
       const length = Math.hypot(dx, dy) || 1;
       const attributes = {
-        x1: ax + dx * 37 / length,
-        y1: ay + dy * 37 / length,
-        x2: bx - dx * 37 / length,
-        y2: by - dy * 37 / length,
+        x1: ax + (dx * 37) / length,
+        y1: ay + (dy * 37) / length,
+        x2: bx - (dx * 37) / length,
+        y2: by - (dy * 37) / length,
       };
       if (active?.kind === 'edge' && active.a === a && active.b === b) {
-        svgElement('line', {
-          ...attributes,
-          class: 'tactical-edge-selected',
-        }, graph);
+        svgElement(
+          'line',
+          {
+            ...attributes,
+            class: 'tactical-edge-selected',
+          },
+          graph,
+        );
       }
-      const hit = svgElement('line', {
-        ...attributes,
-        stroke: 'transparent',
-        'stroke-width': 24,
-        'pointer-events': 'stroke',
-        class: 'tactical-edge-hit',
-        'data-edge': a + '-' + b,
-        tabindex: 0,
-        role: 'button',
-        'aria-label': 'Select connection between node ' + a + ' and node ' + b,
-      }, graph);
+      const hit = svgElement(
+        'line',
+        {
+          ...attributes,
+          stroke: 'transparent',
+          'stroke-width': 24,
+          'pointer-events': 'stroke',
+          class: 'tactical-edge-hit',
+          'data-edge': a + '-' + b,
+          tabindex: 0,
+          role: 'button',
+          'aria-label': 'Select connection between node ' + a + ' and node ' + b,
+        },
+        graph,
+      );
       hit.addEventListener('click', (event) => {
         event.stopPropagation();
         chooseEdge(a, b);
@@ -241,27 +252,26 @@
         chooseEdge(a, b);
       });
     }
-    const ids = active?.kind === 'node'
-      ? [active.id]
-      : active?.kind === 'edge' ? [active.a, active.b] : [];
+    const ids =
+      active?.kind === 'node' ? [active.id] : active?.kind === 'edge' ? [active.a, active.b] : [];
     for (const id of ids) {
       const [x, y] = xy[id] || [];
       if (x === undefined) continue;
-      svgElement('circle', {
-        cx: x,
-        cy: y,
-        r: 34,
-        class: 'tactical-node-selected',
-      }, graph);
+      svgElement(
+        'circle',
+        {
+          cx: x,
+          cy: y,
+          r: 34,
+          class: 'tactical-node-selected',
+        },
+        graph,
+      );
     }
   }
 
   svg.addEventListener('click', (event) => {
-    if (
-      event.target.closest('.node-hit, .tactical-edge-hit') ||
-      !active ||
-      pinchInProgress
-    ) return;
+    if (event.target.closest('.node-hit, .tactical-edge-hit') || !active || pinchInProgress) return;
     dismiss();
   });
 
@@ -295,31 +305,42 @@
   function showNode(body, id) {
     const node = state.nodes[id];
     const prediction = node.owner === 0 ? projection(id) : null;
-    body.append(metrics([
-      ['Active', node.active],
-      ['Invested', node.invested],
-      ...(prediction ? [['Defense', prediction.defense]] : []),
-    ]));
+    body.append(
+      metrics([
+        ['Active', node.active],
+        ['Invested', node.invested],
+        ...(prediction ? [['Defense', prediction.defense]] : []),
+      ]),
+    );
     if (softCapEnabled()) {
-      body.append(textElement(
-        'p',
-        'Capacity ' + numeric(node.active + node.invested) + ' / ' +
-          SOFT_CAP_RULES.capacity + (prediction ? ' · Projected overflow loss ' +
-          numeric(prediction.overflow) : ''),
-        'tactical-secondary',
-      ));
+      body.append(
+        textElement(
+          'p',
+          'Capacity ' +
+            numeric(node.active + node.invested) +
+            ' / ' +
+            SOFT_CAP_RULES.capacity +
+            (prediction ? ' · Projected overflow loss ' + numeric(prediction.overflow) : ''),
+          'tactical-secondary',
+        ),
+      );
     }
     if (node.owner !== 0) {
       body.append(textElement('p', 'Inspect only: this node is not yours.', 'tactical-secondary'));
       return;
     }
     const policy = policies[id];
-    body.append(textElement(
-      'p',
-      'Policy: ' + (!policy ? 'Not configured' : policy.enabled ? 'Enabled' : 'Disabled') +
-        ' · Invest ' + (policy?.investPct ?? defaultPolicy().investPct) + '% of surplus',
-      'tactical-secondary',
-    ));
+    body.append(
+      textElement(
+        'p',
+        'Policy: ' +
+          (!policy ? 'Not configured' : policy.enabled ? 'Enabled' : 'Disabled') +
+          ' · Invest ' +
+          (policy?.investPct ?? defaultPolicy().investPct) +
+          '% of surplus',
+        'tactical-secondary',
+      ),
+    );
     if (!editing) return;
     const primary = document.createElement('div');
     primary.className = 'tactical-primary-control';
@@ -351,7 +372,9 @@
     slider.step = '1';
     slider.value = String(pct);
     slider.setAttribute('aria-label', 'Investment percentage slider');
-    slider.oninput = () => { percent.value = slider.value; };
+    slider.oninput = () => {
+      percent.value = slider.value;
+    };
     slider.onchange = () => changePolicy(id, 'investPct', Number(slider.value));
     percent.onchange = () => {
       const value = Number(percent.value);
@@ -364,14 +387,19 @@
     label.append(percent);
     primary.append(label, slider);
     body.append(primary);
-    body.append(textElement(
-      'p',
-      'Preview: Defense ' + numeric(prediction.defense) +
-        ' · Next active ' + numeric(prediction.next) +
-        ' · Invest ' + numeric(prediction.invest) +
-        ' (manual orders take priority)',
-      'tactical-secondary',
-    ));
+    body.append(
+      textElement(
+        'p',
+        'Preview: Defense ' +
+          numeric(prediction.defense) +
+          ' · Next active ' +
+          numeric(prediction.next) +
+          ' · Invest ' +
+          numeric(prediction.invest) +
+          ' (manual orders take priority)',
+        'tactical-secondary',
+      ),
+    );
 
     // The original policy and allocator DOM elements are reused, not copied:
     // withdrawals, reserves, policy transfers, hold, and copy/paste still work.
@@ -385,21 +413,35 @@
     });
     const manualHolder = document.createElement('div');
     manualHolder.append(manualSection);
-    addDetails(body, 'Manual investment, withdrawal and allocations', manualHolder, manualOpen,
+    addDetails(
+      body,
+      'Manual investment, withdrawal and allocations',
+      manualHolder,
+      manualOpen,
       (open) => {
         manualOpen = open;
-      });
+      },
+    );
   }
 
   function showEdge(body, a, b) {
     const source = active.source;
     const destination = source === a ? b : a;
-    body.append(textElement(
-      'p',
-      'Node ' + a + ' (' + (state.nodes[a].owner === 0 ? 'yours' : 'other') +
-        ') — Node ' + b + ' (' + (state.nodes[b].owner === 0 ? 'yours' : 'other') + ')',
-      'tactical-secondary',
-    ));
+    body.append(
+      textElement(
+        'p',
+        'Node ' +
+          a +
+          ' (' +
+          (state.nodes[a].owner === 0 ? 'yours' : 'other') +
+          ') — Node ' +
+          b +
+          ' (' +
+          (state.nodes[b].owner === 0 ? 'yours' : 'other') +
+          ')',
+        'tactical-secondary',
+      ),
+    );
     if (source === null) {
       body.append(textElement('p', 'No friendly source: inspect only.', 'tactical-secondary'));
       return;
@@ -410,7 +452,10 @@
       direction.className = 'tactical-primary-control';
       direction.append(textElement('strong', 'Transfer direction'));
       const select = document.createElement('select');
-      for (const [from, to] of [[a, b], [b, a]]) {
+      for (const [from, to] of [
+        [a, b],
+        [b, a],
+      ]) {
         const option = document.createElement('option');
         option.value = String(from);
         option.textContent = 'Node ' + from + ' → Node ' + to;
@@ -428,13 +473,19 @@
     const type = state.nodes[destination].owner === 0 ? 'Support transfer' : 'Attack';
     const value = plan(source).edges[destination] || 0;
     const budget = availableEnergy(source);
-    const remaining = Math.max(0, budget - allocated(source) -
-      policyOrders(source).reduce((sum, order) => sum + order.amount, 0));
-    body.append(metrics([
-      ['Source active', state.nodes[source].active],
-      ['Planned ' + type.toLowerCase(), value],
-      ['Defense', remaining],
-    ]));
+    const remaining = Math.max(
+      0,
+      budget -
+        allocated(source) -
+        policyOrders(source).reduce((sum, order) => sum + order.amount, 0),
+    );
+    body.append(
+      metrics([
+        ['Source active', state.nodes[source].active],
+        ['Planned ' + type.toLowerCase(), value],
+        ['Defense', remaining],
+      ]),
+    );
     if (!editing) return;
     const field = document.createElement('label');
     field.className = 'tactical-primary-control';
@@ -450,8 +501,11 @@
     const error = textElement('small', '', 'tactical-warning');
     input.onchange = () => {
       const amount = Number(input.value);
-      if (!Number.isFinite(amount) || amount < 0 ||
-          amount > budget - allocated(source) + value + 1e-8) {
+      if (
+        !Number.isFinite(amount) ||
+        amount < 0 ||
+        amount > budget - allocated(source) + value + 1e-8
+      ) {
         error.textContent = 'Amount exceeds the available allocation budget.';
         input.value = String(value);
         return;
@@ -461,22 +515,31 @@
     field.append(input, error);
     body.append(field);
     if (type === 'Attack') {
-      body.append(textElement(
-        'p',
-        'Attack strength ' + numeric(value * 0.8) + '–' + numeric(value * 1.2) +
-          ' · Current target defense ' + numeric(state.nodes[destination].active * 0.8) +
-          '–' + numeric(state.nodes[destination].active * 1.2) +
-          '. Simultaneous orders can change the outcome.',
-        'tactical-secondary',
-      ));
+      body.append(
+        textElement(
+          'p',
+          'Attack strength ' +
+            numeric(value * 0.8) +
+            '–' +
+            numeric(value * 1.2) +
+            ' · Current target defense ' +
+            numeric(state.nodes[destination].active * 0.8) +
+            '–' +
+            numeric(state.nodes[destination].active * 1.2) +
+            '. Simultaneous orders can change the outcome.',
+          'tactical-secondary',
+        ),
+      );
     }
     if (softCapEnabled()) {
-      body.append(textElement(
-        'p',
-        'Withdrawn reserves (5% fee) can fund this order in the same round. ' +
-          'Use the source node editor for withdrawals.',
-        'tactical-secondary',
-      ));
+      body.append(
+        textElement(
+          'p',
+          'Withdrawn reserves (5% fee) can fund this order in the same round. ' +
+            'Use the source node editor for withdrawals.',
+          'tactical-secondary',
+        ),
+      );
     }
   }
 
@@ -485,12 +548,10 @@
     const graph = svg.querySelector('g');
     const matrix = graph?.getScreenCTM();
     if (!matrix) return null;
-    const location = active.kind === 'node'
-      ? xy[active.id]
-      : [
-          (xy[active.a][0] + xy[active.b][0]) / 2,
-          (xy[active.a][1] + xy[active.b][1]) / 2,
-        ];
+    const location =
+      active.kind === 'node'
+        ? xy[active.id]
+        : [(xy[active.a][0] + xy[active.b][0]) / 2, (xy[active.a][1] + xy[active.b][1]) / 2];
     return {
       x: matrix.a * location[0] + matrix.c * location[1] + matrix.e,
       y: matrix.b * location[0] + matrix.d * location[1] + matrix.f,
@@ -503,8 +564,10 @@
     if (!anchor) return;
     const width = 360;
     const left = Math.min(innerWidth - width - 12, Math.max(10, anchor.x + 35));
-    const top = Math.min(innerHeight - Math.min(root.offsetHeight, innerHeight * 0.76) - 12,
-      Math.max(12, anchor.y - 50));
+    const top = Math.min(
+      innerHeight - Math.min(root.offsetHeight, innerHeight * 0.76) - 12,
+      Math.max(12, anchor.y - 50),
+    );
     root.style.left = Math.max(10, left) + 'px';
     root.style.top = Math.max(12, top) + 'px';
   }
@@ -513,9 +576,8 @@
     root.hidden = !active || currentView !== 'map';
     if (root.hidden) return;
     root.classList.toggle('is-editing', editing);
-    const subject = active.kind === 'node'
-      ? 'Node ' + active.id
-      : 'Connection ' + active.a + ' — ' + active.b;
+    const subject =
+      active.kind === 'node' ? 'Node ' + active.id : 'Connection ' + active.a + ' — ' + active.b;
     const header = document.createElement('div');
     header.className = 'tactical-inspector-head';
     header.append(textElement('strong', subject));
@@ -560,10 +622,14 @@
     drawSelection();
     showInspector();
   };
-  byId('generate').addEventListener('click', () => {
-    active = null;
-    editing = false;
-  }, true);
+  byId('generate').addEventListener(
+    'click',
+    () => {
+      active = null;
+      editing = false;
+    },
+    true,
+  );
   window.addEventListener('resize', positionInspector);
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || !active) return;
