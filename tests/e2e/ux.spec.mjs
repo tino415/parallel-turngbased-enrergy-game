@@ -372,6 +372,53 @@ test('source node exposes default policy without any Create policy button', asyn
   });
 });
 
+for (const [source, destination] of [
+  [0, 1],
+  [1, 0],
+]) {
+  test(`existing surplus transfer ${source} → ${destination} opens checked in saved direction`, async ({ page }) => {
+    await page.evaluate(({ source, destination }) => {
+      state.nodes[1].owner = 0;
+      state.nodes[source].active = 20;
+      policies[source] = {
+        enabled: true,
+        reserve: 5,
+        investPct: 50,
+        dest: destination,
+      };
+      render();
+    }, { source, destination });
+
+    const edge = page.locator('.tactical-edge-hit[data-edge="0-1"]');
+    await edge.click();
+    await expect(page.locator('#tacticalInspector')).toBeHidden();
+    await edge.click();
+
+    const inspector = page.locator('#tacticalInspector');
+    await expect(inspector).toBeVisible();
+    await expect(inspector.locator('select')).toHaveValue(String(source));
+    await expect(inspector.locator('#tacticalAutoTransfer')).toBeChecked();
+    await expect(inspector).toContainText(
+      `Send remaining surplus to Node ${destination} each round`,
+    );
+    await expect(inspector).toContainText('Projected surplus transfer next round:');
+
+    // Switching direction must reflect that direction's actual policy without
+    // modifying or removing the policy for the opposite source.
+    const reverse = destination;
+    await inspector.locator('select').selectOption(String(reverse));
+    await expect(inspector.locator('#tacticalAutoTransfer')).not.toBeChecked();
+    expect(await page.evaluate((id) => policies[id].dest, source)).toBe(destination);
+
+    await inspector.locator('select').selectOption(String(source));
+    await expect(inspector.locator('#tacticalAutoTransfer')).toBeChecked();
+    await inspector.getByRole('button', { name: 'Clear map selection' }).click();
+    await edge.click();
+    await edge.click();
+    await expect(page.locator('#tacticalInspector #tacticalAutoTransfer')).toBeChecked();
+  });
+}
+
 test('connection editor sets recurring support policy directly using default source values', async ({
   page,
 }) => {
