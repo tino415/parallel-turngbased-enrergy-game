@@ -227,7 +227,12 @@ test('two-finger pinch zooms the map without switching modes', async ({ page }, 
 test('compact map layout retains Settings, Orders and Dashboard', async ({ page }, testInfo) => {
   await expect(page.locator('#gameSidebar')).toBeHidden();
   await expect(page.locator('#score')).toBeVisible();
-  await expect(page.locator('#resolve')).toBeVisible();
+  if (testInfo.project.name.startsWith('mobile')) {
+    await expect(page.locator('#resolve')).toBeHidden();
+    await expect(page.locator('#uxDockResolve')).toBeVisible();
+  } else {
+    await expect(page.locator('#resolve')).toBeVisible();
+  }
   await page.locator('#tacticalMenu summary').click();
   await page.locator('#tacticalMenu button').filter({ hasText: 'Settings' }).click();
   await expect(page.locator('#uxSettingsDialog #autoConquer')).toBeVisible();
@@ -239,4 +244,88 @@ test('compact map layout retains Settings, Orders and Dashboard', async ({ page 
   } else {
     await expect(page.locator('#dashboard table')).toBeVisible();
   }
+});
+
+test('mobile bottom actions stay reachable and the page itself never scrolls', async ({
+  page,
+}, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith('mobile'), 'Mobile viewport layout');
+
+  const dock = page.locator('.ux-dock');
+  const resolve = page.locator('#uxDockResolve');
+  const viewport = page.locator('#mapViewport');
+  const inspector = page.locator('#tacticalInspector');
+
+  await expect(resolve).toBeVisible();
+  await expect(page.locator('#resolve')).toBeHidden();
+
+  async function expectLockedViewport() {
+    const metrics = await page.evaluate(() => {
+      window.scrollTo(0, 250);
+      return {
+        scrollTop: window.scrollY,
+        docHeight: document.documentElement.scrollHeight,
+        screenHeight: window.innerHeight,
+        bodyHeight: document.body.scrollHeight,
+      };
+    });
+    expect(metrics.scrollTop).toBe(0);
+    expect(metrics.docHeight).toBeLessThanOrEqual(metrics.screenHeight + 2);
+    expect(metrics.bodyHeight).toBeLessThanOrEqual(metrics.screenHeight + 2);
+  }
+
+  const dockBox = await dock.boundingBox();
+  const mapBox = await viewport.boundingBox();
+  expect(dockBox).not.toBeNull();
+  expect(mapBox).not.toBeNull();
+  expect(dockBox.y).toBeGreaterThan(page.viewportSize().height / 2);
+  expect(mapBox.y + mapBox.height).toBeLessThanOrEqual(dockBox.y + 2);
+  await expectLockedViewport();
+
+  const node = page.locator('#map .node-hit[fill="#3278c8"]').first();
+  await node.tap();
+  await expect(inspector).toBeVisible();
+  let inspectorBox = await inspector.boundingBox();
+  expect(inspectorBox.y + inspectorBox.height).toBeLessThanOrEqual(dockBox.y + 2);
+  await expectLockedViewport();
+
+  await inspector.getByRole('button', { name: 'Edit' }).click();
+  await expect(inspector).toHaveClass(/is-editing/);
+  inspectorBox = await inspector.boundingBox();
+  expect(inspectorBox.y + inspectorBox.height).toBeLessThanOrEqual(dockBox.y + 2);
+  await expectLockedViewport();
+
+  await page.locator('#tableView').click();
+  await expect(page.locator('#dashboard')).toBeVisible();
+  await expectLockedViewport();
+  await page.locator('#messagesTab').click();
+  await expect(page.locator('#messagesView')).toBeVisible();
+  await expectLockedViewport();
+
+  await resolve.click();
+  await expect(page.locator('#score')).toContainText('Round 2');
+  await expectLockedViewport();
+});
+
+test('mobile editor keeps its own scrolling without moving the map', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith('mobile'), 'Mobile drawer layout');
+  const node = page.locator('#map .node-hit[fill="#3278c8"]').first();
+  await node.tap();
+  await page.locator('#tacticalInspector').getByRole('button', { name: 'Edit' }).click();
+  await page.getByText('Other policy settings').click();
+  await page.getByText('Manual investment, withdrawal and allocations').click();
+  const body = page.locator('#tacticalInspector .tactical-inspector-body');
+  await expect(body).toBeVisible();
+  const overflow = await body.evaluate((el) => ({
+    contentHeight: el.scrollHeight,
+    visibleHeight: el.clientHeight,
+    overflow: getComputedStyle(el).overflowY,
+  }));
+  expect(overflow.overflow).toBe('auto');
+  expect(overflow.contentHeight).toBeGreaterThan(overflow.visibleHeight);
+  await body.evaluate((el) => {
+    el.scrollTop = 180;
+  });
+  await expect.poll(() => body.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
 });
