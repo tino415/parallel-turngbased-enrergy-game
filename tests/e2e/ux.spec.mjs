@@ -23,7 +23,7 @@ test('selected friendly node opens full-screen editor with live budget', async (
   await expect(page.locator('#nodeDialog')).toBeHidden();
 });
 
-test('mobile keyboard resize keeps manual and policy inputs focused', async ({
+test('mobile keyboard resize keeps manual-order input focused', async ({
   page,
 }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('mobile'), 'Mobile keyboard regression');
@@ -35,8 +35,7 @@ test('mobile keyboard resize keeps manual and policy inputs focused', async ({
   await manual.tap();
   await expect(manual).toBeFocused();
 
-  // The Android software keyboard can fire window resize without changing
-  // game state. A resize must not reparent (and blur) the focused input.
+  // The Android keyboard can resize the viewport; no inputs should be moved.
   await page.evaluate(() => window.dispatchEvent(new Event('resize')));
   await expect(manual).toBeFocused();
 
@@ -47,18 +46,29 @@ test('mobile keyboard resize keeps manual and policy inputs focused', async ({
   });
   await expect(manual).toBeFocused();
   await manual.fill('3.5');
-  await expect(manual).toHaveValue('3.5');
   await page.evaluate(() => window.dispatchEvent(new Event('resize')));
   await expect(manual).toBeFocused();
   await expect(manual).toHaveValue('3.5');
+});
 
+test('mobile keyboard resize keeps policy input focused', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith('mobile'), 'Mobile keyboard regression');
+
+  await page.locator('#map .node-hit[fill="#3278c8"]').first().tap();
   await page.locator('#policyEditor button').filter({ hasText: 'Create policy' }).click();
+
   const reserve = page.locator('#policyEditor input[type="number"]').first();
   await reserve.tap();
   await expect(reserve).toBeFocused();
-  await page.setViewportSize(viewport);
+  const viewport = page.viewportSize();
+  await page.setViewportSize({
+    width: viewport.width,
+    height: viewport.height - 220,
+  });
   await expect(reserve).toBeFocused();
   await reserve.fill('12');
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  await expect(reserve).toBeFocused();
   await expect(reserve).toHaveValue('12');
 });
 
