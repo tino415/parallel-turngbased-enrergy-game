@@ -308,6 +308,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   };
   const oldClickNode = clickNode;
   clickNode = function(id) {
+    if (mobile() && byId('mapViewport').classList.contains('touch-pan-mode')) return;
     if (state.nodes[id] && state.nodes[id].owner === 0) {
       selected=id;
       render();
