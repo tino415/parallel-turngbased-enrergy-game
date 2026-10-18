@@ -767,7 +767,7 @@ function showNodeOnMobile() {
     $('nodeDialog').showModal();
 }
 $('closeNodeDialog').onclick = () => $('nodeDialog').close();
-window.addEventListener('resize', positionNodeDetails);
+window.addEventListener('resize', () => positionNodeDetails());
 
 const SAVE_KEY = 'parallel-energy-game-v1';
 function switchView(view) {
