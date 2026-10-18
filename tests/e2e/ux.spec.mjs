@@ -285,14 +285,17 @@ test('mobile bottom actions stay reachable and the page itself never scrolls', a
   const node = page.locator('#map .node-hit[fill="#3278c8"]').first();
   await node.tap();
   await expect(inspector).toBeVisible();
+  await expect(dock).toBeHidden();
   let inspectorBox = await inspector.boundingBox();
-  expect(inspectorBox.y + inspectorBox.height).toBeLessThanOrEqual(dockBox.y + 2);
+  expect(inspectorBox.y + inspectorBox.height).toBeLessThanOrEqual(page.viewportSize().height + 2);
+  await expect(inspector.getByRole('button', { name: 'Resolve →' })).toBeVisible();
   await expectLockedViewport();
 
   await inspector.getByRole('button', { name: 'Edit' }).click();
   await expect(inspector).toHaveClass(/is-editing/);
   inspectorBox = await inspector.boundingBox();
-  expect(inspectorBox.y + inspectorBox.height).toBeLessThanOrEqual(dockBox.y + 2);
+  expect(inspectorBox.y + inspectorBox.height).toBeLessThanOrEqual(page.viewportSize().height + 2);
+  await expect(dock).toBeHidden();
   await expectLockedViewport();
 
   await page.locator('#tableView').click();
@@ -328,4 +331,72 @@ test('mobile editor keeps its own scrolling without moving the map', async ({ pa
   });
   await expect.poll(() => body.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
+});
+
+test('source node exposes default policy without any Create policy button', async ({ page }) => {
+  expect(await page.evaluate(() => policies[0])).toBeUndefined();
+  const node = page.locator('#map .node-hit[fill="#3278c8"]').first();
+  await node.click();
+  await node.click();
+  await expect(page.locator('#tacticalPolicyPercent')).toHaveValue('50');
+  await page.getByText('Other policy settings').click();
+  await expect(page.locator('#policyEditor button').filter({ hasText: 'Create policy' })).toHaveCount(0);
+  await expect(page.locator('#policyEditor input[type="number"]').first()).toHaveValue('5');
+  expect(await page.evaluate(() => policies[0])).toBeUndefined();
+  await page.locator('#tacticalPolicyPercent').fill('42');
+  await page.locator('#tacticalPolicyPercent').blur();
+  expect(await page.evaluate(() => policies[0])).toMatchObject({
+    enabled: true,
+    reserve: 5,
+    investPct: 42,
+    dest: null,
+  });
+});
+
+test('connection editor sets recurring support policy directly using default source values', async ({ page }) => {
+  await page.evaluate(() => {
+    state.nodes[1].owner = 0;
+    render();
+  });
+  const edge = page.locator('.tactical-edge-hit[data-edge="0-1"]');
+  await edge.click();
+  await edge.click();
+  await expect(page.locator('#tacticalAutoTransfer')).toBeVisible();
+  expect(await page.evaluate(() => policies[0])).toBeUndefined();
+  await page.locator('#tacticalAutoTransfer').check();
+  expect(await page.evaluate(() => policies[0])).toEqual({
+    enabled: true, reserve: 5, investPct: 50, dest: 1,
+  });
+  await expect(page.locator('#tacticalSupportInvestPct')).toHaveValue('50');
+  const preview = await page.evaluate(() => previewOrders().find(
+    (o) => o.automatic && o.type === 'transfer' && o.source === 0 && o.dest === 1,
+  ));
+  expect(preview?.amount).toBeGreaterThan(0);
+  await page.locator('#tacticalSupportInvestPct').fill('0');
+  await page.locator('#tacticalSupportInvestPct').blur();
+  expect(await page.evaluate(() => policies[0].investPct)).toBe(0);
+  await page.locator('#tacticalAutoTransfer').uncheck();
+  expect(await page.evaluate(() => policies[0])).toMatchObject({
+    enabled: true, reserve: 5, investPct: 0, dest: null,
+  });
+});
+
+test('Orders dialog replaces the contextual inspector instead of stacking modals', async ({
+  page,
+}, testInfo) => {
+  await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
+  await expect(page.locator('#nodeDialog')).toBeHidden();
+  await expect(page.locator('#tacticalInspector')).toBeVisible();
+  if (testInfo.project.name.startsWith('mobile')) {
+    await expect(page.locator('.ux-dock')).toBeHidden();
+    await page.locator('#tacticalInspector').getByRole('button', { name: 'Orders' }).click();
+  } else {
+    await page.locator('#tacticalMenu summary').click();
+    await page.locator('#tacticalMenu button').filter({ hasText: 'Orders' }).click();
+  }
+  await expect(page.locator('#uxOrdersDialog')).toBeVisible();
+  await expect(page.locator('#tacticalInspector')).toBeHidden();
+  await page.locator('#uxOrdersDialog .ux-dialog-close').click();
+  await expect(page.locator('#tacticalInspector')).toBeVisible();
+  await expect(page.locator('#nodeDialog')).toBeHidden();
 });
