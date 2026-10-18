@@ -269,7 +269,7 @@ function median(sorted) {
 
 function medianEndingField(results, player, field) {
   const values = results.map((result) => result.standings[player][field]).sort((a, b) => a - b);
-  return Number(median(values).toPrecision(8));
+  return median(values);
 }
 
 export function simulateBatch({ matches = 20, seed = 'balance', ...options } = {}) {
