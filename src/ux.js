@@ -260,11 +260,9 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   const toolbar = document.querySelector('.toolbar');
   const hintZoom = toolbar.querySelector('.desktop-zoom-hint');
   if (hintZoom) hintZoom.remove();
-  const option = document.createElement('option');
-  option.value = 'selected';
-  option.textContent = 'Attacks + selected';
-  byId('overlay').prepend(option);
-  byId('overlay').value = 'selected';
+  // Show every planned attack and support transfer by default.
+  // Players can explicitly filter flow types without losing economy labels.
+  byId('overlay').value = 'all';
   const focusButton = document.createElement('button');
   focusButton.id = 'focusMap';
   focusButton.type = 'button';
@@ -276,13 +274,9 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   const originalRenderFlows = renderFlows;
   renderFlows = function(svg, graph, element) {
     const filter = byId('overlay').value;
-    if (filter === 'none') return;
-    const paths = previewOrders();
+    const paths = filter === 'none' ? [] : previewOrders();
     for (const o of paths) {
       if (o.dest === null || o.dest === undefined || o.amount <= .01) continue;
-      // Attacks remain visible across the map in the default view, even when
-      // a different node is selected. Other flows stay contextual to avoid clutter.
-      if (filter === 'selected' && o.type !== 'attack' && (selected === null || o.source !== selected)) continue;
       if (filter === 'manual' && o.automatic) continue;
       if (filter === 'policy' && !o.automatic) continue;
       const [ax,ay] = xy[o.source], [bx,by] = xy[o.dest];
@@ -294,11 +288,12 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
       const label=element('text',{x:(ax+bx)/2-dy/len*15,y:(ay+by)/2+dx/len*15,class:'flow-label'},graph);
       label.textContent=fmtUX(o.amount);
     }
-    if (filter === 'selected' && selected === null) return;
+    // Next-round income/investment previews are economic status, not flow
+    // arrows; keep them on every owned node at every zoom and filter level.
     for (const n of state.nodes) {
-      if (n.owner !== 0 || (camera.scale < 1.7 && n.id !== selected)) continue;
+      if (n.owner !== 0) continue;
       const p=projection(n.id),[x,y]=xy[n.id];
-      const t=element('text',{x,y:y+53,'font-size':12,fill:'#92ebc9'},graph);
+      const t=element('text',{x,y:y+53,'font-size':12,fill:'#92ebc9',class:'ux-income-label'},graph);
       t.textContent='+'+fmtUX(p.income)+' / I '+fmtUX(p.invest);
     }
   };
