@@ -1,0 +1,109 @@
+name: Balance simulations
+
+on:
+  workflow_dispatch:
+    inputs:
+      matches:
+        description: Number of seeded matches
+        required: true
+        default: 100
+        type: number
+      nodes:
+        description: Map node count
+        required: true
+        default: 40
+        type: number
+      players:
+        description: Total players including Blue
+        required: true
+        default: 4
+        type: number
+      rounds:
+        description: Maximum rounds per match
+        required: true
+        default: 200
+        type: number
+      density:
+        description: Map link density
+        required: true
+        default: normal
+        type: choice
+        options:
+          - sparse
+          - normal
+          - dense
+      seed:
+        description: Reproducible batch seed
+        required: true
+        default: turtle-study-v1
+        type: string
+      blue_strategy:
+        description: Player 0 (Blue) strategy
+        required: true
+        default: extreme-turtle
+        type: choice
+        options:
+          - default
+          - turtle
+          - extreme-turtle
+          - aggressive
+          - balanced
+      opponent_strategy:
+        description: Strategy for all AI opponents
+        required: true
+        default: default
+        type: choice
+        options:
+          - default
+          - turtle
+          - extreme-turtle
+          - aggressive
+          - balanced
+
+permissions:
+  contents: read
+
+jobs:
+  simulate:
+    name: Simulate strategy matchups
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Generate deterministic simulation report
+        env:
+          MATCHES: ${{ inputs.matches }}
+          NODES: ${{ inputs.nodes }}
+          PLAYERS: ${{ inputs.players }}
+          ROUNDS: ${{ inputs.rounds }}
+          DENSITY: ${{ inputs.density }}
+          SEED: ${{ inputs.seed }}
+          BLUE: ${{ inputs.blue_strategy }}
+          OPPONENTS: ${{ inputs.opponent_strategy }}
+        run: |
+          node scripts/simulate.mjs \
+            --matches="$MATCHES" \
+            --nodes="$NODES" \
+            --players="$PLAYERS" \
+            --rounds="$ROUNDS" \
+            --density="$DENSITY" \
+            --seed="$SEED" \
+            --blue="$BLUE" \
+            --opponents="$OPPONENTS" \
+            --json > simulation-results.json
+      - name: Summarize results
+        run: node scripts/simulation-summary.mjs simulation-results.json
+      - name: Upload JSON report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: balance-simulation-results
+          path: simulation-results.json
+          if-no-files-found: ignore
+          retention-days: 30
