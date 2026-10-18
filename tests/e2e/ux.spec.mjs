@@ -37,35 +37,63 @@ test('manual orders can be edited from the separate orders dialog', async ({ pag
   await expect(page.locator('#uxOrdersDialog')).toBeHidden();
 });
 
-test('planned attack arrows remain visible when another node is selected', async ({ page }) => {
-  await expect(page.locator('#overlay')).toHaveValue('selected');
-  await expect(page.locator('#overlay option[value="selected"]')).toHaveText(
-    'Attacks + selected',
-  );
-  await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
-  const attackInput = page
-    .locator('#allocator .allocation-line')
-    .filter({ hasText: 'Attack → Node 1' })
-    .locator('input');
-  await attackInput.fill('6');
-  await attackInput.dispatchEvent('change');
-  await page.locator('#closeNodeDialog').click();
+test('all attacks and support flows remain visible, with earnings on every owned node', async ({
+  page,
+}) => {
+  await expect(page.locator('#overlay')).toHaveValue('all');
+
+  // Construct adjacent friendly nodes and both manual and automatic transfer
+  // orders in the browser. UI rendering remains the unit under test.
+  await page.evaluate(() => {
+    state.nodes[1].owner = 0;
+    orders[0] = { invest: 0, edges: { 1: 4, 2: 6 } };
+    orders[1] = { invest: 0, edges: { 3: 2 } };
+    policies[0] = { enabled: true, reserve: 2, investPct: 0, dest: 1 };
+    render();
+  });
 
   const attacks = page.locator('#map > g > line[stroke="#ff987f"]');
-  await expect(attacks).toHaveCount(1);
+  const manualSupport = page.locator('#map > g > line[stroke="#63d9af"]');
+  const policySupport = page.locator('#map > g > line[stroke="#76b3ff"]');
+  const earnings = page.locator('#map > g > text.ux-income-label');
 
-  // Choosing a different node must not hide an existing attack plan.
+  await expect(attacks).toHaveCount(2);
+  await expect(manualSupport).toHaveCount(1);
+  await expect(policySupport).toHaveCount(1);
+  await expect(earnings).toHaveCount(2);
+  await expect(earnings.first()).toContainText('+');
+
   await page.locator('#fit').click();
   await page.locator('#map .node-hit[fill="#768092"]').first().click();
   await expect(page.locator('#nodeDialog')).toBeVisible();
   await page.locator('#closeNodeDialog').click();
-  await expect(attacks).toHaveCount(1);
 
-  // Explicit overlay filters still control what is displayed.
+  // Selecting another node should never hide other nodes' active orders.
+  await expect(attacks).toHaveCount(2);
+  await expect(manualSupport).toHaveCount(1);
+  await expect(policySupport).toHaveCount(1);
+  await expect(earnings).toHaveCount(2);
+
+  await page.locator('#overlay').selectOption('manual');
+  await expect(attacks).toHaveCount(2);
+  await expect(manualSupport).toHaveCount(1);
+  await expect(policySupport).toHaveCount(0);
+
+  await page.locator('#overlay').selectOption('policy');
+  await expect(attacks).toHaveCount(0);
+  await expect(manualSupport).toHaveCount(0);
+  await expect(policySupport).toHaveCount(1);
+
   await page.locator('#overlay').selectOption('none');
   await expect(attacks).toHaveCount(0);
-  await page.locator('#overlay').selectOption('selected');
-  await expect(attacks).toHaveCount(1);
+  await expect(manualSupport).toHaveCount(0);
+  await expect(policySupport).toHaveCount(0);
+  await expect(earnings).toHaveCount(2);
+
+  await page.locator('#overlay').selectOption('all');
+  await expect(attacks).toHaveCount(2);
+  await expect(manualSupport).toHaveCount(1);
+  await expect(policySupport).toHaveCount(1);
 });
 
 test('map and settings expose separate controls on mobile', async ({ page }, testInfo) => {
