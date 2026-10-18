@@ -13,8 +13,8 @@ const markdown = [
   '',
   'Seed: `' + report.seed.replaceAll('`', '') + '` · Matches: **' + report.matches + '**',
   '',
-  '| Player | Strategy | Wins | Win rate | Survived at end | Survival rate |',
-  '| --- | --- | ---: | ---: | ---: | ---: |',
+  '| Player | Strategy | Wins | Win rate | Survived | Survival rate | Expanded |',
+  '| --- | --- | ---: | ---: | ---: | ---: | ---: |',
   ...report.strategies.map(
     (strategy, player) =>
       '| P' +
@@ -29,8 +29,11 @@ const markdown = [
       report.survivalCounts[player] +
       ' | ' +
       pct(report.survivalRates[player]) +
-      ' |',
+      ' | ' + report.expansionCounts[player] + ' |',
   ),
+  '',
+  '**Counterattack settings:** turtle for ' + report.turtleRounds +
+    ' rounds, then attack with at most ' + report.attackPct + '% of active energy per round',
   '',
   '**Unresolved at round cap:** ' + report.unresolved + ' / ' + report.matches,
   '',
