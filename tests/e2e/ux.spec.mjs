@@ -196,6 +196,34 @@ test('mobile touch drag pans naturally without a Pan toggle', async ({ page }, t
   await expect(page.locator('#tacticalInspector')).toBeHidden();
 });
 
+test('two-finger pinch zooms the map without switching modes', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith('mobile'), 'Mobile pinch gesture');
+  await page.locator('#fit').click();
+  const previousScale = await page.evaluate(() => camera.scale);
+  const box = await page.locator('#map').boundingBox();
+  expect(box).not.toBeNull();
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [
+      { x: x - 30, y },
+      { x: x + 30, y },
+    ],
+  });
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [
+      { x: x - 65, y },
+      { x: x + 65, y },
+    ],
+  });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach();
+  await expect.poll(() => page.evaluate(() => camera.scale)).toBeGreaterThan(previousScale);
+});
+
 test('compact map layout retains Settings, Orders and Dashboard', async ({ page }, testInfo) => {
   await expect(page.locator('#gameSidebar')).toBeHidden();
   await expect(page.locator('#score')).toBeVisible();
