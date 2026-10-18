@@ -181,6 +181,7 @@
     links,
     defaultConquestPolicy = null,
     rng = Math.random,
+    aiOrdersOverride = null,
   }) {
     if (state.finished) return { state, policies, events: [] };
     const nodes = state.nodes.map((n) => ({ ...n })),
@@ -218,7 +219,8 @@
           owners: nodes.map((n) => n.owner),
         }),
       );
-    const all = [...manual, ...automatic, ...Object.values(aiOrders(nodes, links))];
+    const ai = aiOrdersOverride === null ? Object.values(aiOrders(nodes, links)) : aiOrdersOverride;
+    const all = [...manual, ...automatic, ...ai];
     const valid = [],
       spent = {};
     for (const o of all) {
