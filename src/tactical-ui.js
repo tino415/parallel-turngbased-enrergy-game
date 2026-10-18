@@ -123,8 +123,7 @@
   });
 
   // One-finger drag uses the existing pointer navigation. Two fingers zoom the
-  // same camera; never ask the player to switch between Pan and Scroll modes.
-  viewport.classList.add('touch-pan-mode');
+  // same camera.
   const fingers = new Map();
   let pinch = null;
   let pinchInProgress = false;

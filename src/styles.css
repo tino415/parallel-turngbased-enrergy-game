@@ -419,21 +419,11 @@ dialog#newGameDialog::backdrop {
   }
 }
 
-/* Mobile: normal mode permits browser scrolling; Pan mode captures one-finger drags. */
 @media (max-width: 760px) {
-  #mapViewport:not(.touch-pan-mode),
-  #mapViewport:not(.touch-pan-mode) svg {
-    touch-action: auto;
-    cursor: default;
-  }
-  #mapViewport.touch-pan-mode,
-  #mapViewport.touch-pan-mode svg {
+  #mapViewport,
+  #mapViewport svg {
     touch-action: none;
     cursor: grab;
-  }
-  #panMode[aria-pressed='true'] {
-    background: #285e99;
-    border-color: #80b9f5;
   }
 }
 
@@ -555,8 +545,7 @@ dialog#newGameDialog::backdrop {
     font-size: 18px;
     padding: 5px;
   }
-  .map-zoom-controls #fit,
-  .map-zoom-controls #panMode {
+  .map-zoom-controls #fit {
     font-size: 12px;
   }
 }

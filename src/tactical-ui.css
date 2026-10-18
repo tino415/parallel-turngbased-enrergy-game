@@ -13,8 +13,7 @@ body > header > div:first-child,
 #uxReviewHead,
 #gameSidebar,
 .ux-map-heading > div:first-child,
-.map-explanation,
-#panMode {
+.map-explanation {
   display: none !important;
 }
 body > header > div:last-child {
@@ -83,9 +82,7 @@ body > header #resolve {
   max-height: none;
   touch-action: none;
 }
-#mapViewport svg,
-#mapViewport:not(.touch-pan-mode) svg,
-#mapViewport.touch-pan-mode svg {
+#mapViewport svg {
   touch-action: none;
 }
 #mapViewport .map-zoom-controls {

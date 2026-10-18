@@ -739,7 +739,6 @@ function attachNavigation() {
   const svg = $('map');
   let drag = null;
   let suppressClick = false;
-  const canPanTouch = () => $('mapViewport').classList.contains('touch-pan-mode');
   svg.addEventListener(
     'wheel',
     (e) => {
@@ -753,12 +752,11 @@ function attachNavigation() {
   );
 
   svg.addEventListener('pointerdown', (e) => {
-    // Only an actual drag pans the map. Touch taps on nodes must remain clicks
-    // even when Pan mode is enabled.
+    // Only an actual drag pans the map. Touch taps on nodes must remain clicks.
     suppressClick = false;
     if (e.button !== 0) return;
     const onNode = Boolean(e.target.closest('.node-hit'));
-    if (e.pointerType === 'touch' ? !canPanTouch() : onNode) return;
+    if (e.pointerType !== 'touch' && onNode) return;
     drag = {
       id: e.pointerId,
       x: e.clientX,
@@ -1050,11 +1048,6 @@ $('closeMobileSettings').onclick = () => {
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') $('closeMobileSettings')?.click();
 });
-$('panMode').onclick = () => {
-  const active = $('mapViewport').classList.toggle('touch-pan-mode');
-  $('panMode').setAttribute('aria-pressed', String(active));
-  $('panMode').textContent = active ? 'Scroll' : 'Pan';
-};
 $('zoomIn').onclick = () => {
   camera.scale = Math.min(5, camera.scale * 1.25);
   render();
