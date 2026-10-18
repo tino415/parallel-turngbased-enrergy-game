@@ -8,6 +8,7 @@ on:
       - 'scripts/soft-cap-experiment.mjs'
       - 'scripts/summarize-soft-cap.mjs'
       - 'docs/SOFT_CAP_EXPERIMENT.md'
+      - 'docs/SOFT_CAP_RESULTS.md'
       - '.github/workflows/soft-cap-experiment.yml'
   workflow_dispatch:
 
@@ -15,30 +16,6 @@ permissions:
   contents: read
 
 jobs:
-  format-results:
-    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'experiment/soft-cap-overflow-withdrawal'
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: experiment/soft-cap-overflow-withdrawal
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - run: npm ci --no-audit --no-fund
-      - name: Normalize results markdown
-        run: |
-          npx prettier --write docs/SOFT_CAP_RESULTS.md
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          if ! git diff --quiet; then
-            git add docs/SOFT_CAP_RESULTS.md
-            git commit -m 'style(economy): normalize results markdown'
-            git push origin HEAD:experiment/soft-cap-overflow-withdrawal
-          fi
-
   paired-simulations:
     runs-on: ubuntu-latest
     timeout-minutes: 45
