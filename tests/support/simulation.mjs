@@ -85,11 +85,13 @@ function zeroPlayerOrders(state, botChoices) {
   const orders = {};
   for (const node of state.nodes) {
     if (node.owner !== 0 || !botChoices[node.id]) continue;
-    const choice = botChoices[node.id];
-    orders[node.id] =
-      choice.type === 'invest'
-        ? { invest: choice.amount, edges: {} }
-        : { invest: 0, edges: { [choice.dest]: choice.amount } };
+    const choices = Array.isArray(botChoices[node.id]) ? botChoices[node.id] : [botChoices[node.id]];
+    const order = { invest: 0, edges: {} };
+    for (const choice of choices) {
+      if (choice.type === 'invest') order.invest += choice.amount;
+      else order.edges[choice.dest] = (order.edges[choice.dest] ?? 0) + choice.amount;
+    }
+    orders[node.id] = order;
   }
   return orders;
 }
@@ -102,6 +104,8 @@ export function simulateMatch({
   density = 'normal',
   maxRounds = 200,
   strategies,
+  turtleRounds = 150,
+  attackPct = 5,
 } = {}) {
   assert.ok(Number.isInteger(count) && count >= 10 && count <= 120, 'count must be 10..120');
   assert.ok(
@@ -110,6 +114,10 @@ export function simulateMatch({
   );
   assert.ok(validDensities.has(density), 'invalid density');
   const strategyNames = normalizeStrategies(strategies, players);
+  assert.ok(Number.isInteger(turtleRounds) && turtleRounds >= 0 && turtleRounds <= 10000,
+    'turtleRounds must be an integer from 0 to 10000');
+  assert.ok(Number.isFinite(attackPct) && attackPct > 0 && attackPct <= 100,
+    'attackPct must be greater than 0 and at most 100');
   assert.ok(
     Number.isInteger(maxRounds) && maxRounds > 0 && maxRounds <= 10000,
     'maxRounds must be 1..10000',
@@ -117,6 +125,9 @@ export function simulateMatch({
 
   const map = engine.buildMap({ count, players, density, seed: String(mapSeed) });
   assertValidMap(map, { count, players });
+  const homeNodes = Array.from({ length: players }, (_, owner) =>
+    map.nodes.find((node) => node.owner === owner).id,
+  );
   const rng = engine.seeded(String(combatSeed));
   let state = { round: 1, finished: false, nodes: map.nodes };
   let policies = {},
@@ -129,6 +140,8 @@ export function simulateMatch({
     eliminatedRound: null,
     peakNodes: 1,
     peakInvested: 14,
+    firstAttackRound: null,
+    firstConquestRound: null,
   }));
   const hash = createHash('sha256');
   hash.update(JSON.stringify({ positions: map.positions, links: map.links, nodes: map.nodes }));
@@ -139,11 +152,22 @@ export function simulateMatch({
       nodes: before.nodes,
       links: map.links,
       strategies: strategyNames,
+      round: before.round,
+      homeNodes,
+      turtleRounds,
+      attackPct,
     });
+    for (const entry of Object.values(botChoices)) {
+      for (const order of (Array.isArray(entry) ? entry : [entry])) {
+        if (order.type !== 'attack') continue;
+        const progress = playerProgress[before.nodes[order.source].owner];
+        if (progress.firstAttackRound === null) progress.firstAttackRound = before.round;
+      }
+    }
     const orders = zeroPlayerOrders(before, botChoices);
-    const aiOrdersOverride = Object.values(botChoices).filter(
-      (order) => before.nodes[order.source].owner !== 0,
-    );
+    const aiOrdersOverride = Object.values(botChoices)
+      .flatMap((entry) => Array.isArray(entry) ? entry : [entry])
+      .filter((order) => before.nodes[order.source].owner !== 0);
     const next = engine.resolveRound({
       state: before,
       orders,
@@ -159,6 +183,11 @@ export function simulateMatch({
       if (next.state.nodes[id].owner !== before.nodes[id].owner) {
         captures++;
         lastCaptureRound = before.round;
+        const capturingOwner = next.state.nodes[id].owner;
+        if (capturingOwner !== null &&
+            playerProgress[capturingOwner].firstConquestRound === null) {
+          playerProgress[capturingOwner].firstConquestRound = before.round;
+        }
       }
     }
     for (const progress of playerProgress) {
@@ -194,6 +223,8 @@ export function simulateMatch({
   }));
   return {
     strategies: strategyNames,
+    turtleRounds,
+    attackPct,
     playerStats,
     stalledAtCap: !state.finished && state.round - 1 - lastCaptureRound >= 25,
     roundsWithoutCapture: state.round - 1 - lastCaptureRound,
@@ -235,6 +266,14 @@ export function simulateBatch({ matches = 20, seed = 'balance', ...options } = {
   return {
     seed: String(seed),
     strategies,
+    turtleRounds: options.turtleRounds ?? 150,
+    attackPct: options.attackPct ?? 5,
+    expansionCounts: strategies.map((_, player) =>
+      results.filter((result) => result.playerStats[player].peakNodes > 1).length,
+    ),
+    firstAttackCounts: strategies.map((_, player) =>
+      results.filter((result) => result.playerStats[player].firstAttackRound !== null).length,
+    ),
     matches,
     wins,
     winRates: wins.map((count) => Number(((100 * count) / matches).toFixed(2))),
