@@ -825,6 +825,12 @@
   for (const dialog of document.querySelectorAll('dialog')) {
     modalObserver.observe(dialog, { attributes: true, attributeFilter: ['open'] });
   }
+  // Expanding policy/manual sections changes the panel's height; reposition
+  // it on desktop so the newly expanded controls remain inside the viewport.
+  const inspectorResizeObserver = new ResizeObserver(() => {
+    if (!root.hidden) positionInspector();
+  });
+  inspectorResizeObserver.observe(root);
   window.addEventListener('resize', positionInspector);
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || !active) return;
