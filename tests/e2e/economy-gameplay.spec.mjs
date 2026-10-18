@@ -8,8 +8,9 @@ test('new game editor shows combined capacity and can spend withdrawn reserves',
   page,
 }) => {
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
-  await expect(page.locator('#nodeDialog')).toBeVisible();
-  await expect(page.locator('#details')).toContainText('250 sustainable capacity');
+  await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
+  await expect(page.locator('#tacticalInspector')).toContainText('Capacity');
+  await page.getByText('Manual investment, withdrawal and allocations').click();
   const withdrawal = page.locator('#uxManualSection [data-allocation="withdraw"]');
   await expect(withdrawal).toHaveValue('0');
   await withdrawal.fill('10');
@@ -23,7 +24,7 @@ test('new game editor shows combined capacity and can spend withdrawn reserves',
   await invest.blur();
   // A withdrawal raises the same-round budget and persists with its order.
   await expect(page.locator('#uxBalance')).toContainText('Manual');
-  await page.locator('#closeNodeDialog').click();
+  await page.locator('#tacticalInspector [aria-label="Clear map selection"]').click();
   await page.evaluate(() => document.getElementById('resolve').click());
   await expect(page.locator('#score')).toContainText('Round 2');
   await page.reload();
@@ -57,8 +58,10 @@ test('legacy saved games do not silently switch on new gameplay rules', async ({
   await page.reload();
   await expect(page.locator('#score')).toContainText('Round 1');
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
+  await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
+  await expect(page.locator('#tacticalInspector')).not.toContainText('Capacity');
+  await page.getByText('Manual investment, withdrawal and allocations').click();
   await expect(page.locator('#uxManualSection')).not.toContainText('Withdraw invested');
-  await expect(page.locator('#details')).not.toContainText('sustainable capacity');
   const storedVersion = await page.evaluate(
     () => JSON.parse(localStorage.getItem('parallel-energy-game-v1')).state.rulesVersion,
   );
@@ -69,6 +72,8 @@ test('legacy saved games do not silently switch on new gameplay rules', async ({
   await page.evaluate(() => document.getElementById('resolve').click());
   await expect(page.locator('#score')).toContainText('Round 2');
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
+  await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
+  await page.getByText('Manual investment, withdrawal and allocations').click();
   await expect(page.locator('#uxManualSection')).not.toContainText('Withdraw invested');
-  await expect(page.locator('#details')).not.toContainText('sustainable capacity');
+  await expect(page.locator('#tacticalInspector')).not.toContainText('Capacity');
 });
