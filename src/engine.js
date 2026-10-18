@@ -1,6 +1,18 @@
 'use strict';
 // Keep engine declarations out of the global lexical scope used by game.js.
 (() => {
+  // Keep combat labels and map colors tied to the same player identity.
+  const players = [
+    { name: 'Blue', color: '#3278c8' },
+    { name: 'Red', color: '#cc6255' },
+    { name: 'Purple', color: '#b18adc' },
+    { name: 'Orange', color: '#d9a44d' },
+    { name: 'Green', color: '#72b995' },
+    { name: 'Pink', color: '#da7dba' },
+  ];
+  const playerName = (owner) => (owner === null ? 'Neutral' : players[owner].name);
+  const playerColor = (owner) => (owner === null ? '#768092' : players[owner].color);
+
   // Pure, browser-independent map and economy functions.
   function seeded(seed) {
     let h = 2166136261;
@@ -176,6 +188,7 @@
 
   function resolveRound({
     state,
+    playerCount = state.playerCount ?? Math.max(2, ...state.nodes.map((n) => (n.owner ?? -1) + 1)),
     orders,
     policies,
     links,
@@ -283,9 +296,9 @@
             ' · Node ' +
             node.id +
             ': ' +
-            (a.owner === 0 ? 'Blue' : 'Red') +
+            playerName(a.owner) +
             ' attacks ' +
-            (defenderOwner === null ? 'Neutral' : defenderOwner === 0 ? 'Blue' : 'Red') +
+            playerName(defenderOwner) +
             ' with ' +
             fmt(a.amount) +
             ' vs ' +
@@ -315,19 +328,28 @@
     for (const id of Object.keys(nextPolicies)) {
       if (nodes[Number(id)].owner !== 0) delete nextPolicies[id];
     }
-    let blue = nodes.filter((n) => n.owner === 0).length,
-      red = nodes.filter((n) => n.owner !== null && n.owner !== 0).length;
-    log('Round ' + state.round + ' complete: Blue ' + blue + ' nodes / Red ' + red + ' nodes.');
-    const nextState = { ...state, nodes, round: state.round + 1 };
+    const standings = Array.from({ length: playerCount }, (_, owner) => {
+      const count = nodes.filter((n) => n.owner === owner).length;
+      return playerName(owner) + ' ' + count + ' nodes';
+    });
+    log('Round ' + state.round + ' complete: ' + standings.join(' / ') + '.');
+    // Preserve eliminated players in later summaries, including engine-only callers.
+    const nextState = { ...state, playerCount, nodes, round: state.round + 1 };
     const alive = new Set(nodes.filter((n) => n.owner !== null).map((n) => n.owner));
     if (alive.size <= 1) {
       nextState.finished = true;
-      log(alive.has(0) ? 'Blue wins by elimination!' : 'An AI player wins by elimination!');
+      log(
+        alive.size === 1
+          ? playerName([...alive][0]) + ' wins by elimination!'
+          : 'No players remain.',
+      );
     }
     return { state: nextState, policies: nextPolicies, events };
   }
 
   globalThis.GameEngine = Object.freeze({
+    playerName,
+    playerColor,
     seeded,
     buildMap,
     evaluatePolicy,
