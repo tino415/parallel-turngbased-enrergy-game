@@ -37,9 +37,7 @@ test('manual orders can be edited from the separate orders dialog', async ({ pag
   await expect(page.locator('#uxOrdersDialog')).toBeHidden();
 });
 
-test('all attacks and support flows remain visible, with earnings on every owned node', async ({
-  page,
-}) => {
+test('planned arrows and income stay visible across selections', async ({ page }) => {
   await expect(page.locator('#overlay')).toHaveValue('all');
 
   // Construct adjacent friendly nodes and both manual and automatic transfer
