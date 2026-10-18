@@ -15,18 +15,33 @@ const markdown = [
   '',
   '| Player | Strategy | Wins | Win rate | Survived at end | Survival rate |',
   '| --- | --- | ---: | ---: | ---: | ---: |',
-  ...report.strategies.map((strategy, player) =>
-    '| P' + player + ' | ' + strategy + ' | ' + report.wins[player] + ' | ' +
-    pct(report.winRates[player]) + ' | ' + report.survivalCounts[player] + ' | ' +
-    pct(report.survivalRates[player]) + ' |',
+  ...report.strategies.map(
+    (strategy, player) =>
+      '| P' +
+      player +
+      ' | ' +
+      strategy +
+      ' | ' +
+      report.wins[player] +
+      ' | ' +
+      pct(report.winRates[player]) +
+      ' | ' +
+      report.survivalCounts[player] +
+      ' | ' +
+      pct(report.survivalRates[player]) +
+      ' |',
   ),
   '',
   '**Unresolved at round cap:** ' + report.unresolved + ' / ' + report.matches,
   '',
   '**No capture in last 25+ rounds (unresolved):** ' + report.stalledAtCap,
   '',
-  '**Rounds:** mean ' + report.averageRounds + ', min ' + report.minRounds +
-    ', max ' + report.maxRounds,
+  '**Rounds:** mean ' +
+    report.averageRounds +
+    ', min ' +
+    report.minRounds +
+    ', max ' +
+    report.maxRounds,
   '',
   'Survival is not victory. An unresolved match may have multiple surviving players.',
   '',

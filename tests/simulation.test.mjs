@@ -146,15 +146,20 @@ test('CLI outputs stable machine-readable metrics and rejects bad options', () =
   assert.match(invalid.stderr, /Expected integer/);
 });
 
-
-import { normalizeStrategies, defensiveReserve, planStrategyOrders } from './support/strategies.mjs';
+import {
+  normalizeStrategies,
+  defensiveReserve,
+  planStrategyOrders,
+} from './support/strategies.mjs';
 
 test('strategy profiles require one known strategy per player', () => {
   assert.deepEqual(normalizeStrategies(undefined, 4), ['default', 'default', 'default', 'default']);
-  assert.deepEqual(
-    normalizeStrategies('superturtle,default,aggressive,turtle', 4),
-    ['superturtle', 'default', 'aggressive', 'turtle'],
-  );
+  assert.deepEqual(normalizeStrategies('superturtle,default,aggressive,turtle', 4), [
+    'superturtle',
+    'default',
+    'aggressive',
+    'turtle',
+  ]);
   assert.throws(() => normalizeStrategies('superturtle,default', 4), /exactly 4 strategies/);
   assert.throws(() => normalizeStrategies('magic,default', 2), /strategies/);
 });
@@ -165,18 +170,26 @@ test('superturtle only invests, maintains dynamic defense and never attacks or t
     { id: 1, owner: 1, active: 20, invested: 10 },
     { id: 2, owner: null, active: 5, invested: 0 },
   ];
-  const links = [[0, 1], [0, 2]];
+  const links = [
+    [0, 1],
+    [0, 2],
+  ];
   const reserve = defensiveReserve(nodes[0], nodes, [1, 2]);
   assert.equal(reserve, 32);
   const choices = planStrategyOrders({
-    engine, nodes, links, strategies: ['superturtle', 'default'],
+    engine,
+    nodes,
+    links,
+    strategies: ['superturtle', 'default'],
   });
   assert.equal(choices[0].type, 'invest');
   assert.equal(choices[0].amount, 68);
   assert.equal(choices[0].dest, null);
   const threatened = planStrategyOrders({
-    engine, nodes: [{ ...nodes[0], active: 20 }, nodes[1], nodes[2]],
-    links, strategies: ['superturtle', 'default'],
+    engine,
+    nodes: [{ ...nodes[0], active: 20 }, nodes[1], nodes[2]],
+    links,
+    strategies: ['superturtle', 'default'],
   });
   assert.equal(threatened[0], undefined, 'no energy is spent below defensive reserve');
 });
@@ -187,10 +200,17 @@ test('strategy names produce different decisions for identical positions', () =>
     { id: 1, owner: 1, active: 8, invested: 10 },
     { id: 2, owner: null, active: 4, invested: 0 },
   ];
-  const links = [[0, 1], [0, 2]];
-  const choice = (strategy) => planStrategyOrders({
-    engine, nodes, links, strategies: [strategy, 'default'],
-  })[0];
+  const links = [
+    [0, 1],
+    [0, 2],
+  ];
+  const choice = (strategy) =>
+    planStrategyOrders({
+      engine,
+      nodes,
+      links,
+      strategies: [strategy, 'default'],
+    })[0];
   assert.equal(choice('superturtle').type, 'invest');
   assert.equal(choice('aggressive').type, 'attack');
   assert.equal(choice('balanced').type, 'attack');
@@ -200,8 +220,12 @@ test('strategy names produce different decisions for identical positions', () =>
 
 test('super turtle stays at one node, cannot conquer, and yields repeatable survival metrics', () => {
   const input = {
-    count: 40, players: 4, density: 'normal', maxRounds: 80,
-    mapSeed: 'super-map', combatSeed: 'super-rolls',
+    count: 40,
+    players: 4,
+    density: 'normal',
+    maxRounds: 80,
+    mapSeed: 'super-map',
+    combatSeed: 'super-rolls',
     strategies: ['superturtle', 'default', 'default', 'default'],
   };
   const a = simulateMatch(input);
@@ -216,16 +240,21 @@ test('super turtle stays at one node, cannot conquer, and yields repeatable surv
 
 test('mixed strategy batches distinguish winning, survival and stalled games', () => {
   const args = {
-    seed: 'strategies-batch', matches: 5, count: 40, players: 4, maxRounds: 35,
+    seed: 'strategies-batch',
+    matches: 5,
+    count: 40,
+    players: 4,
+    maxRounds: 35,
     strategies: ['superturtle', 'default', 'aggressive', 'balanced'],
   };
-  const a = simulateBatch(args), b = simulateBatch(args);
+  const a = simulateBatch(args),
+    b = simulateBatch(args);
   assert.deepEqual(a, b);
   assert.deepEqual(a.strategies, args.strategies);
   assert.equal(a.survivalCounts.length, 4);
   for (let p = 0; p < 4; p++) {
     assert.ok(a.survivalCounts[p] >= a.wins[p]);
-    assert.equal(a.survivalRates[p], Number((a.survivalCounts[p] * 100 / 5).toFixed(2)));
+    assert.equal(a.survivalRates[p], Number(((a.survivalCounts[p] * 100) / 5).toFixed(2)));
   }
   assert.ok(a.stalledAtCap <= a.unresolved);
   assert.equal(a.results.length, 5);
@@ -233,15 +262,23 @@ test('mixed strategy batches distinguish winning, survival and stalled games', (
 
 test('CLI accepts mixed strategies and rejects mismatched player count', () => {
   const args = [
-    cli, '--matches=2', '--nodes=40', '--players=4', '--rounds=30',
-    '--strategies=superturtle,default,default,default', '--seed=mixed-cli', '--json',
+    cli,
+    '--matches=2',
+    '--nodes=40',
+    '--players=4',
+    '--rounds=30',
+    '--strategies=superturtle,default,default,default',
+    '--seed=mixed-cli',
+    '--json',
   ];
   const report = JSON.parse(execFileSync(process.execPath, args, { encoding: 'utf8' }));
   assert.equal(report.strategies[0], 'superturtle');
   assert.equal(report.results[0].playerStats[0].peakNodes, 1);
-  const invalid = spawnSync(process.execPath, [
-    cli, '--players=4', '--strategies=superturtle,default',
-  ], { encoding: 'utf8' });
+  const invalid = spawnSync(
+    process.execPath,
+    [cli, '--players=4', '--strategies=superturtle,default'],
+    { encoding: 'utf8' },
+  );
   assert.notEqual(invalid.status, 0);
   assert.match(invalid.stderr, /exactly 4 strategies/);
 });

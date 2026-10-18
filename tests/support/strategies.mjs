@@ -1,14 +1,30 @@
 // Simulation-only strategies: never loaded by the browser.
-export const STRATEGIES = Object.freeze(['default', 'aggressive', 'balanced', 'turtle', 'superturtle']);
+export const STRATEGIES = Object.freeze([
+  'default',
+  'aggressive',
+  'balanced',
+  'turtle',
+  'superturtle',
+]);
 
 export function normalizeStrategies(value, players) {
-  const names = value === undefined ? Array(players).fill('default')
-    : typeof value === 'string' ? value.split(',').map((x) => x.trim().toLowerCase())
-    : value;
-  if (!Array.isArray(names) || names.length !== players ||
-      names.some((name) => !STRATEGIES.includes(name))) {
-    throw new Error('Expected exactly ' + players + ' strategies, comma-separated, from: ' +
-      STRATEGIES.join(', '));
+  const names =
+    value === undefined
+      ? Array(players).fill('default')
+      : typeof value === 'string'
+        ? value.split(',').map((x) => x.trim().toLowerCase())
+        : value;
+  if (
+    !Array.isArray(names) ||
+    names.length !== players ||
+    names.some((name) => !STRATEGIES.includes(name))
+  ) {
+    throw new Error(
+      'Expected exactly ' +
+        players +
+        ' strategies, comma-separated, from: ' +
+        STRATEGIES.join(', '),
+    );
   }
   return [...names];
 }
@@ -30,10 +46,10 @@ function planNode(node, name, nodes, adjacent) {
   const enemies = adjacent
     .filter((id) => nodes[id].owner !== node.owner)
     .sort((a, b) => nodes[a].active - nodes[b].active || a - b);
-  const invest = (amount) => amount > 1e-9
-    ? { source: node.id, type: 'invest', amount, dest: null } : null;
-  const attack = (dest, amount) => amount > 1e-9
-    ? { source: node.id, type: 'attack', amount, dest } : null;
+  const invest = (amount) =>
+    amount > 1e-9 ? { source: node.id, type: 'invest', amount, dest: null } : null;
+  const attack = (dest, amount) =>
+    amount > 1e-9 ? { source: node.id, type: 'attack', amount, dest } : null;
 
   if (name === 'superturtle') {
     // No transfers or attacks, ever. On the initial node, reinvest everything
@@ -43,9 +59,11 @@ function planNode(node, name, nodes, adjacent) {
   if (name === 'turtle') {
     // Slow, deliberate neutral expansion, but never attack a player.
     // Preserve defense first and invest most of the expendable energy.
-    const neutral = enemies.find((id) => nodes[id].owner === null &&
-      free * 0.2 > nodes[id].active * 1.5 + 3);
-    if (neutral !== undefined) return attack(neutral, Math.min(free * 0.2, nodes[neutral].active * 2 + 4));
+    const neutral = enemies.find(
+      (id) => nodes[id].owner === null && free * 0.2 > nodes[id].active * 1.5 + 3,
+    );
+    if (neutral !== undefined)
+      return attack(neutral, Math.min(free * 0.2, nodes[neutral].active * 2 + 4));
     return invest(free * 0.85);
   }
   if (name === 'aggressive') {

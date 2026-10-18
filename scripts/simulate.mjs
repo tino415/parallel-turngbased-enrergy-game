@@ -50,9 +50,16 @@ try {
     console.log(
       'AI wins per player: ' + report.wins.map((value, id) => 'P' + id + '=' + value).join(' '),
     );
-    console.log('Strategies: ' + report.strategies.map((name, player) => 'P' + player + '=' + name).join(' '));
-    console.log('Survival: ' + report.survivalRates.map((rate, player) => 'P' + player + '=' + rate + '%').join(' '));
-    console.log('Unresolved by round cap: ' + report.unresolved + ' (stalled: ' + report.stalledAtCap + ')');
+    console.log(
+      'Strategies: ' + report.strategies.map((name, player) => 'P' + player + '=' + name).join(' '),
+    );
+    console.log(
+      'Survival: ' +
+        report.survivalRates.map((rate, player) => 'P' + player + '=' + rate + '%').join(' '),
+    );
+    console.log(
+      'Unresolved by round cap: ' + report.unresolved + ' (stalled: ' + report.stalledAtCap + ')',
+    );
     console.log(
       'Rounds: average=' +
         report.averageRounds +

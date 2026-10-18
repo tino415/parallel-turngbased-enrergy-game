@@ -135,14 +135,22 @@ export function simulateMatch({
   while (!state.finished && state.round <= maxRounds) {
     const before = state;
     const botChoices = planStrategyOrders({
-      engine, nodes: before.nodes, links: map.links, strategies: strategyNames,
+      engine,
+      nodes: before.nodes,
+      links: map.links,
+      strategies: strategyNames,
     });
     const orders = zeroPlayerOrders(before, botChoices);
     const aiOrdersOverride = Object.values(botChoices).filter(
       (order) => before.nodes[order.source].owner !== 0,
     );
     const next = engine.resolveRound({
-      state: before, orders, policies, links: map.links, rng, aiOrdersOverride,
+      state: before,
+      orders,
+      policies,
+      links: map.links,
+      rng,
+      aiOrdersOverride,
     });
     assert.equal(before.round + 1, next.state.round, 'round must advance exactly once');
     assertValidState(before, { count, players }); // Input objects must remain valid.
@@ -182,7 +190,7 @@ export function simulateMatch({
     ...progress,
     survived: alive.has(progress.player),
     peakInvested: Number(progress.peakInvested.toFixed(3)),
-    roundsSurvived: progress.eliminatedRound ?? (state.round - 1),
+    roundsSurvived: progress.eliminatedRound ?? state.round - 1,
   }));
   return {
     strategies: strategyNames,
@@ -221,17 +229,17 @@ export function simulateBatch({ matches = 20, seed = 'balance', ...options } = {
     { length: options.players ?? 3 },
     (_, player) => results.filter((r) => r.winner === player).length,
   );
-  const survivalCounts = strategies.map((_, player) =>
-    results.filter((result) => result.playerStats[player].survived).length,
+  const survivalCounts = strategies.map(
+    (_, player) => results.filter((result) => result.playerStats[player].survived).length,
   );
   return {
     seed: String(seed),
     strategies,
     matches,
     wins,
-    winRates: wins.map((count) => Number((100 * count / matches).toFixed(2))),
+    winRates: wins.map((count) => Number(((100 * count) / matches).toFixed(2))),
     survivalCounts,
-    survivalRates: survivalCounts.map((count) => Number((100 * count / matches).toFixed(2))),
+    survivalRates: survivalCounts.map((count) => Number(((100 * count) / matches).toFixed(2))),
     stalledAtCap: results.filter((result) => result.stalledAtCap).length,
     unresolved: results.filter((r) => !r.finished).length,
     averageRounds: Number((results.reduce((sum, r) => sum + r.rounds, 0) / matches).toFixed(2)),
