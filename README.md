@@ -3,7 +3,7 @@
 A browser-based, simultaneous-turn, graph strategy game. The final game name is not settled.
 
 **Play:** https://pteg.otin.dev  
-**Current version:** v0.8.1
+**Current version:** v0.8.4 (UI redesign in review on feature branch)
 
 ## Play and rules
 
@@ -26,11 +26,11 @@ The main content has three tabs:
 | **Dashboard** | Review your nodes' energy, defense and production; apply bulk policies or manual investments; edit each node's policy investment %, reserve and enabled state directly in the table. |
 | **Messages**  | See combat events and round summaries (the most recent 70 entries).                                                                                                                  |
 
-On desktop, the sidebar contains the selected node's manual allocations and persistent policy editor. On narrow screens, tapping a blue node opens those details in a modal instead of requiring scrolling below the map. Default conquest settings and planned orders remain in the sidebar area.
+Selecting a node opens an editable details dialog on both desktop and mobile. On mobile the editor fills the screen, with active/invested/defending energy, a live manual/policy energy budget, combat-strength ranges, manual allocations, and persistent policy controls. The desktop sidebar instead provides a compact selection and next-round overview. Planned orders and conquest defaults live in separate Orders and Settings dialogs; mobile keeps Orders and Resolve round in a bottom action bar.
 
-**Persistent policies:** For each blue node, reserve some active energy, invest a specified percentage of the remaining surplus, and optionally transfer the rest to **one adjacent friendly node**. Policies do not initiate attacks. Manual orders take priority; a policy can be disabled, removed, copied, pasted, or paused for one round. The dashboard can apply reserve/invest percentages to multiple selected nodes at once; doing so clears their transfer destinations.
+**Persistent policies:** For each blue node, reserve some active energy, invest a specified percentage of the remaining surplus, and optionally transfer the rest to **one adjacent friendly node**. Policies do not initiate attacks. Manual orders take priority; a policy can be disabled, removed, copied, pasted, or paused for one round. The dashboard can apply reserve/invest percentages to multiple selected nodes at once; existing transfer destinations are preserved when applying these bulk changes.
 
-**Map navigation:** Drag empty map space to pan. Use the **+ / −** controls overlaid on the map or **Ctrl/Cmd + scroll** to zoom; ordinary scrolling scrolls the page. On mobile, vertical swipes over the map scroll the page too. **Fit map** resets the camera. The overlay selector controls displayed manual and policy flows.
+**Map navigation:** Drag empty map space to pan. Use the **+ / −** controls overlaid on the map or **Ctrl/Cmd + scroll** to zoom; ordinary scrolling scrolls the page. On mobile, vertical swipes over the map scroll the page too. **Fit map** shows the full graph; **Focus** centers the selected node. Mobile opens focused on your starting node so labels remain legible. The overlay selector includes a selected-node view to reduce clutter, as well as all/manual/policy/hidden flows.
 
 **New game:** The New game dialog offers a live graph preview and a reproducible seed, with 10–120 nodes, 2–6 players, and sparse/normal/dense connection density. Generated maps use a jittered grid for spacing. Canceling the dialog leaves the current match intact. Confirming a new game after round 1 replaces the current match.
 
@@ -63,6 +63,7 @@ The build copies `index.html`, `_headers`, and `src/` into `dist/`. No bundling 
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `index.html`        | Page, tabs, map area, dashboard container and New game dialog                                                                               |
 | `src/styles.css`    | Responsive layout and styling                                                                                                               |
+| `src/ux.js`        | Responsive full-screen editor, contextual map overlays, orders/settings dialogs and dashboard mobile cards; presentation only                         |
 | `src/game.js`       | Browser UI, order entry, map rendering, autosave and view navigation                                                                        |
 | `src/engine.js`     | Browser-independent map generation, policy evaluation, forecasts, AI and full round resolution; accepts injected RNG for reproducible tests |
 | `tests/*.test.mjs`  | Syntax/structure, graph generation, economy/policy and round-resolution regression tests                                                    |
