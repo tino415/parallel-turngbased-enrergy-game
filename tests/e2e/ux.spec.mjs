@@ -94,6 +94,58 @@ test('planned arrows and income stay visible across selections', async ({ page }
   await expect(policySupport).toHaveCount(1);
 });
 
+test('touch taps select a node in Scroll and Pan modes', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith('mobile'), 'Mobile touch layout only');
+  const blueNode = page.locator('#map .node-hit[fill="#3278c8"]').first();
+
+  // Playwright tap uses actual touch input, unlike locator.click().
+  await blueNode.tap();
+  await expect(page.locator('#nodeDialog')).toBeVisible();
+  await page.locator('#closeNodeDialog').click();
+
+  await page.locator('#panMode').click();
+  await expect(page.locator('#panMode')).toHaveAttribute('aria-pressed', 'true');
+  await blueNode.tap();
+  await expect(page.locator('#nodeDialog')).toBeVisible();
+  await page.locator('#closeNodeDialog').click();
+
+  await page.locator('#panMode').click();
+  await expect(page.locator('#panMode')).toHaveAttribute('aria-pressed', 'false');
+  await blueNode.tap();
+  await expect(page.locator('#nodeDialog')).toBeVisible();
+});
+
+test('touch drags pan without selecting a node', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith('mobile'), 'Mobile touch layout only');
+  await page.locator('#panMode').click();
+  const node = page.locator('#map .node-hit[fill="#3278c8"]').first();
+  const box = await node.boundingBox();
+  expect(box).not.toBeNull();
+
+  const svg = page.locator('#map');
+  const before = await svg.locator('> g').getAttribute('transform');
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x, y }],
+  });
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [{ x: x + 20, y: y + 20 }],
+  });
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [{ x: x + 55, y: y + 40 }],
+  });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach();
+
+  await expect(svg.locator('> g')).not.toHaveAttribute('transform', before);
+  await expect(page.locator('#nodeDialog')).toBeHidden();
+});
+
 test('map and settings expose separate controls on mobile', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('mobile'), 'Mobile layout only');
   await expect(page.locator('#uxDockOrders')).toBeVisible();
