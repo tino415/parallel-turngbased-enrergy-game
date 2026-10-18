@@ -1,0 +1,64 @@
+name: Temporary 300-round economy benchmark
+on:
+  push:
+    branches: [feat/phase-turtle-counterattack]
+permissions:
+  contents: write
+jobs:
+  benchmark:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --no-audit --no-fund
+      - name: Apply Prettier
+        run: npm run format
+      - name: Run formatting and engine regression checks
+        run: npm run check
+      - name: Run paired 300-round economic simulations
+        run: |
+          set -euo pipefail
+          mkdir -p reports
+          for rival in default aggressive; do
+            for strategy in superturtle turtlecounter; do
+              file="reports/duel-${strategy}-${rival}"
+              node scripts/simulate.mjs --matches=20 --nodes=20 --players=2 --rounds=300 \
+                --strategies="${strategy},${rival}" --turtle-rounds=150 --attack-pct=5 \
+                --seed=duel-v1 --json > "${file}.json"
+              node scripts/summarize-simulation.mjs "${file}.json" > "${file}.md"
+              echo "## 20 nodes: ${strategy} versus ${rival}" >> "$GITHUB_STEP_SUMMARY"
+              cat "${file}.md" >> "$GITHUB_STEP_SUMMARY"
+              printf '\\n---\\n' >> "$GITHUB_STEP_SUMMARY"
+            done
+          done
+          for strategy in superturtle turtlecounter; do
+            file="reports/field-${strategy}"
+            node scripts/simulate.mjs --matches=20 --nodes=40 --players=4 --rounds=300 \
+              --strategies="${strategy},default,default,default" \
+              --turtle-rounds=150 --attack-pct=5 --seed=field-v1 --json > "${file}.json"
+            node scripts/summarize-simulation.mjs "${file}.json" > "${file}.md"
+            echo "## 40 nodes: ${strategy} versus three default AIs" >> "$GITHUB_STEP_SUMMARY"
+            cat "${file}.md" >> "$GITHUB_STEP_SUMMARY"
+            printf '\\n---\\n' >> "$GITHUB_STEP_SUMMARY"
+          done
+      - name: Upload benchmark report (JSON and Markdown)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: endgame-economy-300
+          path: reports/
+          retention-days: 30
+      - name: Commit Prettier normalization
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          if ! git diff --cached --quiet; then
+            git commit -m "Format 300-round endgame economy reporting"
+            git push
+          fi
