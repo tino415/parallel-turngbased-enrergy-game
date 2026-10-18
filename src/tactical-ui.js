@@ -49,6 +49,48 @@
   const manualSection = byId('uxManualSection');
   nodeControls.append(policySection, manualSection);
 
+  // Planned energy travels along the connection itself; the legacy renderer
+  // supplied a second competing stroke over each connection. Retain its
+  // direction arrows, values, and economic labels but decorate the base edges
+  // instead of drawing any separate flow lines.
+  const originalRenderFlows = renderFlows;
+  renderFlows = (mapSvg, graph, element) => {
+    originalRenderFlows(mapSvg, graph, element);
+    const filter = byId('overlay').value;
+    const visible = filter === 'none' ? [] : previewOrders().filter((order) => {
+      if (order.dest === null || order.dest === undefined || order.amount <= 0.01) return false;
+      if (filter === 'manual' && order.automatic) return false;
+      if (filter === 'policy' && !order.automatic) return false;
+      return true;
+    });
+    const key = (a, b) => [Math.min(a, b), Math.max(a, b)].join(':');
+    const byEdge = new Map();
+    for (const order of visible) {
+      const k = key(order.source, order.dest);
+      if (!byEdge.has(k)) byEdge.set(k, []);
+      byEdge.get(k).push(order);
+    }
+    const connections = [...graph.children].filter((child) => child.tagName === 'line').slice(0, edges.length);
+    for (const [i, [a, b]] of edges.entries()) {
+      const connection = connections[i];
+      const flows = byEdge.get(key(a, b));
+      if (!connection || !flows?.length) continue;
+      const color = flows.length > 1
+        ? '#b1a2fa'
+        : flows[0].type === 'attack'
+          ? '#ff987f'
+          : flows[0].automatic
+            ? '#76b3ff'
+            : '#63d9af';
+      connection.setAttribute('stroke', color);
+      connection.setAttribute('stroke-width', '5');
+      connection.setAttribute('opacity', '.95');
+      connection.setAttribute('stroke-dasharray', flows.length === 1 && flows[0].automatic ? '8 5' : 'none');
+      connection.classList.add('tactical-flow-connection');
+    }
+    graph.querySelectorAll('line.ux-flow-overlay').forEach((line) => line.remove());
+  };
+
   let active = null;
   let editing = false;
   let advancedOpen = false;
