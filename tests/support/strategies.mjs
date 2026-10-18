@@ -5,6 +5,7 @@ export const STRATEGIES = Object.freeze([
   'balanced',
   'turtle',
   'superturtle',
+  'compoundexpand',
   'turtlecounter',
 ]);
 
@@ -51,6 +52,27 @@ function planNode(node, name, nodes, adjacent, { round, turtleRounds, attackPct,
     amount > 1e-9 ? { source: node.id, type: 'invest', amount, dest: null } : null;
   const attack = (dest, amount) =>
     amount > 1e-9 ? { source: node.id, type: 'attack', amount, dest } : null;
+
+  if (name === 'compoundexpand') {
+    // Exact same per-node reserve and reinvestment as Super Turtle.
+    // Only difference: spend a bounded part of the reinvestable surplus on
+    // viable conquest, on *every* owned node including newly captured ones.
+    // Prefer neutral territory to minimize the risk of enemy retaliation.
+    const budget = Math.min(free, (node.active * attackPct) / 100);
+    const viable = enemies
+      .filter((id) => budget > nodes[id].active * 1.5 + 0.1)
+      .sort((a, b) =>
+        Number(nodes[a].owner !== null) - Number(nodes[b].owner !== null) ||
+        nodes[a].active - nodes[b].active || a - b
+      );
+    const dest = viable[0];
+    // Use the least viable commitment instead of dumping the full budget.
+    const strike = dest === undefined ? null : attack(
+      dest, Math.min(budget, nodes[dest].active * 1.5 + 0.2),
+    );
+    const savings = invest(free - (strike?.amount ?? 0));
+    return [savings, strike].filter(Boolean);
+  }
 
   if (name === 'turtlecounter') {
     // Only the starting node follows the two-phase plan; conquered nodes
