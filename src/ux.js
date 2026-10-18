@@ -114,6 +114,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
 #dashboard .ux-summary span{font-size:11px;color:#a8bed8}
 #dashboard .ux-node-cards{display:none}
 #messagesView .log{max-height:65vh}
+@media(min-width:761px){.layout.ux-wide-view{grid-template-columns:minmax(0,1fr)}.layout.ux-wide-view #gameSidebar{display:none}}
 @media(max-width:1050px){.layout{grid-template-columns:minmax(0,1fr) 245px}.ux-editor-sections{grid-template-columns:minmax(0,1fr) minmax(230px,.9fr)}}
 @media(max-width:760px){
  header{padding:9px 12px;gap:7px}header h1{font-size:15px}header .muted{font-size:10px}header>div:last-child{gap:5px}header #score{width:auto;font-size:11px;padding:5px 7px}header #resolve,header #reset{display:none}#mobileSettings{display:inline-block;font-size:12px}
@@ -335,6 +336,15 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   renderDashboard = function() {
     originalDashboard();
     if (currentView !== 'dashboard') return;
+    // Bulk policy edits should not erase existing transfer destinations.
+    byId('bulkApply').onclick=()=>{
+      const reserve=Math.max(0,Number(byId('bulkReserve').value)||0);
+      const investPct=Math.max(0,Math.min(100,Number(byId('bulkInvest').value)||0));
+      const chosen=[...selectedBulk].filter(id=>state.nodes[id]?.owner===0);
+      if(!chosen.length) {byId('bulkApply').title='Select nodes first';return;}
+      for(const id of chosen) policies[id]={...defaultPolicy(),...policies[id],enabled:true,reserve,investPct};
+      render();
+    };
     const dash = byId('dashboard');
     const mine = state.nodes.filter(n => n.owner === 0);
     const energy = mine.reduce((a,n) => a+n.active,0);
@@ -419,6 +429,8 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   }
   render = function() {
     originalRender();
+    heading.hidden=currentView!=='map';
+    document.querySelector('.layout').classList.toggle('ux-wide-view',currentView!=='map');
     const key=mapSeed+'/'+N+'/'+edges.length+'/'+state.round;
     if(key!==lastMap) {
       const isFirst=lastMap==='';
@@ -472,7 +484,19 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
       byId('uxManualSection').hidden=selectedNode.owner!==0;
       byId('uxPolicySection').hidden=selectedNode.owner!==0;
       jumps.hidden=selectedNode.owner!==0;
-      const neighboring=neighbors(id).filter(dest=>state.nodes[dest].owner!==0);
+      // Existing combat math is unchanged: show strength intervals, not win odds.
+      if (selectedNode.owner===0) {
+        allocator.querySelectorAll('.allocation-line').forEach((row,i)=>{
+          if (i===0) return;
+          const dest=neighbors(id)[i-1], target=state.nodes[dest];
+          if(!target || target.owner===0) return;
+          const attack=plan(id).edges[dest]||0;
+          const cap=document.createElement('small');
+          cap.style.cssText='display:block;font-size:11px;line-height:1.5;color:#adc3d9';
+          cap.textContent='Attack strength '+fmtUX(attack*.8)+'–'+fmtUX(attack*1.2)+' · Current defense '+fmtUX(target.active*.8)+'–'+fmtUX(target.active*1.2);
+          row.querySelector('label')?.append(cap);
+        });
+      }
       note.textContent=selectedNode.owner!==0
         ? 'Opponent and neutral energy can be inspected here. Select a friendly adjacent node to allocate an attack.'
         : 'Attack and defense each receive independent ×0.8–1.2 strength modifiers. Targets can change during simultaneous resolution; displayed energy is not a win probability.';
@@ -488,7 +512,15 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
     const id=selected===null?state.nodes.find(n=>n.owner===0)?.id:selected;
     if(id!==undefined && id!==null)focusCameraUX(id);
   };
-  window.addEventListener('resize',redrawCamera);
+  window.addEventListener('resize',()=>{
+    // The legacy layout listener may relocate editors on mobile resize.
+    oldHeader.prepend(selectedTitle);
+    scroll.prepend(details);
+    manualSection.append(allocator);
+    policySection.append(policyEditor);
+    scroll.append(hint);
+    redrawCamera();
+  });
   byId('overlay').onchange=render;
   byId('clearAll').onclick=()=>{orders={};render();};
   // The original HTML has inline-mobile navigation; the native dialogs supersede it.
