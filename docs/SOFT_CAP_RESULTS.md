@@ -15,37 +15,37 @@ Full snapshots distinguish wins, survival, expansion, final controlled active/in
 
 For the provisional combination `C=100, d=25%, f=5%`:
 
-| Scenario (30 seeds) | P0 strategy | Survived | Expanded | Median P0 nodes | Median gross income/round |
-| --- | --- | ---: | ---: | ---: | ---: |
-| 20 nodes, Default | Baseline Super Turtle | 30 | 0 | 1 | 9.695 trillion |
-| 20 nodes, Default | Baseline Compounding Expander | 30 | 30 | 2 | 9.575 trillion |
-| 20 nodes, Default | Cap Super Turtle | 6 | 0 | 0 | 0 |
-| 20 nodes, Default | Cap Compounding Expander | 6 | 0 | 0 | 0 |
-| 20 nodes, Default | Cap Withdrawal Expander | 10 | 30 | 0 | 0 |
-| 20 nodes, Aggressive | Cap Super Turtle | 30 | 0 | 1 | 5.5 |
-| 20 nodes, Aggressive | Cap Withdrawal Expander | 30 | 30 | 11.5 | 140.1 |
-| 40 nodes, 3 Default | Baseline Super Turtle | 30 | 0 | 1 | 9.467 trillion |
-| 40 nodes, 3 Default | Baseline Compounding Expander | 30 | 30 | 2 | 9.356 trillion |
-| 40 nodes, 3 Default | Cap Super Turtle | 10 | 0 | 0 | 0 |
-| 40 nodes, 3 Default | Cap Compounding Expander | 10 | 0 | 0 | 0 |
-| 40 nodes, 3 Default | Cap Withdrawal Expander | 12 | 30 | 0 | 0 |
+| Scenario (30 seeds)  | P0 strategy                   | Survived | Expanded | Median P0 nodes | Median gross income/round |
+| -------------------- | ----------------------------- | -------: | -------: | --------------: | ------------------------: |
+| 20 nodes, Default    | Baseline Super Turtle         |       30 |        0 |               1 |            9.695 trillion |
+| 20 nodes, Default    | Baseline Compounding Expander |       30 |       30 |               2 |            9.575 trillion |
+| 20 nodes, Default    | Cap Super Turtle              |        6 |        0 |               0 |                         0 |
+| 20 nodes, Default    | Cap Compounding Expander      |        6 |        0 |               0 |                         0 |
+| 20 nodes, Default    | Cap Withdrawal Expander       |       10 |       30 |               0 |                         0 |
+| 20 nodes, Aggressive | Cap Super Turtle              |       30 |        0 |               1 |                       5.5 |
+| 20 nodes, Aggressive | Cap Withdrawal Expander       |       30 |       30 |            11.5 |                     140.1 |
+| 40 nodes, 3 Default  | Baseline Super Turtle         |       30 |        0 |               1 |            9.467 trillion |
+| 40 nodes, 3 Default  | Baseline Compounding Expander |       30 |       30 |               2 |            9.356 trillion |
+| 40 nodes, 3 Default  | Cap Super Turtle              |       10 |        0 |               0 |                         0 |
+| 40 nodes, 3 Default  | Cap Compounding Expander      |       10 |        0 |               0 |                         0 |
+| 40 nodes, 3 Default  | Cap Withdrawal Expander       |       12 |       30 |               0 |                         0 |
 
-A median of zero is due to elimination in more than half the matches; it does *not* mean survivors had zero production. Expansion is counted if Blue ever controlled more than one node, even when eliminated later. Cumulative outcomes were generated under **different rule sets**, so the incomparable trillion-scale base income should not be understood as a net welfare measure.
+A median of zero is due to elimination in more than half the matches; it does _not_ mean survivors had zero production. Expansion is counted if Blue ever controlled more than one node, even when eliminated later. Cumulative outcomes were generated under **different rule sets**, so the incomparable trillion-scale base income should not be understood as a net welfare measure.
 
 ### Capacity sensitivity at 25% overflow decay and 5% withdrawal fee
 
 | Capacity | 20-node Default: Turtle survived | 20-node Default: Withdrawal Expander survived | 40-node Default: Turtle survived | 40-node Default: Withdrawal Expander survived |
-| --- | ---: | ---: | ---: | ---: |
-| 50 | 6/30 | 17/30 | 6/30 | 22/30 |
-| 100 | 6/30 | 10/30 | 10/30 | 12/30 |
-| 250 | 7/30 | 13/30 | 21/30 | 13/30 |
-| 500 | 30/30 | 10/30 | 29/30 | 17/30 |
+| -------- | -------------------------------: | --------------------------------------------: | -------------------------------: | --------------------------------------------: |
+| 50       |                             6/30 |                                         17/30 |                             6/30 |                                         22/30 |
+| 100      |                             6/30 |                                         10/30 |                            10/30 |                                         12/30 |
+| 250      |                             7/30 |                                         13/30 |                            21/30 |                                         13/30 |
+| 500      |                            30/30 |                                         10/30 |                            29/30 |                                         17/30 |
 
 The win count for player zero is **0/30 in every displayed treatment**, including the withdrawal-enabled variant. Thus even markedly higher income and territorial reach did not achieve enemy elimination. The full simulation report includes unresolved matches and 25-turn no-capture stalemate counts; neither outcome is eliminated reliably.
 
 ### Overflow and withdrawal sensitivities
 
-At C100 with a 5% withdrawal fee, varying overflow loss among 15%, 25% and 35% did *not* yield a monotonic survival improvement. For 40-node Default matches, Withdrawal Expander survived **10/30**, **12/30** and **15/30**, respectively; no version won by elimination. The 20-node Aggressive scenario remained 30/30 survival at all three levels.
+At C100 with a 5% withdrawal fee, varying overflow loss among 15%, 25% and 35% did _not_ yield a monotonic survival improvement. For 40-node Default matches, Withdrawal Expander survived **10/30**, **12/30** and **15/30**, respectively; no version won by elimination. The 20-node Aggressive scenario remained 30/30 survival at all three levels.
 
 At C100 and 25% overflow loss, varying withdrawal fees 0%, 5% and 10% also produced non-monotonic outcomes (40-node Default Withdrawal Expander survived **10/30**, **12/30** and **15/30**, respectively). Combat choices and RNG draw consumption diverge between variants, so these small-sample differences do **not** support a claim that paying higher fees improves strategy.
 
