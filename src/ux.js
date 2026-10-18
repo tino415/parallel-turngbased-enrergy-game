@@ -6,7 +6,7 @@
   const mobile = () => window.matchMedia('(max-width:760px)').matches;
   const fmtUX = (n) => (Number(n) || 0).toFixed(1);
   const style = document.createElement('style');
-  style.textContent = \`
+  style.textContent = `
 :root{color-scheme:dark;--ux-bg:#0b1424;--ux-panel:#14233a;--ux-card:#1b2d46;--ux-border:#344963;--ux-muted:#a6bad2;--ux-blue:#589cff;--ux-green:#6edab4}
 body{background:var(--ux-bg);color:#f1f6ff;overflow-x:hidden}
 button,input,select{border-radius:9px}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #f0d27e;outline-offset:2px}
@@ -140,7 +140,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
  #dashboard .ux-node-card button{font-size:12px}
 }
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
-\`;
+`;
   document.head.append(style);
 
   const nodeDialog = byId('nodeDialog');
@@ -150,7 +150,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   const originalAside = byId('gameSidebar');
   const settingsBox = originalAside.querySelector('.policy-box');
   const rules = originalAside.querySelector('details');
-  const orders = byId('orders');
+  const ordersContainer = byId('orders');
   const count = byId('orderCount');
   const clear = byId('clearAll');
   const selectedTitle = byId('selectedTitle');
@@ -175,7 +175,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   const orderHelp = document.createElement('p');
   orderHelp.className = 'muted';
   orderHelp.textContent = 'Manual allocations are separate from persistent policies. All actions execute together when you resolve the round.';
-  ordersBody.append(orderHelp, count, orders, clear);
+  ordersBody.append(orderHelp, count, ordersContainer, clear);
   clear.textContent = 'Clear all manual orders';
   settingsBody.append(settingsBox, rules);
 
@@ -314,7 +314,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   const originalOrders = renderOrders;
   renderOrders = function() {
     originalOrders();
-    orders.querySelectorAll('.order-top button:first-child').forEach((button) => {
+    ordersContainer.querySelectorAll('.order-top button:first-child').forEach((button) => {
       const original = button.onclick;
       button.onclick = (event) => {
         original(event);
