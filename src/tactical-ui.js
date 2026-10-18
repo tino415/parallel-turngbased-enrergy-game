@@ -541,7 +541,10 @@
       autoTransfer.type = 'checkbox';
       autoTransfer.id = 'tacticalAutoTransfer';
       autoTransfer.checked = targetsHere;
-      autoTransfer.setAttribute('aria-label', 'Automatically transfer surplus to node ' + destination);
+      autoTransfer.setAttribute(
+        'aria-label',
+        'Automatically transfer surplus to node ' + destination,
+      );
       autoTransfer.onchange = () => {
         if (autoTransfer.checked) {
           // Changing destination must never overwrite investment or reserve.
@@ -559,12 +562,14 @@
       };
       toggle.append(caption, autoTransfer);
       policyBox.append(toggle);
-      if (current?.dest !== null && current?.dest !== undefined &&
-          current.dest !== destination) {
+      if (current?.dest !== null && current?.dest !== undefined && current.dest !== destination) {
         policyBox.append(
           textElement(
             'p',
-            'Node ' + source + ' currently routes its surplus to Node ' + current.dest +
+            'Node ' +
+              source +
+              ' currently routes its surplus to Node ' +
+              current.dest +
               '. Enabling this connection replaces that destination, not the investment policy.',
             'tactical-secondary',
           ),
@@ -597,8 +602,10 @@
         policyBox.append(
           textElement(
             'p',
-            'Next-round automatic transfer: ' + numeric(nextTransfer?.amount ?? 0) +
-              ' energy · Reserve ' + numeric(current.reserve) +
+            'Next-round automatic transfer: ' +
+              numeric(nextTransfer?.amount ?? 0) +
+              ' energy · Reserve ' +
+              numeric(current.reserve) +
               '. Manual orders take priority.',
             'tactical-secondary',
           ),
@@ -616,7 +623,7 @@
         policyBox.append(
           textElement(
             'p',
-            'Automatically send surplus after this node\'s reserve and investment every round.',
+            "Automatically send surplus after this node's reserve and investment every round.",
             'tactical-secondary',
           ),
         );
@@ -683,9 +690,7 @@
 
   function showInspector() {
     root.hidden =
-      !active ||
-      currentView !== 'map' ||
-      Boolean(document.querySelector('dialog[open]'));
+      !active || currentView !== 'map' || Boolean(document.querySelector('dialog[open]'));
     document.body.classList.toggle('tactical-selection-active', !root.hidden);
     if (root.hidden) return;
     root.classList.toggle('is-editing', editing);
