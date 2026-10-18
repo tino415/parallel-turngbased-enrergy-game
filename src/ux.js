@@ -510,15 +510,10 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
     const id=selected===null?state.nodes.find(n=>n.owner===0)?.id:selected;
     if(id!==undefined && id!==null)focusCameraUX(id);
   };
-  window.addEventListener('resize',()=>{
-    // The legacy layout listener may relocate editors on mobile resize.
-    oldHeader.prepend(selectedTitle);
-    scroll.prepend(details);
-    manualSection.append(allocator);
-    policySection.append(policyEditor);
-    scroll.append(hint);
-    redrawCamera();
-  });
+  // Opening the on-screen keyboard resizes the mobile viewport. Moving
+  // focused input elements between parents here blurs them and immediately
+  // dismisses the keyboard; the editor is already in its final layout.
+  window.addEventListener('resize', redrawCamera);
   byId('overlay').onchange=render;
   byId('clearAll').onclick=()=>{orders={};render();};
   // The original HTML has inline-mobile navigation; the native dialogs supersede it.
