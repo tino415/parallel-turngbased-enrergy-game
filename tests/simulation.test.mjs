@@ -466,3 +466,80 @@ test('300-round strategy batches keep reproducible endgame energy and income med
     assert.ok(summary.grossIncome >= 0);
   }
 });
+
+
+test('compounding expansion reinvests exactly as Super Turtle when no conquest is affordable', () => {
+  const nodes = [
+    { id: 0, owner: 0, active: 100, invested: 400 },
+    { id: 1, owner: 1, active: 100, invested: 20 },
+  ];
+  const options = { engine, nodes, links: [[0, 1]], homeNodes: [0, 1], attackPct: 5 };
+  const turtle = planStrategyOrders({ ...options, strategies: ['superturtle', 'default'] });
+  const expander = planStrategyOrders({ ...options, strategies: ['compoundexpand', 'default'] });
+  assert.equal(turtle[0], undefined, 'the nearby threat consumes the available defense');
+  assert.equal(expander[0], undefined, 'expander must keep exactly the same reserve');
+
+  const safeNodes = [
+    { id: 0, owner: 0, active: 100, invested: 400 },
+    { id: 1, owner: null, active: 30, invested: 0 },
+  ];
+  const safeOptions = { ...options, nodes: safeNodes };
+  const a = planStrategyOrders({ ...safeOptions, strategies: ['superturtle', 'default'] });
+  const b = planStrategyOrders({ ...safeOptions, strategies: ['compoundexpand', 'default'] });
+  assert.equal(a[0].type, 'invest');
+  assert.deepEqual(JSON.parse(JSON.stringify(b[0])), JSON.parse(JSON.stringify([a[0]])));
+});
+
+test('compounding expansion reserves defense, attacks neutral and reinvests every remainder', () => {
+  const nodes = [
+    { id: 0, owner: 0, active: 100, invested: 400 },
+    { id: 1, owner: 1, active: 4, invested: 10 },
+    { id: 2, owner: null, active: 2, invested: 0 },
+    { id: 3, owner: 0, active: 60, invested: 20 },
+    { id: 4, owner: null, active: 2, invested: 0 },
+  ];
+  const orders = planStrategyOrders({
+    engine, nodes, links: [[0,1],[0,2],[3,4]],
+    homeNodes:[0,1], strategies:['compoundexpand','default'],
+    round: 1, attackPct: 5,
+  });
+  const reserve = defensiveReserve(nodes[0], nodes, [1,2]);
+  assert.equal(reserve, 8);
+  assert.equal(orders[0][1].type, 'attack');
+  assert.equal(orders[0][1].dest, 2, 'prefer cheaper neutral capture');
+  assert.ok(orders[0][1].amount <= 5, 'attack at most 5% of active energy');
+  assert.equal(orders[0][0].type, 'invest');
+  assert.ok(Math.abs(orders[0][0].amount + orders[0][1].amount - (nodes[0].active-reserve)) < 1e-9);
+  assert.ok(Array.isArray(orders[3]), 'captured nodes follow the same compounding strategy');
+  assert.equal(orders[3][1].type, 'attack');
+  assert.equal(orders[3][1].dest, 4);
+  assert.equal(nodes[0].invested, 400, 'locked investment is unchanged during planning');
+});
+
+test('compoundexpand strategy is deterministic across 300-round 20-node and 40-node matches', () => {
+  for (const [count, players, names] of [
+    [20,2,['compoundexpand','default']],
+    [40,4,['compoundexpand','default','default','default']],
+  ]) {
+    const opts = { count, players, maxRounds:300, strategies:names,
+      mapSeed:'equal-invest-'+count, combatSeed:'equal-invest-combat-'+count,
+      attackPct:5 };
+    const a=simulateMatch(opts),b=simulateMatch(opts);
+    assert.deepEqual(a,b);
+    assert.equal(a.playerStats[0].strategy,'compoundexpand');
+    assert.ok(a.playerStats[0].firstAttackRound===null || a.playerStats[0].firstAttackRound>=1);
+    assert.ok(a.playerStats[0].attackEnergyCommitted>=0);
+    assert.ok(a.playerStats[0].investmentEnergyCommitted>=0);
+    assert.ok(Number.isFinite(a.standings[0].grossIncome));
+  }
+});
+
+test('CLI accepts compoundexpand strategy and produces endgame economy', () => {
+  const report=JSON.parse(execFileSync(process.execPath,[
+    cli,'--matches=2','--nodes=20','--players=2','--rounds=70',
+    '--strategies=compoundexpand,default','--attack-pct=5','--seed=expand-cli','--json'
+  ],{encoding:'utf8'}));
+  assert.equal(report.strategies[0],'compoundexpand');
+  assert.equal(report.medianEndingEconomy.length,2);
+  assert.ok(report.results[0].playerStats[0].investmentEnergyCommitted>0);
+});
