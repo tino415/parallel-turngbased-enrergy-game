@@ -682,7 +682,10 @@
   }
 
   function showInspector() {
-    root.hidden = !active || currentView !== 'map';
+    root.hidden =
+      !active ||
+      currentView !== 'map' ||
+      Boolean(document.querySelector('dialog[open]'));
     document.body.classList.toggle('tactical-selection-active', !root.hidden);
     if (root.hidden) return;
     root.classList.toggle('is-editing', editing);
@@ -754,6 +757,16 @@
     },
     true,
   );
+  // The legacy node dialog must remain mounted for older renderer references,
+  // but must never appear together with the contextual node inspector.
+  // Hide the inspector while deliberate Orders/Settings/New game dialogs are open.
+  const modalObserver = new MutationObserver(() => {
+    if (legacyNodeDialog.open) legacyNodeDialog.close();
+    showInspector();
+  });
+  for (const dialog of document.querySelectorAll('dialog')) {
+    modalObserver.observe(dialog, { attributes: true, attributeFilter: ['open'] });
+  }
   window.addEventListener('resize', positionInspector);
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || !active) return;
