@@ -565,5 +565,10 @@
     editing = false;
   }, true);
   window.addEventListener('resize', positionInspector);
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !active) return;
+    if (document.querySelector('dialog[open]')) return;
+    dismiss();
+  });
   render();
 })();
