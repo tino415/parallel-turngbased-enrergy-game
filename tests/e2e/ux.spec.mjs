@@ -340,7 +340,9 @@ test('source node exposes default policy without any Create policy button', asyn
   await node.click();
   await expect(page.locator('#tacticalPolicyPercent')).toHaveValue('50');
   await page.getByText('Other policy settings').click();
-  await expect(page.locator('#policyEditor button').filter({ hasText: 'Create policy' })).toHaveCount(0);
+  await expect(
+    page.locator('#policyEditor button').filter({ hasText: 'Create policy' }),
+  ).toHaveCount(0);
   await expect(page.locator('#policyEditor input[type="number"]').first()).toHaveValue('5');
   expect(await page.evaluate(() => policies[0])).toBeUndefined();
   await page.locator('#tacticalPolicyPercent').fill('42');
@@ -353,7 +355,9 @@ test('source node exposes default policy without any Create policy button', asyn
   });
 });
 
-test('connection editor sets recurring support policy directly using default source values', async ({ page }) => {
+test('connection editor sets recurring support policy directly using default source values', async ({
+  page,
+}) => {
   await page.evaluate(() => {
     state.nodes[1].owner = 0;
     render();
@@ -365,19 +369,27 @@ test('connection editor sets recurring support policy directly using default sou
   expect(await page.evaluate(() => policies[0])).toBeUndefined();
   await page.locator('#tacticalAutoTransfer').check();
   expect(await page.evaluate(() => policies[0])).toEqual({
-    enabled: true, reserve: 5, investPct: 50, dest: 1,
+    enabled: true,
+    reserve: 5,
+    investPct: 50,
+    dest: 1,
   });
   await expect(page.locator('#tacticalSupportInvestPct')).toHaveValue('50');
-  const preview = await page.evaluate(() => previewOrders().find(
-    (o) => o.automatic && o.type === 'transfer' && o.source === 0 && o.dest === 1,
-  ));
+  const preview = await page.evaluate(() =>
+    previewOrders().find(
+      (o) => o.automatic && o.type === 'transfer' && o.source === 0 && o.dest === 1,
+    ),
+  );
   expect(preview?.amount).toBeGreaterThan(0);
   await page.locator('#tacticalSupportInvestPct').fill('0');
   await page.locator('#tacticalSupportInvestPct').blur();
   expect(await page.evaluate(() => policies[0].investPct)).toBe(0);
   await page.locator('#tacticalAutoTransfer').uncheck();
   expect(await page.evaluate(() => policies[0])).toMatchObject({
-    enabled: true, reserve: 5, investPct: 0, dest: null,
+    enabled: true,
+    reserve: 5,
+    investPct: 0,
+    dest: null,
   });
 });
 
