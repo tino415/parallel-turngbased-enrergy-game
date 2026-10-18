@@ -145,6 +145,10 @@ npm run simulate -- --matches=100 --nodes=40 --players=4 --rounds=200 \
   --strategies=superturtle,default,default,default --seed=turtle-v1
 ```
 
+After each simulated match, the final standings also include **active energy**, **locked invested energy**, their sum (total controlled), **base income** (+1 per owned node), **investment income** (10% of invested energy), **gross income per round**, and each player's share of all owned-node gross income. GitHub summaries show per-player **medians** across matches (not sums); full JSON provides exact per-match final snapshots. Income is measured at the final resolved round, and does not subtract future active-energy decay or attack losses.
+
+For the 300-round income-dominance comparison, keep the same seeds in all runs and use 20 nodes / 2 players. Repeat on 40 nodes / 4 players to measure the impact of expansion on +1 production. Set the **Rounds** input to 300 (now the default in the manual workflow).
+
 The `--strategies` CSV must contain exactly one strategy per player. Add `--json` for machine-readable per-match details. Results include victory rates, survival rates, node count and peak investment per player, and matches unresolved by the round cap. A "stalled" match is unresolved with no captures in the last 25 rounds; it does **not** imply that the game has formally ended. Survival alone is not a win.
 
 To run simulations from GitHub, open **Actions → Run balance simulations → Run workflow**, select the number of games, map size, player count, round cap, P0 strategy and opponent strategy. GitHub provides a summary table and downloadable JSON/Markdown artifacts retained for 30 days. This workflow starts only when manually dispatched; it is not part of the game deployment. The GitHub UI offers P0 vs all other players; use the CLI for arbitrary per-player combinations.
