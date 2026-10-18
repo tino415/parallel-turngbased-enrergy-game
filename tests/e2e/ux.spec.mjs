@@ -105,7 +105,9 @@ test('closing selection keeps Focus on the last inspected node', async ({ page }
   await expect(page.locator('#tacticalInspector')).toBeHidden();
 });
 
-test('mobile keyboard resize does not move focused policy input', async ({ page }, testInfo) => {
+test('simulated mobile keyboard resize does not move focused policy input', async ({
+  page,
+}, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('mobile'), 'Mobile keyboard regression');
   const node = page.locator('#map .node-hit[fill="#3278c8"]').first();
   await node.tap();

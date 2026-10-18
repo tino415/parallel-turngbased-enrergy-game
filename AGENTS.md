@@ -58,6 +58,11 @@ python3 -m http.server 4173 --directory dist --bind 0.0.0.0
 and open http://127.0.0.1:4173. `test:ui` starts that server itself, or reuses
 one already listening on 4173.
 
+The Playwright suite runs Chromium only. Tests named "simulated keyboard" shrink
+the viewport to stand in for the on-screen keyboard; real Android Chrome stays
+a manual check, not a CI gate. A known defect is pinned as `test.fail()` with
+its Todoist task in the reason; remove the mark in the change that fixes it.
+
 ## CI and deploy
 
 `.github/workflows/` runs the same `npm run check` and `npm run test:ui`, plus
