@@ -345,7 +345,7 @@
       textElement(
         'p',
         'Policy: ' +
-          (!policy ? 'Not configured' : policy.enabled ? 'Enabled' : 'Disabled') +
+          (!policy ? 'Default values · off' : policy.enabled ? 'Enabled' : 'Disabled') +
           ' · Invest ' +
           (policy?.investPct ?? defaultPolicy().investPct) +
           '% of surplus',
