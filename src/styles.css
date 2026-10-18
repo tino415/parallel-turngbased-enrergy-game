@@ -207,6 +207,12 @@ button:disabled {
   font-size: 13px;
   pointer-events: none;
 }
+.ux-income-label {
+  fill: #92ebc9;
+  stroke: #152033;
+  stroke-width: 3;
+  paint-order: stroke;
+}
 .log {
   max-height: 230px;
   overflow: auto;

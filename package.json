@@ -4,7 +4,7 @@
   "version": "0.8.4",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "npm run format:check && node --check src/engine.js && node --check src/game.js && node --check src/tactical-ui.js && npm test",
+    "check": "npm run format:check && node --check src/engine.js && node --check src/format.js && node --check src/game.js && node --check src/tactical-ui.js && npm test",
     "build": "node scripts/build.mjs",
     "test:ui": "playwright test",
     "test:ui:report": "playwright show-report",
