@@ -71,7 +71,7 @@ test('mobile map captures natural touch gestures without a mode switch', async (
   page,
 }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('mobile'), 'Touch-only behavior');
-  await expect(page.locator('#panMode')).toBeHidden();
+  await expect(page.locator('#panMode')).toHaveCount(0);
   expect(
     await page.locator('#mapViewport').evaluate((el) => getComputedStyle(el).touchAction),
   ).toBe('none');
