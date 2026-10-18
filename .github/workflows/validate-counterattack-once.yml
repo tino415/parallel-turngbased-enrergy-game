@@ -27,11 +27,22 @@ jobs:
             --seed=duel-v1 --json > reports/counterattack.json
           node scripts/simulate.mjs --matches=20 --nodes=20 --players=2 --rounds=250 \
             --strategies=superturtle,default --seed=duel-v1 --json > reports/superturtle.json
+          node scripts/simulate.mjs --matches=20 --nodes=20 --players=2 --rounds=250 \
+            --strategies=turtlecounter,aggressive --turtle-rounds=150 --attack-pct=5 \
+            --seed=duel-v1 --json > reports/counterattack-aggressive.json
+          node scripts/simulate.mjs --matches=20 --nodes=20 --players=2 --rounds=250 \
+            --strategies=superturtle,aggressive --seed=duel-v1 --json > reports/superturtle-aggressive.json
+          node scripts/summarize-simulation.mjs reports/counterattack-aggressive.json > reports/counterattack-aggressive.md
+          node scripts/summarize-simulation.mjs reports/superturtle-aggressive.json > reports/superturtle-aggressive.md
           node scripts/summarize-simulation.mjs reports/counterattack.json > reports/counterattack.md
           node scripts/summarize-simulation.mjs reports/superturtle.json > reports/superturtle.md
           cat reports/counterattack.md >> "$GITHUB_STEP_SUMMARY"
           printf '\n---\n' >> "$GITHUB_STEP_SUMMARY"
           cat reports/superturtle.md >> "$GITHUB_STEP_SUMMARY"
+          printf '\\n---\\n' >> "$GITHUB_STEP_SUMMARY"
+          cat reports/counterattack-aggressive.md >> "$GITHUB_STEP_SUMMARY"
+          printf '\\n---\\n' >> "$GITHUB_STEP_SUMMARY"
+          cat reports/superturtle-aggressive.md >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
