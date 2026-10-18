@@ -4,7 +4,7 @@
   // Presentation-only enhancements. Game state and round resolution remain in game.js.
   const byId = (id) => document.getElementById(id);
   const mobile = () => window.matchMedia('(max-width:760px)').matches;
-  const fmtUX = exactEnergy;
+  const fmtUX = (n) => (Number(n) || 0).toFixed(1);
   const style = document.createElement('style');
   style.textContent = `
 :root{color-scheme:dark;--ux-bg:#0b1424;--ux-panel:#14233a;--ux-card:#1b2d46;--ux-border:#344963;--ux-muted:#a6bad2;--ux-blue:#589cff;--ux-green:#6edab4}
@@ -298,7 +298,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
       element('line',{x1:fromX,y1:fromY,x2:toX,y2:toY,stroke:color,'stroke-width':4,'stroke-dasharray':o.automatic?'8 5':'none',class:'ux-flow-overlay'},graph);
       const arrow=element('path',{d:'M '+toX+' '+toY+' l '+(-dx/len*12-dy/len*5)+' '+(-dy/len*12+dx/len*5)+' l '+(dy/len*10)+' '+(-dx/len*10)+' Z',fill:color,class:'ux-flow-overlay'},graph);
       const label=element('text',{x:(ax+bx)/2-dy/len*15,y:(ay+by)/2+dx/len*15,class:'flow-label'},graph);
-      label.textContent=compactEnergy(o.amount);
+      label.textContent=fmtUX(o.amount);
     }
     // Next-round income/investment previews are economic status, not flow
     // arrows; keep them on every owned node at every zoom and filter level.
@@ -306,7 +306,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
       if (n.owner !== 0) continue;
       const p=projection(n.id),[x,y]=xy[n.id];
       const t=element('text',{x,y:y+53,'font-size':12,fill:'#92ebc9',class:'ux-income-label'},graph);
-      t.textContent='+'+compactEnergy(p.income)+' / I '+compactEnergy(p.invest)+(softCapEnabled()&&p.overflow>.05?' / −'+compactEnergy(p.overflow):'');
+      t.textContent='+'+fmtUX(p.income)+' / I '+fmtUX(p.invest)+(softCapEnabled()&&p.overflow>.05?' / −'+fmtUX(p.overflow):'');
     }
   };
 

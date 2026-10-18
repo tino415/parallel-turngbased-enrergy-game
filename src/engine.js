@@ -270,19 +270,12 @@
         const combined = sources.reduce((sum, s) => sum + s.capacity, 0);
         // Commit enough to beat a defense through moderate combat variance.
         // Unlike the previous AI, this does NOT also demand a second large
-        // reserve equal to the enemy's entire defense.
+        // reserve equal to the enemy's entire defense. Below this force the
+        // frontier holds and gathers forwarded energy instead.
         const captureForce = target.active * 1.3 + 2;
-        let attack = 0;
-        if (combined + 1e-8 >= captureForce) {
-          attack = captureForce;
-        } else if (target.owner !== null && combined >= Math.max(12, target.active * 0.55)) {
-          // When conquest is too expensive, press the frontier to drain the
-          // defender instead of leaving two fully invested armies motionless.
-          attack = Math.min(combined * 0.8, target.active * 0.95);
-        }
-        if (attack <= 1e-8) continue;
+        if (combined + 1e-8 < captureForce) continue;
 
-        let remaining = attack;
+        let remaining = captureForce;
         // Use already-active energy before paying to withdraw any principal.
         for (const s of sources) {
           const amount = Math.min(remaining, s.activeFree);
@@ -310,7 +303,9 @@
       }
 
       // Uncommitted nodes retain a smaller, meaningful defensive reserve,
-      // reinforce under-cap adjacent frontier nodes and invest only spare power.
+      // reinforce under-cap adjacent frontier nodes, invest spare power up to
+      // capacity and pass the rest one hop toward the frontier.
+      const distance = distanceToFrontier(owner);
       for (const n of nodes) {
         if (n.owner !== owner || committed.has(n.id)) continue;
         const near = adjacent[n.id];
@@ -338,12 +333,40 @@
         }
         const room = Math.max(0, SOFT_CAP_RULES.capacity - n.active - n.invested);
         const amount = Math.min(free * 0.8, room);
-        if (amount > 1e-8) {
-          orders[n.id] = { source: n.id, type: 'invest', amount, dest: null };
-        }
+        const invest = amount > 1e-8 ? { source: n.id, type: 'invest', amount, dest: null } : null;
+        const surplus = free - (invest?.amount ?? 0);
+        const towards = nextHopToFrontier(n, distance);
+        const forward =
+          towards !== undefined && surplus > 2
+            ? { source: n.id, type: 'transfer', amount: surplus, dest: towards }
+            : null;
+        const planned = [invest, forward].filter(Boolean);
+        if (planned.length) orders[n.id] = planned.length === 1 ? planned[0] : planned;
       }
     }
     return { orders, withdrawals };
+
+    function nextHopToFrontier(n, distance) {
+      if (!(distance[n.id] >= 1)) return undefined;
+      return adjacent[n.id]
+        .filter((id) => distance[id] < distance[n.id])
+        .sort((a, b) => power(nodes[a]) - power(nodes[b]) || a - b)[0];
+    }
+
+    function distanceToFrontier(owner) {
+      const distance = nodes.map(() => Infinity);
+      const queue = nodes
+        .filter((n) => n.owner === owner && adjacent[n.id].some((id) => nodes[id].owner !== owner))
+        .map((n) => n.id);
+      for (const id of queue) distance[id] = 0;
+      for (const id of queue)
+        for (const next of adjacent[id]) {
+          if (nodes[next].owner !== owner || distance[next] <= distance[id] + 1) continue;
+          distance[next] = distance[id] + 1;
+          queue.push(next);
+        }
+      return distance;
+    }
   }
 
   function resolveRound({

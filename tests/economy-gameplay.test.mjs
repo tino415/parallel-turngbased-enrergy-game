@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
+import { planStrategyOrders } from './support/strategies.mjs';
 
 const engine = runInNewContext(
   readFileSync(new URL('../src/engine.js', import.meta.url), 'utf8') + '\n;GameEngine',
@@ -218,9 +219,57 @@ test('AI avoids impossible spending and leaves garrisons for every attacking sou
   }
 });
 
-test('AI attacks a strong opponent even when no safe immediate conquest exists', () => {
+test('AI holds its frontier instead of attacking below the capture force', () => {
   const nodes = [node(0, 0, 120, 90), node(1, 1, 55, 40)];
   const plan = engine.economicAI(nodes, [[0, 1]]);
-  assert.equal(plan.orders[1].type, 'attack');
-  assert.ok(plan.orders[1].amount > 15, 'siege pressure should not be zero');
+  assert.notEqual(plan.orders[1]?.type, 'attack');
+});
+
+test('AI forwards back-line energy it cannot invest toward the frontier', () => {
+  const nodes = [
+    node(0, 0, 100, 100),
+    node(1, 1, 150, 100),
+    node(2, 1, 60, 200),
+    node(3, 1, 60, 200),
+  ];
+  const links = [
+    [0, 1],
+    [1, 2],
+    [2, 3],
+  ];
+  const plan = engine.economicAI(nodes, links);
+  const transfers = Object.values(plan.orders)
+    .flat()
+    .filter((o) => o.type === 'transfer');
+  assert.ok(transfers.some((o) => o.source === 2 && o.dest === 1 && o.amount > 40));
+  assert.ok(transfers.some((o) => o.source === 3 && o.dest === 2 && o.amount > 40));
+});
+
+function superTurtleDuel(index) {
+  const seed = 'siege-logistics-duel:' + index;
+  const map = engine.buildMap({ count: 20, players: 2, density: 'normal', seed });
+  const home = map.nodes.find((n) => n.owner === 0).id;
+  const rng = engine.seeded(seed + ':combat');
+  let state = { round: 1, finished: false, rulesVersion: 2, playerCount: 2, nodes: map.nodes };
+  while (!state.finished && state.round <= 300) {
+    const turtle = planStrategyOrders({
+      engine,
+      nodes: state.nodes,
+      links: map.links,
+      strategies: ['superturtle', 'default'],
+      round: state.round,
+      homeNodes: [home],
+    })[home];
+    const orders = turtle ? { [home]: { invest: turtle.amount, edges: {} } } : {};
+    state = engine.resolveRound({ state, links: map.links, orders, policies: {}, rng }).state;
+  }
+  return state;
+}
+
+test('AI eventually takes a one-node Super Turtle under the soft cap', () => {
+  for (const index of [0, 1, 2, 3, 4]) {
+    const end = superTurtleDuel(index);
+    assert.ok(end.finished, 'duel ' + index + ' still running at round ' + end.round);
+    assert.ok(end.nodes.every((n) => n.owner !== 0));
+  }
 });
