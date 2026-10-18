@@ -384,6 +384,8 @@ body > header #resolve {
 .tactical-inspector-head strong {
   min-width: 0;
   flex: 1 1 auto;
+  -webkit-user-select: text;
+  user-select: text;
 }
 .tactical-inspector-head button {
   flex: 0 0 40px;
