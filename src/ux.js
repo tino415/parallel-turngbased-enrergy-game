@@ -178,6 +178,12 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   ordersBody.append(orderHelp, count, ordersContainer, clear);
   clear.textContent = 'Clear all manual orders';
   settingsBody.append(settingsBox, rules);
+  const newGameButton = document.createElement('button');
+  newGameButton.type = 'button';
+  newGameButton.textContent = 'New game…';
+  newGameButton.style.marginTop = '16px';
+  newGameButton.onclick = () => { settingsDialog.close(); byId('reset').click(); };
+  settingsBody.append(newGameButton);
 
   oldHeader.replaceChildren();
   oldHeader.append(selectedTitle, oldClose);
@@ -390,6 +396,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
     if (g) g.setAttribute('transform','translate('+camera.x+' '+camera.y+') scale('+camera.scale+')');
   }
   function fitCameraUX() {
+    if (!mobile()) { camera={x:0,y:0,scale:1}; render(); return; }
     const [vw,vh,bw,bh]=viewBounds();
     const scale=Math.min((vw-100)/bw,(vh-120)/bh);
     camera={x:(vw-bw*scale)/2,y:(vh-bh*scale)/2,scale:scale};
