@@ -18,6 +18,8 @@ test('main views can be opened without losing state', async ({ page }, testInfo)
 });
 
 test('map controls change scale and Fit resets it', async ({ page }) => {
+  // Fit defines the camera baseline on mobile (which initially starts focused).
+  await page.locator('#fit').click();
   const graph = page.locator('#map > g').first();
   const initial = await graph.getAttribute('transform');
   await page.locator('#zoomIn').click();
@@ -39,7 +41,7 @@ test('node selection exposes editable allocations', async ({ page }, testInfo) =
 });
 
 test('round state survives refresh using local save', async ({ page }) => {
-  await page.locator('#resolve').click();
+  await page.locator('#uxDockResolve:visible, #resolve:visible').first().click();
   await expect(page.locator('#score')).toContainText('Round 2');
   page.on('dialog', (dialog) => dialog.accept());
   await page.reload();
