@@ -376,18 +376,23 @@ for (const [source, destination] of [
   [0, 1],
   [1, 0],
 ]) {
-  test(`existing surplus transfer ${source} → ${destination} opens checked in saved direction`, async ({ page }) => {
-    await page.evaluate(({ source, destination }) => {
-      state.nodes[1].owner = 0;
-      state.nodes[source].active = 20;
-      policies[source] = {
-        enabled: true,
-        reserve: 5,
-        investPct: 50,
-        dest: destination,
-      };
-      render();
-    }, { source, destination });
+  test(`existing surplus transfer ${source} → ${destination} opens checked in saved direction`, async ({
+    page,
+  }) => {
+    await page.evaluate(
+      ({ source, destination }) => {
+        state.nodes[1].owner = 0;
+        state.nodes[source].active = 20;
+        policies[source] = {
+          enabled: true,
+          reserve: 5,
+          investPct: 50,
+          dest: destination,
+        };
+        render();
+      },
+      { source, destination },
+    );
 
     const edge = page.locator('.tactical-edge-hit[data-edge="0-1"]');
     await edge.click();
