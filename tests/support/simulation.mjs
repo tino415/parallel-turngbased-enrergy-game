@@ -149,6 +149,8 @@ export function simulateMatch({
     peakInvested: 14,
     firstAttackRound: null,
     firstConquestRound: null,
+    attackEnergyCommitted: 0,
+    investmentEnergyCommitted: 0,
   }));
   const hash = createHash('sha256');
   hash.update(JSON.stringify({ positions: map.positions, links: map.links, nodes: map.nodes }));
@@ -166,9 +168,13 @@ export function simulateMatch({
     });
     for (const entry of Object.values(botChoices)) {
       for (const order of Array.isArray(entry) ? entry : [entry]) {
-        if (order.type !== 'attack') continue;
         const progress = playerProgress[before.nodes[order.source].owner];
-        if (progress.firstAttackRound === null) progress.firstAttackRound = before.round;
+        if (order.type === 'attack') {
+          progress.attackEnergyCommitted += order.amount;
+          if (progress.firstAttackRound === null) progress.firstAttackRound = before.round;
+        } else if (order.type === 'invest') {
+          progress.investmentEnergyCommitted += order.amount;
+        }
       }
     }
     const orders = zeroPlayerOrders(before, botChoices);
@@ -241,6 +247,8 @@ export function simulateMatch({
     ...progress,
     survived: alive.has(progress.player),
     peakInvested: Number(progress.peakInvested.toFixed(3)),
+    attackEnergyCommitted: Number(progress.attackEnergyCommitted.toFixed(3)),
+    investmentEnergyCommitted: Number(progress.investmentEnergyCommitted.toFixed(3)),
     roundsSurvived: progress.eliminatedRound ?? state.round - 1,
   }));
   return {
