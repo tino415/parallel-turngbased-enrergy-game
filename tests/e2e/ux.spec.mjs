@@ -66,6 +66,7 @@ test('edge selection highlights only then edits amount on second selection', asy
 test('friendly edge permits both transfer directions without overwriting', async ({ page }) => {
   await page.evaluate(() => {
     state.nodes[1].owner = 0;
+    state.nodes[1].active = 10;
     render();
   });
   const edge = page.locator('.tactical-edge-hit[data-edge="0-1"]');
@@ -427,7 +428,9 @@ test('Orders dialog replaces the contextual inspector instead of stacking modals
   await expect(page.locator('#uxOrdersDialog')).toBeVisible();
   await expect(page.locator('#tacticalInspector')).toBeHidden();
   await page.locator('#uxOrdersDialog .ux-dialog-close').click();
-  await expect(page.locator('#tacticalInspector')).toBeVisible();
+  // Opening Orders from outside the editor intentionally clears selection.
+  // Closing Orders must not resurrect a hidden inspector.
+  await expect(page.locator('#tacticalInspector')).toBeHidden();
   await expect(page.locator('#nodeDialog')).toBeHidden();
 });
 
