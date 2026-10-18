@@ -86,9 +86,10 @@ function simulationOrders(state, links, strategies) {
   for (const [source, choice] of Object.entries(decisions)) {
     if (state.nodes[Number(source)].owner === 0) {
       // Player zero uses the regular manual-order path, like the live game.
-      orders[source] = choice.type === 'invest'
-        ? { invest: choice.amount, edges: {} }
-        : { invest: 0, edges: { [choice.dest]: choice.amount } };
+      orders[source] =
+        choice.type === 'invest'
+          ? { invest: choice.amount, edges: {} }
+          : { invest: 0, edges: { [choice.dest]: choice.amount } };
     } else {
       // Other players use the normal AI-order path, with strategy-specific choices.
       aiOrdersOverride[source] = choice;
@@ -119,7 +120,12 @@ export function simulateMatch({
     'maxRounds must be 1..10000',
   );
 
-  const chosenStrategies = resolveStrategies({ players, blueStrategy, opponentStrategy, strategies });
+  const chosenStrategies = resolveStrategies({
+    players,
+    blueStrategy,
+    opponentStrategy,
+    strategies,
+  });
   const map = engine.buildMap({ count, players, density, seed: String(mapSeed) });
   assertValidMap(map, { count, players });
   const rng = engine.seeded(String(combatSeed));
@@ -134,7 +140,12 @@ export function simulateMatch({
     const before = state;
     const { orders, aiOrdersOverride } = simulationOrders(before, map.links, chosenStrategies);
     const next = engine.resolveRound({
-      state: before, orders, aiOrdersOverride, policies, links: map.links, rng,
+      state: before,
+      orders,
+      aiOrdersOverride,
+      policies,
+      links: map.links,
+      rng,
     });
     assert.equal(before.round + 1, next.state.round, 'round must advance exactly once');
     assertValidState(before, { count, players }); // Input objects must remain valid.
@@ -196,15 +207,13 @@ export function simulateBatch({ matches = 20, seed = 'balance', ...options } = {
     { length: playerCount },
     (_, player) => results.filter((r) => r.winner === player).length,
   );
-  const survivalRate = Array.from(
-    { length: playerCount },
-    (_, player) => Number(
-      (100 * results.filter((r) => r.standings[player].nodes > 0).length / matches).toFixed(2),
+  const survivalRate = Array.from({ length: playerCount }, (_, player) =>
+    Number(
+      ((100 * results.filter((r) => r.standings[player].nodes > 0).length) / matches).toFixed(2),
     ),
   );
-  const averageInvested = Array.from(
-    { length: playerCount },
-    (_, player) => Number(
+  const averageInvested = Array.from({ length: playerCount }, (_, player) =>
+    Number(
       (results.reduce((sum, r) => sum + r.standings[player].invested, 0) / matches).toFixed(2),
     ),
   );

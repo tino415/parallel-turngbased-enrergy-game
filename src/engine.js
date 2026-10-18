@@ -219,7 +219,11 @@
           owners: nodes.map((n) => n.owner),
         }),
       );
-    const all = [...manual, ...automatic, ...Object.values(aiOrdersOverride ?? aiOrders(nodes, links))];
+    const all = [
+      ...manual,
+      ...automatic,
+      ...Object.values(aiOrdersOverride ?? aiOrders(nodes, links)),
+    ];
     const valid = [],
       spent = {};
     for (const o of all) {

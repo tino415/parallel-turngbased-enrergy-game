@@ -38,15 +38,14 @@ function neighborsFor(links, count) {
 }
 
 function invest(node, amount) {
-  return amount > 1e-9
-    ? { source: node.id, type: 'invest', amount, dest: null }
-    : null;
+  return amount > 1e-9 ? { source: node.id, type: 'invest', amount, dest: null } : null;
 }
 
 function defenseReserve(node, neighbors, nodes) {
   const enemyPower = Math.max(
     0,
-    ...neighbors.filter((id) => nodes[id].owner !== null && nodes[id].owner !== node.owner)
+    ...neighbors
+      .filter((id) => nodes[id].owner !== null && nodes[id].owner !== node.owner)
       .map((id) => nodes[id].active),
   );
   // Reserve against neighbors, and retain part of the growing energy pool.
@@ -62,7 +61,8 @@ function specializedOrder(strategy, node, neighbors, nodes) {
   }
   if (strategy === 'turtle') {
     // Expand only into neutral territory, and only when the defense reserve is safe.
-    const neutrals = neighbors.filter((id) => nodes[id].owner === null)
+    const neutrals = neighbors
+      .filter((id) => nodes[id].owner === null)
       .sort((a, b) => nodes[a].active - nodes[b].active);
     if (neutrals.length) {
       const dest = neutrals[0];
@@ -74,7 +74,8 @@ function specializedOrder(strategy, node, neighbors, nodes) {
     return invest(node, surplus);
   }
   if (strategy === 'aggressive') {
-    const foes = neighbors.filter((id) => nodes[id].owner !== node.owner)
+    const foes = neighbors
+      .filter((id) => nodes[id].owner !== node.owner)
       .sort((a, b) => nodes[a].active - nodes[b].active);
     if (foes.length && node.active > nodes[foes[0]].active * 0.75 + 2) {
       const dest = foes[0];
@@ -88,7 +89,8 @@ function specializedOrder(strategy, node, neighbors, nodes) {
     return invest(node, node.active * 0.35);
   }
   if (strategy === 'balanced') {
-    const foes = neighbors.filter((id) => nodes[id].owner !== node.owner)
+    const foes = neighbors
+      .filter((id) => nodes[id].owner !== node.owner)
       .sort((a, b) => nodes[a].active - nodes[b].active);
     if (foes.length) {
       const dest = foes[0];
@@ -110,10 +112,12 @@ export function planStrategyOrders({ nodes, links, strategies, engine }) {
   for (const node of nodes) {
     if (node.owner === null) continue;
     const strategy = strategies[node.owner];
-    if (!STRATEGIES.includes(strategy)) throw new Error('Invalid strategy for player ' + node.owner);
-    const order = strategy === 'default'
-      ? allDefault[node.id] ?? null
-      : specializedOrder(strategy, node, adjacency[node.id], nodes);
+    if (!STRATEGIES.includes(strategy))
+      throw new Error('Invalid strategy for player ' + node.owner);
+    const order =
+      strategy === 'default'
+        ? (allDefault[node.id] ?? null)
+        : specializedOrder(strategy, node, adjacency[node.id], nodes);
     if (order) orders[node.id] = order;
   }
   return orders;

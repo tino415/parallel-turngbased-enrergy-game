@@ -10,8 +10,10 @@ const summary = [
   '',
   '| Player | Strategy | Wins | Survived (%) | Mean final invested energy |',
   '|---|---|---:|---:|---:|',
-  ...report.strategies.map((strategy, i) =>
-    `| P${i} | ${strategy} | ${report.wins[i]} | ${report.survivalRate[i]} | ${report.averageInvested[i]} |`),
+  ...report.strategies.map(
+    (strategy, i) =>
+      `| P${i} | ${strategy} | ${report.wins[i]} | ${report.survivalRate[i]} | ${report.averageInvested[i]} |`,
+  ),
   '',
   `**Unresolved by round limit:** ${report.unresolved} of ${report.matches}`,
   '',

@@ -27,7 +27,8 @@ function parse(args) {
       options.json = true;
       continue;
     }
-    const match = /^--(matches|rounds|nodes|players|density|seed|blue|opponents|strategies)=(.+)$/.exec(arg);
+    const match =
+      /^--(matches|rounds|nodes|players|density|seed|blue|opponents|strategies)=(.+)$/.exec(arg);
     if (!match) throw new Error('Unrecognized option: ' + arg);
     const [, key, value] = match;
     if (key === 'density' || key === 'seed') options[key] = value;
@@ -61,10 +62,14 @@ try {
       'AI wins per player: ' + report.wins.map((value, id) => 'P' + id + '=' + value).join(' '),
     );
     console.log('Unresolved by round cap: ' + report.unresolved);
-    console.log('Survival at round cap / match end (%): ' +
-      report.survivalRate.map((v, i) => 'P' + i + '=' + v).join(' '));
-    console.log('Mean final invested energy: ' +
-      report.averageInvested.map((v, i) => 'P' + i + '=' + v).join(' '));
+    console.log(
+      'Survival at round cap / match end (%): ' +
+        report.survivalRate.map((v, i) => 'P' + i + '=' + v).join(' '),
+    );
+    console.log(
+      'Mean final invested energy: ' +
+        report.averageInvested.map((v, i) => 'P' + i + '=' + v).join(' '),
+    );
     console.log(
       'Rounds: average=' +
         report.averageRounds +
