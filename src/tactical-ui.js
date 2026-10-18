@@ -57,22 +57,9 @@
   let focusedNode = state.nodes.find((node) => node.owner === 0)?.id ?? 0;
   const svg = byId('map');
   const viewport = byId('mapViewport');
-  const mobileLayout = matchMedia('(max-width: 760px)');
-  const actionDock = byId('uxDockOrders').parentElement;
-
-  // Mobile has one bottom surface: render the contextual editor INSIDE the
-  // existing Orders/Resolve dock, rather than as a second fixed overlay.
-  // Desktop retains its independent floating inspector. Only move when the
-  // breakpoint changes, never on viewport-height/keyboard resize.
-  function placeInspector() {
-    const parent = mobileLayout.matches ? actionDock : document.body;
-    if (root.parentElement !== parent) parent.append(root);
-  }
-  placeInspector();
-  mobileLayout.addEventListener('change', () => {
-    placeInspector();
-    showInspector();
-  });
+  // Keep the editor independent of the action dock. Mobile positions it above
+  // the dock rather than replacing/hiding the existing Orders/Resolve buttons.
+  // Its contents scroll; the document and bottom dock never do.
   const legacyNodeDialog = byId('nodeDialog');
 
   // Never let the superseded full-screen node editor stack over the new
@@ -298,7 +285,22 @@
   }
 
   svg.addEventListener('click', (event) => {
-    if (event.target.closest('.node-hit, .tactical-edge-hit') || !active || pinchInProgress) return;
+    const nodeGroup = event.target.closest('g');
+    if (
+      event.target.closest('.node-hit, .tactical-edge-hit') ||
+      nodeGroup?.querySelector(':scope > .node-hit') ||
+      !active ||
+      pinchInProgress
+    ) return;
+    dismiss();
+  });
+
+  // Clicking elsewhere (header, toolbar or outside the editor) closes it.
+  // Map nodes/edges handle their own selection, and dragging should not close it.
+  document.addEventListener('click', (event) => {
+    if (!active || root.hidden || root.contains(event.target)) return;
+    if (event.target.closest('dialog, #tacticalMenu, .ux-dock')) return;
+    if (svg.contains(event.target)) return;
     dismiss();
   });
 
@@ -705,9 +707,8 @@
   }
 
   function showInspector() {
-    // Mobile selection only highlights the map on first tap. There is no
-    // preview modal: the second tap (or a direct dashboard edit) opens the
-    // editor inside the one existing bottom action area.
+    // The first tap highlights only. The second tap opens the editor above
+    // the unchanged mobile Orders/Resolve dock, or near the edge on desktop.
     root.hidden =
       !active ||
       currentView !== 'map' ||
@@ -734,30 +735,9 @@
     body.className = 'tactical-inspector-body';
     if (active.kind === 'node') showNode(body, active.id);
     else showEdge(body, active.a, active.b);
-    const actions = document.createElement('div');
-    actions.className = 'tactical-inspector-actions';
-    const action = document.createElement('button');
-    action.type = 'button';
-    action.className = 'primary';
-    action.textContent = editing ? 'Collapse' : 'Edit';
-    action.onclick = () => {
-      editing = !editing;
-      render();
-    };
-    actions.append(action);
-    const review = document.createElement('button');
-    review.type = 'button';
-    review.textContent = 'Orders';
-    review.className = 'tactical-mobile-action';
-    review.onclick = () => byId('uxDockOrders').click();
-    const resolveRound = document.createElement('button');
-    resolveRound.type = 'button';
-    resolveRound.textContent = 'Resolve →';
-    resolveRound.className = 'primary tactical-mobile-action';
-    resolveRound.disabled = byId('resolve').disabled;
-    resolveRound.onclick = () => byId('resolve').click();
-    actions.append(review, resolveRound);
-    root.replaceChildren(header, body, actions);
+    // No duplicate Orders/Resolve/Collapse buttons. The original bottom dock
+    // remains reachable below this editor; × and outside-click dismiss it.
+    root.replaceChildren(header, body);
     positionInspector();
   }
 
