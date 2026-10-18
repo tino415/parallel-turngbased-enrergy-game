@@ -7,8 +7,6 @@ services:
     command: sleep infinity
     init: true
     working_dir: /workspace
-    ports:
-      - '127.0.0.1:4173:4173'
     volumes:
       - .:/workspace:Z
       # Built for the image's libc, so it is not shared with the host.
