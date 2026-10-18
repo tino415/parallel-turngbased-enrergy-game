@@ -348,6 +348,17 @@
     dismiss();
   });
 
+  // Orders is a separate dialog, not another layer on top of the
+  // contextual editor. Clear selection before the dock opens Orders; otherwise
+  // the editor reappears behind it when Orders closes.
+  byId('uxDockOrders').addEventListener(
+    'click',
+    () => {
+      if (active) dismiss();
+    },
+    true,
+  );
+
   // Clicking elsewhere (header, toolbar or outside the editor) closes it.
   // Map nodes/edges handle their own selection, and dragging should not close it.
   document.addEventListener('click', (event) => {
