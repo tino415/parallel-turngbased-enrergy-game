@@ -342,7 +342,10 @@
   document.addEventListener('click', (event) => {
     if (!active || root.hidden || root.contains(event.target)) return;
     if (event.target.closest('dialog, #tacticalMenu, .ux-dock')) return;
-    if (svg.contains(event.target)) return;
+    // render() rebuilds SVG nodes synchronously: the clicked target may already
+    // be detached by the time the event bubbles to document. The original
+    // composed path still identifies map taps correctly.
+    if (event.composedPath().includes(svg)) return;
     dismiss();
   });
 
