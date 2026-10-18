@@ -35,13 +35,13 @@ on:
         required: true
         default: superturtle
         type: choice
-        options: [default, aggressive, balanced, turtle, superturtle, turtlecounter]
+        options: [default, aggressive, balanced, turtle, superturtle, compoundexpand, turtlecounter]
       opponents:
         description: 'Strategy for all other players'
         required: true
         default: default
         type: choice
-        options: [default, aggressive, balanced, turtle, superturtle, turtlecounter]
+        options: [default, aggressive, balanced, turtle, superturtle, compoundexpand, turtlecounter]
       turtle_rounds:
         description: 'Turtle phase duration (0-500 rounds)'
         required: true
