@@ -15,31 +15,6 @@ permissions:
   contents: read
 
 jobs:
-  format-experiment:
-    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'experiment/soft-cap-overflow-withdrawal'
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: experiment/soft-cap-overflow-withdrawal
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - run: npm ci --no-audit --no-fund
-      - name: Normalize experimental source formatting
-        run: |
-          npx prettier --write docs/SOFT_CAP_EXPERIMENT.md scripts/soft-cap-experiment.mjs scripts/summarize-soft-cap.mjs tests/soft-cap.test.mjs
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          if ! git diff --quiet; then
-            git add docs/SOFT_CAP_EXPERIMENT.md scripts/soft-cap-experiment.mjs scripts/summarize-soft-cap.mjs tests/soft-cap.test.mjs
-            git commit -m 'style(sim): normalize experiment formatting'
-            git push origin HEAD:experiment/soft-cap-overflow-withdrawal
-          fi
-
-
   paired-simulations:
     runs-on: ubuntu-latest
     timeout-minutes: 45
