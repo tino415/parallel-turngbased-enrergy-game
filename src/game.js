@@ -307,7 +307,7 @@ function renderPolicyEditor() {
   container.replaceChildren();
   if (selected === null || state.nodes[selected].owner !== 0) return;
   const source = selected,
-    p = policies[source],
+    p = { ...defaultPolicy(), enabled: false, ...policies[source] },
     box = document.createElement('div');
   box.className = 'policy-box';
   const heading = document.createElement('h3');
@@ -321,16 +321,13 @@ function renderPolicyEditor() {
     b.onclick = fn;
     actions.append(b);
   }
-  button(p ? 'Remove policy' : 'Create policy', () => {
-    if (p) delete policies[source];
-    else policies[source] = defaultPolicy();
+  // An unconfigured node displays default values without silently activating
+  // an automatic order. The Enabled checkbox or an edited field creates the
+  // actual policy, so there is no separate Create policy action.
+  button('Copy', () => {
+    clipboard = { ...p };
     render();
   });
-  if (p)
-    button('Copy', () => {
-      clipboard = { ...p };
-      render();
-    });
   if (clipboard)
     button('Paste', () => {
       policies[source] = {
@@ -343,7 +340,7 @@ function renderPolicyEditor() {
       render();
     });
   box.append(actions);
-  if (p) {
+  {
     const add = (title, field) => {
       const label = document.createElement('label');
       label.textContent = title;
