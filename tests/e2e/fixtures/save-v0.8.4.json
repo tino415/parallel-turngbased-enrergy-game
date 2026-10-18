@@ -1,0 +1,187 @@
+{
+  "state": {
+    "round": 2,
+    "nodes": [
+      {
+        "id": 0,
+        "owner": 0,
+        "active": 5.364000000000001,
+        "invested": 12.32
+      },
+      {
+        "id": 1,
+        "owner": 0,
+        "active": 6.617508176015495,
+        "invested": 0
+      },
+      {
+        "id": 2,
+        "owner": 0,
+        "active": 3.16110866936735,
+        "invested": 0
+      },
+      {
+        "id": 3,
+        "owner": null,
+        "active": 4.522328825201839,
+        "invested": 0
+      },
+      {
+        "id": 4,
+        "owner": null,
+        "active": 4.7459557596594095,
+        "invested": 0
+      },
+      {
+        "id": 5,
+        "owner": null,
+        "active": 3.7463576393201947,
+        "invested": 0
+      },
+      {
+        "id": 6,
+        "owner": null,
+        "active": 6.649213605001569,
+        "invested": 0
+      },
+      {
+        "id": 7,
+        "owner": null,
+        "active": 5.763822271488607,
+        "invested": 0
+      },
+      {
+        "id": 8,
+        "owner": null,
+        "active": 5.700929249450565,
+        "invested": 0
+      },
+      {
+        "id": 9,
+        "owner": null,
+        "active": 5.73722883798182,
+        "invested": 0
+      },
+      {
+        "id": 10,
+        "owner": null,
+        "active": 6.325336870644242,
+        "invested": 0
+      },
+      {
+        "id": 11,
+        "owner": 1,
+        "active": 4.845586962760781,
+        "invested": 0
+      },
+      {
+        "id": 12,
+        "owner": null,
+        "active": 4.6073532366193835,
+        "invested": 0
+      },
+      {
+        "id": 13,
+        "owner": 1,
+        "active": 17.78338188503869,
+        "invested": 14
+      }
+    ],
+    "finished": false,
+    "playerCount": 2
+  },
+  "orders": {
+    "0": {
+      "invest": 1,
+      "withdraw": 0,
+      "edges": {}
+    },
+    "1": {
+      "invest": 1,
+      "withdraw": 0,
+      "edges": {}
+    },
+    "2": {
+      "invest": 0,
+      "withdraw": 0,
+      "edges": {
+        "0": 1.5
+      },
+      "hold": false
+    }
+  },
+  "policies": {
+    "0": {
+      "enabled": true,
+      "reserve": 4,
+      "investPct": 55,
+      "dest": null
+    },
+    "1": {
+      "enabled": true,
+      "reserve": 4,
+      "investPct": 55,
+      "dest": null
+    },
+    "2": {
+      "enabled": true,
+      "reserve": 2,
+      "investPct": 60,
+      "dest": 0
+    }
+  },
+  "xy": [
+    [70, 230],
+    [165, 115],
+    [165, 355],
+    [280, 70],
+    [290, 210],
+    [280, 385],
+    [415, 105],
+    [420, 295],
+    [520, 170],
+    [530, 375],
+    [630, 220],
+    [640, 405],
+    [725, 300],
+    [735, 415]
+  ],
+  "edges": [
+    [0, 1],
+    [0, 2],
+    [1, 3],
+    [1, 4],
+    [2, 4],
+    [2, 5],
+    [3, 6],
+    [4, 6],
+    [4, 7],
+    [5, 7],
+    [6, 8],
+    [7, 8],
+    [7, 9],
+    [8, 10],
+    [9, 10],
+    [9, 11],
+    [10, 12],
+    [11, 12],
+    [11, 13],
+    [12, 13]
+  ],
+  "N": 14,
+  "playerCount": 2,
+  "mapSeed": "classic",
+  "history": [
+    "Round 1 complete: Blue 3 nodes / Red 2 nodes.",
+    "Round 1 · Node 11: Red attacks Neutral with 6.9 vs 3.8. Captured! Attacker lost 2.6, defender lost 3.8. Remaining 4.3.",
+    "Round 1 · Node 2: Blue attacks Neutral with 10.0 vs 6.4. Captured! Attacker lost 7.6, defender lost 6.4. Remaining 2.4.",
+    "Round 1 · Node 1: Blue attacks Neutral with 12.0 vs 6.5. Captured! Attacker lost 5.8, defender lost 6.5. Remaining 6.2.",
+    "New match started. You are Blue."
+  ],
+  "selected": 2,
+  "defaults": {
+    "enabled": false,
+    "reserve": "3",
+    "invest": "45"
+  }
+}
