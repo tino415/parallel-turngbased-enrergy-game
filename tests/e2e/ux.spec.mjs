@@ -383,7 +383,9 @@ test('connection editor sets recurring support policy directly using default sou
   await edge.click();
   await edge.click();
   await expect(page.locator('#tacticalAutoTransfer')).toBeVisible();
-  await expect(page.locator('#tacticalInspector')).toContainText('Send remaining surplus to Node 1 each round');
+  await expect(page.locator('#tacticalInspector')).toContainText(
+    'Send remaining surplus to Node 1 each round',
+  );
   expect(await page.evaluate(() => policies[0])).toBeUndefined();
   await page.locator('#tacticalAutoTransfer').check();
   expect(await page.evaluate(() => policies[0])).toEqual({
