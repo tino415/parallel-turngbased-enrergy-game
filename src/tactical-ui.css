@@ -1,6 +1,6 @@
 /* Map-first contextual interface; loaded after the existing UX styles. */
 body {
-  overflow: hidden;
+  overflow-x: hidden;
 }
 body > header {
   min-height: 47px;
