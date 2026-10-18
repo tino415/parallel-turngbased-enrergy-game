@@ -5,6 +5,7 @@ export const STRATEGIES = Object.freeze([
   'balanced',
   'turtle',
   'superturtle',
+  'turtlecounter',
 ]);
 
 export function normalizeStrategies(value, players) {
@@ -40,7 +41,7 @@ export function defensiveReserve(node, nodes, adjacent) {
   return Math.min(node.active, Math.max(3, threatened * 1.5 + 2));
 }
 
-function planNode(node, name, nodes, adjacent) {
+function planNode(node, name, nodes, adjacent, { round, turtleRounds, attackPct, isHome }) {
   const reserve = defensiveReserve(node, nodes, adjacent);
   const free = Math.max(0, node.active - reserve);
   const enemies = adjacent
@@ -51,6 +52,21 @@ function planNode(node, name, nodes, adjacent) {
   const attack = (dest, amount) =>
     amount > 1e-9 ? { source: node.id, type: 'attack', amount, dest } : null;
 
+  if (name === 'turtlecounter') {
+    // Only the starting node follows the two-phase plan; conquered nodes
+    // return to the normal AI on their next round.
+    if (!isHome) throw new Error('Captured nodes must use default AI');
+    if (round <= turtleRounds) return invest(free);
+
+    // Attack at most this fraction of start-of-round ACTIVE energy.
+    // Invested principal is locked and can never be spent directly.
+    // Continue preserving the original dynamic defense reserve.
+    const budget = Math.min(free, node.active * attackPct / 100);
+    const target = enemies.find((id) => budget > nodes[id].active * 1.5);
+    const strike = target === undefined ? null : attack(target, budget);
+    const savings = invest(free - (strike?.amount ?? 0));
+    return [savings, strike].filter(Boolean);
+  }
   if (name === 'superturtle') {
     // No transfers or attacks, ever. On the initial node, reinvest everything
     // above dynamic defense. In an unthreatened position preserve 3 active.
@@ -85,7 +101,10 @@ function planNode(node, name, nodes, adjacent) {
   throw new Error('Unknown strategy: ' + name);
 }
 
-export function planStrategyOrders({ engine, nodes, links, strategies }) {
+export function planStrategyOrders({
+  engine, nodes, links, strategies, round = 1,
+  homeNodes = [], turtleRounds = 150, attackPct = 5,
+}) {
   // The default profile must behave identically to the pre-strategy harness.
   const defaults = engine.aiOrders(nodes, links, true);
   const adjacent = Array.from({ length: nodes.length }, () => []);
@@ -97,11 +116,13 @@ export function planStrategyOrders({ engine, nodes, links, strategies }) {
   for (const node of nodes) {
     if (node.owner === null) continue;
     const name = strategies[node.owner];
-    if (name === 'default') {
+    if (name === 'default' || (name === 'turtlecounter' && node.id !== homeNodes[node.owner])) {
       if (defaults[node.id]) result[node.id] = defaults[node.id];
       continue;
     }
-    const order = planNode(node, name, nodes, adjacent[node.id]);
+    const order = planNode(node, name, nodes, adjacent[node.id], {
+      round, turtleRounds, attackPct, isHome: node.id === homeNodes[node.owner],
+    });
     if (order) result[node.id] = order;
   }
   return result;
