@@ -57,7 +57,7 @@ let state,
   currentView = 'map',
   autosaveAvailable = false;
 const softCapEnabled = () => state?.rulesVersion === SOFT_CAP_RULES.version;
-const withdrawal = (source, p = plan(source)) => softCapEnabled() ? p.withdraw || 0 : 0;
+const withdrawal = (source, p = plan(source)) => (softCapEnabled() ? p.withdraw || 0 : 0);
 const availableEnergy = (source, p = plan(source)) =>
   state.nodes[source].active + withdrawal(source, p) * (1 - SOFT_CAP_RULES.withdrawalFee);
 function fresh() {
@@ -190,7 +190,8 @@ function setAllocation(source, destination, value) {
     else p.edges[destination] = amount;
   } else return;
   if (allocated(source, p) > availableEnergy(source, p) + 1e-8) {
-    $('hint').textContent = 'Over budget: allocations cannot exceed ' + fmt(availableEnergy(source, p));
+    $('hint').textContent =
+      'Over budget: allocations cannot exceed ' + fmt(availableEnergy(source, p));
     return;
   }
   if (allocated(source, p) < 1e-9 && !p.hold && !p.withdraw) delete orders[source];
@@ -226,10 +227,15 @@ function renderAllocator() {
   const summary = document.createElement('div');
   summary.className = 'order-row';
   summary.textContent =
-    'Allocated ' + fmt(used) + ' / ' + fmt(availableEnergy(selected, p)) +
-    ' · Defense reserve ' + fmt(remain) +
-    (softCapEnabled() ? ' · Total ' + fmt(n.active + n.invested) +
-      ' / ' + SOFT_CAP_RULES.capacity + ' capacity' : '');
+    'Allocated ' +
+    fmt(used) +
+    ' / ' +
+    fmt(availableEnergy(selected, p)) +
+    ' · Defense reserve ' +
+    fmt(remain) +
+    (softCapEnabled()
+      ? ' · Total ' + fmt(n.active + n.invested) + ' / ' + SOFT_CAP_RULES.capacity + ' capacity'
+      : '');
   container.append(summary);
   const fields = document.createElement('div');
   fields.className = 'order-row';
@@ -241,7 +247,8 @@ function renderAllocator() {
     row.className = 'allocation-line';
     const name = document.createElement('label');
     name.textContent = label;
-    const max = target === 'withdraw' ? n.invested : Math.max(n.active, availableEnergy(selected, p));
+    const max =
+      target === 'withdraw' ? n.invested : Math.max(n.active, availableEnergy(selected, p));
     const input = numberField(amount, max, (value) => setAllocation(selected, target, value));
     row.append(name, input);
     fields.append(row);
@@ -250,8 +257,11 @@ function renderAllocator() {
     makeRow('Withdraw invested → active (5% fee)', withdrawal(selected, p), 'withdraw');
     const note = document.createElement('small');
     note.className = 'muted';
-    note.textContent = 'Withdrawn energy is spendable this round; overflow above ' +
-      SOFT_CAP_RULES.capacity + ' decays ' + Math.round(100 * SOFT_CAP_RULES.overflowDecay) +
+    note.textContent =
+      'Withdrawn energy is spendable this round; overflow above ' +
+      SOFT_CAP_RULES.capacity +
+      ' decays ' +
+      Math.round(100 * SOFT_CAP_RULES.overflowDecay) +
       '% at round end (including invested principal).';
     fields.append(note);
   }
@@ -968,10 +978,16 @@ function render() {
   let selectedNode = selected === null ? null : nodes[selected];
   $('selectedTitle').textContent = selectedNode ? 'Node ' + selected : 'Select a blue node';
   $('details').textContent = selectedNode
-    ? 'Active ' + fmt(selectedNode.active) + ' · Invested ' + fmt(selectedNode.invested) +
+    ? 'Active ' +
+      fmt(selectedNode.active) +
+      ' · Invested ' +
+      fmt(selectedNode.invested) +
       (softCapEnabled() && selectedNode.owner !== null
-        ? ' · Total ' + fmt(selectedNode.active + selectedNode.invested) +
-          ' / ' + SOFT_CAP_RULES.capacity + ' sustainable capacity'
+        ? ' · Total ' +
+          fmt(selectedNode.active + selectedNode.invested) +
+          ' / ' +
+          SOFT_CAP_RULES.capacity +
+          ' sustainable capacity'
         : '')
     : 'Choose a blue node to issue an order.';
   $('hint').textContent = state.finished

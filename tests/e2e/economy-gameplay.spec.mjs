@@ -22,7 +22,9 @@ test('new game editor shows combined capacity and can spend withdrawn reserves',
   const invest = page.locator('#uxManualSection .allocation-line input').nth(1);
   await invest.fill('30');
   await invest.blur();
-  const before = await page.evaluate(() => JSON.parse(localStorage.getItem('parallel-energy-game-v1')));
+  const before = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('parallel-energy-game-v1')),
+  );
   // Check the actual pending browser state without depending on the storage key.
   await expect(page.locator('#uxBalance')).toContainText('Manual');
   await page.locator('#closeNodeDialog').click();

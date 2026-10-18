@@ -14,7 +14,12 @@
   const playerColor = (owner) => (owner === null ? '#768092' : players[owner].color);
 
   // Version 2 is enabled for NEW matches; legacy autosaves retain original rules.
-  const SOFT_CAP_RULES = Object.freeze({ version: 2, capacity: 250, overflowDecay: 0.25, withdrawalFee: 0.05 });
+  const SOFT_CAP_RULES = Object.freeze({
+    version: 2,
+    capacity: 250,
+    overflowDecay: 0.25,
+    withdrawalFee: 0.05,
+  });
   const isSoftCap = (state) => state.rulesVersion === SOFT_CAP_RULES.version;
 
   // Pure, browser-independent map and economy functions.
@@ -137,7 +142,8 @@
   function applyOverflow(node, rules = SOFT_CAP_RULES) {
     const next = { ...node };
     const total = Math.max(0, next.active + next.invested);
-    const loss = node.owner === null ? 0 : Math.max(0, total - rules.capacity) * rules.overflowDecay;
+    const loss =
+      node.owner === null ? 0 : Math.max(0, total - rules.capacity) * rules.overflowDecay;
     if (loss > 0 && total > 0) {
       next.active = Math.max(0, next.active * (1 - loss / total));
       next.invested = Math.max(0, next.invested * (1 - loss / total));
@@ -146,7 +152,9 @@
   }
 
   function forecast(node, incoming, outgoing, options = {}) {
-    const withdraw = options.softCap ? Math.min(node.invested, Math.max(0, options.withdraw || 0)) : 0;
+    const withdraw = options.softCap
+      ? Math.min(node.invested, Math.max(0, options.withdraw || 0))
+      : 0;
     const invest = outgoing.filter((o) => o.type === 'invest').reduce((a, o) => a + o.amount, 0);
     const spent = outgoing.reduce((a, o) => a + o.amount, 0);
     const available = node.active + withdraw * (1 - SOFT_CAP_RULES.withdrawalFee);
@@ -226,15 +234,20 @@
       const near = adjacent(n.id);
       const hostiles = near.filter((id) => nodes[id].owner !== n.owner);
       const owned = near.filter((id) => nodes[id].owner === n.owner);
-      const threat = hostiles.reduce((sum, id) =>
-        nodes[id].owner === null ? sum : sum + nodes[id].active, 0);
+      const threat = hostiles.reduce(
+        (sum, id) => (nodes[id].owner === null ? sum : sum + nodes[id].active),
+        0,
+      );
       const reserve = Math.max(3, threat * 1.5 + 2);
       const net = 1 - SOFT_CAP_RULES.withdrawalFee;
       const possible = n.active + n.invested * net;
       const defensiveWithdrawal = Math.min(n.invested, Math.max(0, reserve - n.active) / net);
-      const targets = hostiles.sort((a, b) =>
-        Number(nodes[a].owner !== null) - Number(nodes[b].owner !== null) ||
-        nodes[a].active - nodes[b].active || a - b);
+      const targets = hostiles.sort(
+        (a, b) =>
+          Number(nodes[a].owner !== null) - Number(nodes[b].owner !== null) ||
+          nodes[a].active - nodes[b].active ||
+          a - b,
+      );
       const target = targets[0];
       const attackEnergy = target === undefined ? Infinity : nodes[target].active * 1.5 + 0.5;
       let withdrawal = defensiveWithdrawal;
@@ -260,8 +273,10 @@
       const frontier = owned
         .filter((id) => adjacent(id).some((other) => nodes[other].owner !== n.owner))
         .filter((id) => nodes[id].active + nodes[id].invested < SOFT_CAP_RULES.capacity * 0.8)
-        .sort((a, b) => nodes[a].active + nodes[a].invested -
-          (nodes[b].active + nodes[b].invested) || a - b)[0];
+        .sort(
+          (a, b) =>
+            nodes[a].active + nodes[a].invested - (nodes[b].active + nodes[b].invested) || a - b,
+        )[0];
       if (frontier !== undefined && free > 2) {
         const room = SOFT_CAP_RULES.capacity - nodes[frontier].active - nodes[frontier].invested;
         const amount = Math.max(0, Math.min(free * 0.7, room));
@@ -273,9 +288,13 @@
       // Avoid investment when it simply causes preventable over-cap decay.
       const room = Math.max(0, SOFT_CAP_RULES.capacity - n.active - n.invested);
       const amount = Math.min(free * 0.8, room);
-      if (amount > 1e-9) orders[n.id] = {
-        source: n.id, type: 'invest', amount, dest: null,
-      };
+      if (amount > 1e-9)
+        orders[n.id] = {
+          source: n.id,
+          type: 'invest',
+          amount,
+          dest: null,
+        };
     }
     return { orders, withdrawals };
   }
@@ -301,9 +320,7 @@
       rnd = (a, b) => a + rng() * (b - a),
       clamp = (v) => Math.max(0, v);
     const softCap = isSoftCap(state);
-    const aiPlan = softCap && aiOrdersOverride === null
-      ? economicAI(state.nodes, links)
-      : null;
+    const aiPlan = softCap && aiOrdersOverride === null ? economicAI(state.nodes, links) : null;
     // Withdrawal is a start-of-round order: it can fund an action from this
     // source, but neither an incoming transfer nor a later capture can.
     if (softCap) {
@@ -318,8 +335,14 @@
       }
       for (const [source, amount] of Object.entries(requested)) {
         const n = nodes[Number(source)];
-        if (!n || n.owner === null || !Number.isFinite(amount) || amount < 0 ||
-            amount > n.invested + 1e-8) continue;
+        if (
+          !n ||
+          n.owner === null ||
+          !Number.isFinite(amount) ||
+          amount < 0 ||
+          amount > n.invested + 1e-8
+        )
+          continue;
         const withdrawal = Math.min(amount, n.invested);
         n.invested -= withdrawal;
         n.active += withdrawal * (1 - SOFT_CAP_RULES.withdrawalFee);
@@ -352,9 +375,10 @@
           owners: nodes.map((n) => n.owner),
         }),
       );
-    const ai = aiOrdersOverride === null
-      ? Object.values(aiPlan ? aiPlan.orders : aiOrders(nodes, links)).flat()
-      : aiOrdersOverride;
+    const ai =
+      aiOrdersOverride === null
+        ? Object.values(aiPlan ? aiPlan.orders : aiOrders(nodes, links)).flat()
+        : aiOrdersOverride;
     const all = [...manual, ...automatic, ...ai];
     const valid = [],
       spent = {};
@@ -455,8 +479,8 @@
         n.invested = projection.node.invested;
         totalLoss += projection.loss;
       }
-      if (totalLoss > 0.05) log('Round ' + state.round +
-        ' · Overflow decay destroyed ' + fmt(totalLoss) + ' energy.');
+      if (totalLoss > 0.05)
+        log('Round ' + state.round + ' · Overflow decay destroyed ' + fmt(totalLoss) + ' energy.');
     }
     for (const id of Object.keys(nextPolicies)) {
       if (nodes[Number(id)].owner !== 0) delete nextPolicies[id];
