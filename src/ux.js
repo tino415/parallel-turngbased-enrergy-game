@@ -262,7 +262,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   if (hintZoom) hintZoom.remove();
   const option = document.createElement('option');
   option.value = 'selected';
-  option.textContent = 'Selected node';
+  option.textContent = 'Attacks + selected';
   byId('overlay').prepend(option);
   byId('overlay').value = 'selected';
   const focusButton = document.createElement('button');
@@ -280,7 +280,9 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
     const paths = previewOrders();
     for (const o of paths) {
       if (o.dest === null || o.dest === undefined || o.amount <= .01) continue;
-      if (filter === 'selected' && (selected === null || o.source !== selected)) continue;
+      // Attacks remain visible across the map in the default view, even when
+      // a different node is selected. Other flows stay contextual to avoid clutter.
+      if (filter === 'selected' && o.type !== 'attack' && (selected === null || o.source !== selected)) continue;
       if (filter === 'manual' && o.automatic) continue;
       if (filter === 'policy' && !o.automatic) continue;
       const [ax,ay] = xy[o.source], [bx,by] = xy[o.dest];
