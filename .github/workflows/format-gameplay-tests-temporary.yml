@@ -1,0 +1,35 @@
+name: Temporary gameplay test formatting
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/format-gameplay-tests-temporary.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  fix-format:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feat/soft-cap-withdrawal-gameplay'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/soft-cap-withdrawal-gameplay
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --no-audit --no-fund
+      - name: Normalize amended tests and source
+        run: |
+          npx prettier --write src/game.js tests/e2e/ux.spec.mjs tests/e2e/economy-gameplay.spec.mjs
+          npm run check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if ! git diff --quiet; then
+            git add src/game.js tests/e2e/ux.spec.mjs tests/e2e/economy-gameplay.spec.mjs
+            git commit -m 'style(tests): normalize browser regression fixes'
+            git push origin HEAD:feat/soft-cap-withdrawal-gameplay
+          fi
