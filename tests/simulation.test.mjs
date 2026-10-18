@@ -420,3 +420,41 @@ test('counterattack CLI rejects nonsensical pivot and attack percentage', () => 
   assert.notEqual(badPivot.status, 0);
   assert.match(badPivot.stderr, /turtleRounds/);
 });
+
+
+test('ending economy equals active plus invested with per-node base and 10% investment income', () => {
+  const match = simulateMatch({
+    count: 20, players: 2, maxRounds: 300, mapSeed: 'economy-map',
+    combatSeed: 'economy-combat', strategies: ['superturtle', 'default'],
+  });
+  for (const entry of match.standings) {
+    const near = (a, b) => Math.abs(a - b) <= Math.max(0.015, Math.abs(b) * 1e-12);
+    assert.ok(near(entry.totalEnergy, entry.active + entry.invested));
+    assert.equal(entry.baseIncome, entry.nodes);
+    assert.ok(near(entry.investmentIncome, entry.invested * 0.1));
+    assert.ok(near(entry.grossIncome, entry.nodes + 0.1 * entry.invested));
+    assert.ok(entry.incomeSharePct >= 0 && entry.incomeSharePct <= 100);
+    assert.ok(Number.isFinite(entry.grossIncome));
+  }
+  const share = match.standings.reduce((sum, entry) => sum + entry.incomeSharePct, 0);
+  assert.ok(Math.abs(share - 100) <= 0.003, 'all controlled income shares sum to 100%');
+});
+
+test('300-round strategy batches keep reproducible endgame energy and income medians', () => {
+  const options = {
+    matches: 3, seed: 'economy-batch', count: 20, players: 2,
+    maxRounds: 300, turtleRounds: 150, attackPct: 5,
+    strategies: ['turtlecounter', 'default'],
+  };
+  const a = simulateBatch(options);
+  const b = simulateBatch(options);
+  assert.deepEqual(a.medianEndingEconomy, b.medianEndingEconomy);
+  assert.equal(a.medianEndingEconomy.length, 2);
+  for (const summary of a.medianEndingEconomy) {
+    const rawValues = a.results
+      .map((result) => result.standings[summary.player].grossIncome)
+      .sort((x, y) => x - y);
+    assert.equal(summary.grossIncome, rawValues[1]);
+    assert.ok(summary.grossIncome >= 0);
+  }
+});
