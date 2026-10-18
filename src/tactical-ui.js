@@ -185,7 +185,7 @@
     const rect = viewport.getBoundingClientRect();
     const base = mobile() ? 800 : xy.length === 14 && mapSeed === 'classic' ? 800 : 1800;
     const vw = base;
-    const vh = (vw * rect.height) / rect.width;
+    const vh = (vw * Math.max(260, viewport.clientHeight)) / Math.max(260, viewport.clientWidth);
     const scale = mobile() ? 2.35 : 1.75;
     camera = {
       scale,
