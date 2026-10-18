@@ -116,6 +116,27 @@ npm run check                  # Includes deterministic simulation regression te
 - The tests exercise multiple densities and player counts, graph connectivity, valid node IDs and edges, finite nonnegative energy, legitimate ownership, no eliminated player returning, and repeatability.
 - This is **not** a gameplay rebalance or a browser-save replay feature. It runs headlessly for testing and diagnosis.
 
+### Strategy experiments from GitHub Actions
+
+The simulation harness can run five **simulation-only** strategies for any player:
+`default` (the current AI), `turtle` (invest while defending and cautiously capturing neutral nodes),
+`extreme-turtle` (reinvest surplus while protecting its **single starting node**, never attack or transfer),
+`aggressive` (prioritize attacks), and `balanced` (invest safely and expand when strong enough).
+These strategies are testing tools; the playable game's rules and AI are unchanged.
+
+Run a paired 40-node, four-player experiment with the same batch seed:
+
+```sh
+npm run simulate -- --matches=100 --nodes=40 --players=4 --rounds=200 --seed=turtle-v1 --blue=turtle --opponents=default
+npm run simulate -- --matches=100 --nodes=40 --players=4 --rounds=200 --seed=turtle-v1 --blue=extreme-turtle --opponents=default
+npm run simulate -- --matches=100 --nodes=40 --players=4 --rounds=200 --seed=turtle-v1 --blue=balanced --opponents=default
+```
+
+The `--strategies=extreme-turtle,default,balanced,aggressive` option selects individual players' strategies and takes precedence over `--blue`/`--opponents`.
+Reports now include the surviving percentage and average invested energy for each player, because an Extreme Turtle **cannot win by elimination** without capturing other players' nodes. A surviving Extreme Turtle that has not eliminated enemies yields an unresolved game at the round cap, not a win.
+
+On GitHub, open **Actions → Balance simulations → Run workflow** (once this workflow is merged into the default branch). Enter match count, map size, number of players, round cap, seed, and strategies. The job summary shows win rates, survival rates, and investment metrics; download the JSON artifact for full per-match seeds and checksums. Run Turtle and Extreme Turtle separately with identical inputs to make a paired comparison.
+
 ## Known limitations
 
 - Simple AI and experimental balance.
