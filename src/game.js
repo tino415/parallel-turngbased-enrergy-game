@@ -1041,7 +1041,7 @@ $('closeMobileSettings').onclick = () => {
   document.body.classList.remove('settings-active');
 };
 window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') $('closeMobileSettings').click();
+  if (event.key === 'Escape') $('closeMobileSettings')?.click();
 });
 $('panMode').onclick = () => {
   const active = $('mapViewport').classList.toggle('touch-pan-mode');
