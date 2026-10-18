@@ -30,7 +30,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
 .ux-map-heading .muted{font-size:12px;margin:3px 0 0}
 .ux-map-heading label{display:flex;align-items:center;gap:7px;font-size:12px;color:#afc2d9}
 .ux-map-heading select{width:145px}
-#mapViewport .map-zoom-controls{right:12px;bottom:12px;gap:6px}
+#mapViewport .map-zoom-controls{right:12px;top:12px;bottom:auto;gap:6px}
 #mapViewport .map-zoom-controls button{min-width:43px;min-height:43px;font-size:15px;background:#203956eb}
 #mapViewport .map-zoom-controls #focusMap{font-size:12px}
 .map-explanation{font-size:12px;line-height:1.6;margin:12px 0 0}
@@ -121,7 +121,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
  .toolbar{padding:7px 8px}.view-tabs{width:100%;gap:3px}.view-tabs button{flex:1;padding:10px 5px}
  .layout{padding:5px 5px 84px;display:block}.layout>.panel:first-child{padding:5px;background:transparent;border:0}.ux-map-heading{padding:8px 4px}.ux-map-heading h2{font-size:14px}.ux-map-heading .muted{font-size:10px}.ux-map-heading label{font-size:11px}.ux-map-heading select{width:118px;max-width:118px;font-size:12px}
  #mapViewport{height:calc(100dvh - 240px);min-height:340px;max-height:none;border-radius:10px}
- #mapViewport .map-zoom-controls{bottom:11px;right:9px;flex-direction:row;gap:5px}#mapViewport .map-zoom-controls button{min-width:40px;min-height:42px;font-size:15px;padding:6px}#mapViewport .map-zoom-controls #fit,#mapViewport .map-zoom-controls #focusMap{font-size:11px}
+ #mapViewport .map-zoom-controls{top:11px;bottom:auto;right:9px;flex-direction:row;gap:5px}#mapViewport .map-zoom-controls button{min-width:40px;min-height:42px;font-size:15px;padding:6px}#mapViewport .map-zoom-controls #fit,#mapViewport .map-zoom-controls #focusMap{font-size:11px}
  #gameSidebar{display:none!important}.map-explanation{display:none}
  .ux-dock{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:20;padding:9px 12px calc(10px + env(safe-area-inset-bottom));gap:9px;background:#101d30;border-top:1px solid #40536d}
  .ux-dock button{flex:1;min-height:45px;font-weight:750}
