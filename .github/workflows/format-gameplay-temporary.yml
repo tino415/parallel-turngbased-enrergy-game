@@ -1,0 +1,34 @@
+name: Temporary feature-branch format pass
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/format-gameplay-temporary.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feat/soft-cap-withdrawal-gameplay'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/soft-cap-withdrawal-gameplay
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --no-audit --no-fund
+      - name: Format only changed feature-branch files
+        run: |
+          npx prettier --write README.md index.html src/engine.js src/game.js src/ux.js tests/economy-gameplay.test.mjs tests/e2e/economy-gameplay.spec.mjs scripts/compare-live-economy.mjs
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if ! git diff --quiet; then
+            git add README.md index.html src/engine.js src/game.js src/ux.js tests/economy-gameplay.test.mjs tests/e2e/economy-gameplay.spec.mjs scripts/compare-live-economy.mjs
+            git commit -m 'style(gameplay): normalize implementation formatting'
+            git push origin HEAD:feat/soft-cap-withdrawal-gameplay
+          fi
