@@ -41,6 +41,8 @@
   // Keep the V2 withdrawal allocator and all existing policy controls reachable.
   const nodeControls = document.createElement('div');
   nodeControls.id = 'tacticalNodeControls';
+  nodeControls.hidden = true;
+  document.body.append(nodeControls);
   const policySection = byId('uxPolicySection');
   const manualSection = byId('uxManualSection');
   nodeControls.append(policySection, manualSection);
