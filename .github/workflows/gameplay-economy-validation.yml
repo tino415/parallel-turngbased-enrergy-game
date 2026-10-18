@@ -23,6 +23,9 @@ jobs:
           - scenario: duel
             nodes: 20
             players: 2
+          - scenario: three-player
+            nodes: 30
+            players: 3
           - scenario: field
             nodes: 40
             players: 4
