@@ -57,12 +57,16 @@
   renderFlows = (mapSvg, graph, element) => {
     originalRenderFlows(mapSvg, graph, element);
     const filter = byId('overlay').value;
-    const visible = filter === 'none' ? [] : previewOrders().filter((order) => {
-      if (order.dest === null || order.dest === undefined || order.amount <= 0.01) return false;
-      if (filter === 'manual' && order.automatic) return false;
-      if (filter === 'policy' && !order.automatic) return false;
-      return true;
-    });
+    const visible =
+      filter === 'none'
+        ? []
+        : previewOrders().filter((order) => {
+            if (order.dest === null || order.dest === undefined || order.amount <= 0.01)
+              return false;
+            if (filter === 'manual' && order.automatic) return false;
+            if (filter === 'policy' && !order.automatic) return false;
+            return true;
+          });
     const key = (a, b) => [Math.min(a, b), Math.max(a, b)].join(':');
     const byEdge = new Map();
     for (const order of visible) {
@@ -70,22 +74,28 @@
       if (!byEdge.has(k)) byEdge.set(k, []);
       byEdge.get(k).push(order);
     }
-    const connections = [...graph.children].filter((child) => child.tagName === 'line').slice(0, edges.length);
+    const connections = [...graph.children]
+      .filter((child) => child.tagName === 'line')
+      .slice(0, edges.length);
     for (const [i, [a, b]] of edges.entries()) {
       const connection = connections[i];
       const flows = byEdge.get(key(a, b));
       if (!connection || !flows?.length) continue;
-      const color = flows.length > 1
-        ? '#b1a2fa'
-        : flows[0].type === 'attack'
-          ? '#ff987f'
-          : flows[0].automatic
-            ? '#76b3ff'
-            : '#63d9af';
+      const color =
+        flows.length > 1
+          ? '#b1a2fa'
+          : flows[0].type === 'attack'
+            ? '#ff987f'
+            : flows[0].automatic
+              ? '#76b3ff'
+              : '#63d9af';
       connection.setAttribute('stroke', color);
       connection.setAttribute('stroke-width', '5');
       connection.setAttribute('opacity', '.95');
-      connection.setAttribute('stroke-dasharray', flows.length === 1 && flows[0].automatic ? '8 5' : 'none');
+      connection.setAttribute(
+        'stroke-dasharray',
+        flows.length === 1 && flows[0].automatic ? '8 5' : 'none',
+      );
       connection.classList.add('tactical-flow-connection');
     }
     graph.querySelectorAll('line.ux-flow-overlay').forEach((line) => line.remove());
@@ -333,7 +343,8 @@
       nodeGroup?.querySelector(':scope > .node-hit') ||
       !active ||
       pinchInProgress
-    ) return;
+    )
+      return;
     dismiss();
   });
 
@@ -642,9 +653,15 @@
         policyBox.append(
           textElement(
             'p',
-            'Uses Node ' + source + ' policy: reserve ' +
-              numeric(current.reserve) + ' · invest ' + numeric(current.investPct) +
-              '% of surplus. To change either value, edit Node ' + source + '.',
+            'Uses Node ' +
+              source +
+              ' policy: reserve ' +
+              numeric(current.reserve) +
+              ' · invest ' +
+              numeric(current.investPct) +
+              '% of surplus. To change either value, edit Node ' +
+              source +
+              '.',
             'tactical-secondary',
           ),
         );
