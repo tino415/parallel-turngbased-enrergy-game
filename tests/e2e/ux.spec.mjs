@@ -23,6 +23,45 @@ test('selected friendly node opens full-screen editor with live budget', async (
   await expect(page.locator('#nodeDialog')).toBeHidden();
 });
 
+test('mobile keyboard resize keeps manual and policy inputs focused', async ({
+  page,
+}, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith('mobile'), 'Mobile keyboard regression');
+
+  await page.locator('#map .node-hit[fill="#3278c8"]').first().tap();
+  await expect(page.locator('#nodeDialog')).toBeVisible();
+
+  const manual = page.locator('#allocator input[type="number"]').first();
+  await manual.tap();
+  await expect(manual).toBeFocused();
+
+  // The Android software keyboard can fire window resize without changing
+  // game state. A resize must not reparent (and blur) the focused input.
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  await expect(manual).toBeFocused();
+
+  const viewport = page.viewportSize();
+  await page.setViewportSize({
+    width: viewport.width,
+    height: viewport.height - 220,
+  });
+  await expect(manual).toBeFocused();
+  await manual.fill('3.5');
+  await expect(manual).toHaveValue('3.5');
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  await expect(manual).toBeFocused();
+  await expect(manual).toHaveValue('3.5');
+
+  await page.locator('#policyEditor button').filter({ hasText: 'Create policy' }).click();
+  const reserve = page.locator('#policyEditor input[type="number"]').first();
+  await reserve.tap();
+  await expect(reserve).toBeFocused();
+  await page.setViewportSize(viewport);
+  await expect(reserve).toBeFocused();
+  await reserve.fill('12');
+  await expect(reserve).toHaveValue('12');
+});
+
 test('manual orders can be edited from the separate orders dialog', async ({ page }) => {
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
   await page.locator('#allocator input[type="number"]').first().fill('2');
