@@ -8,10 +8,11 @@ if (!path) {
 }
 const report = JSON.parse(readFileSync(path, 'utf8'));
 const pct = (value) => value.toFixed(2) + '%';
-const compact = (value) => new Intl.NumberFormat('en', {
-  notation: 'compact',
-  maximumFractionDigits: 2,
-}).format(value);
+const compact = (value) =>
+  new Intl.NumberFormat('en', {
+    notation: 'compact',
+    maximumFractionDigits: 2,
+  }).format(value);
 const markdown = [
   '# Strategy balance simulation',
   '',
@@ -42,16 +43,27 @@ const markdown = [
   '',
   '| Player | Nodes | Active energy | Invested energy | Total controlled | Base +1 | Invested yield | Gross / round | Income share |',
   '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
-  ...report.medianEndingEconomy.map((entry) =>
-    '| P' + entry.player +
-    ' | ' + compact(entry.nodes) +
-    ' | ' + compact(entry.active) +
-    ' | ' + compact(entry.invested) +
-    ' | ' + compact(entry.totalEnergy) +
-    ' | ' + compact(entry.baseIncome) +
-    ' | ' + compact(entry.investmentIncome) +
-    ' | ' + compact(entry.grossIncome) +
-    ' | ' + pct(entry.incomeSharePct) + ' |',
+  ...report.medianEndingEconomy.map(
+    (entry) =>
+      '| P' +
+      entry.player +
+      ' | ' +
+      compact(entry.nodes) +
+      ' | ' +
+      compact(entry.active) +
+      ' | ' +
+      compact(entry.invested) +
+      ' | ' +
+      compact(entry.totalEnergy) +
+      ' | ' +
+      compact(entry.baseIncome) +
+      ' | ' +
+      compact(entry.investmentIncome) +
+      ' | ' +
+      compact(entry.grossIncome) +
+      ' | ' +
+      pct(entry.incomeSharePct) +
+      ' |',
   ),
   '',
   'Gross income = owned nodes × 1 + invested energy × 10%. Total controlled = active + invested.',

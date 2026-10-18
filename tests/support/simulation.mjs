@@ -224,14 +224,18 @@ export function simulateMatch({
       // Gross income excludes next-round active-energy decay and battle losses.
       totalEnergy: Number(owned.reduce((total, n) => total + n.active + n.invested, 0).toFixed(3)),
       baseIncome: owned.length,
-      investmentIncome: Number((owned.reduce((total, n) => total + n.invested, 0) * 0.1).toFixed(3)),
-      grossIncome: Number((owned.length + owned.reduce((total, n) => total + n.invested, 0) * 0.1).toFixed(3)),
+      investmentIncome: Number(
+        (owned.reduce((total, n) => total + n.invested, 0) * 0.1).toFixed(3),
+      ),
+      grossIncome: Number(
+        (owned.length + owned.reduce((total, n) => total + n.invested, 0) * 0.1).toFixed(3),
+      ),
     };
   });
   const allIncome = standings.reduce((sum, player) => sum + player.grossIncome, 0);
   for (const entry of standings) {
-    entry.incomeSharePct = allIncome > 0
-      ? Number((entry.grossIncome * 100 / allIncome).toFixed(3)) : 0;
+    entry.incomeSharePct =
+      allIncome > 0 ? Number(((entry.grossIncome * 100) / allIncome).toFixed(3)) : 0;
   }
   const playerStats = playerProgress.map((progress) => ({
     ...progress,
@@ -263,8 +267,7 @@ export function simulateMatch({
 
 function median(sorted) {
   const midpoint = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[midpoint]
-    : (sorted[midpoint - 1] + sorted[midpoint]) / 2;
+  return sorted.length % 2 ? sorted[midpoint] : (sorted[midpoint - 1] + sorted[midpoint]) / 2;
 }
 
 function medianEndingField(results, player, field) {
@@ -298,7 +301,8 @@ export function simulateBatch({ matches = 20, seed = 'balance', ...options } = {
     // Medians describe a typical match and avoid a few massive turtle economies
     // masking the rest. Per-match raw values remain available in results.
     medianEndingEconomy: strategies.map((strategy, player) => ({
-      player, strategy,
+      player,
+      strategy,
       nodes: medianEndingField(results, player, 'nodes'),
       active: medianEndingField(results, player, 'active'),
       invested: medianEndingField(results, player, 'invested'),

@@ -421,11 +421,14 @@ test('counterattack CLI rejects nonsensical pivot and attack percentage', () => 
   assert.match(badPivot.stderr, /turtleRounds/);
 });
 
-
 test('ending economy equals active plus invested with per-node base and 10% investment income', () => {
   const match = simulateMatch({
-    count: 20, players: 2, maxRounds: 300, mapSeed: 'economy-map',
-    combatSeed: 'economy-combat', strategies: ['superturtle', 'default'],
+    count: 20,
+    players: 2,
+    maxRounds: 300,
+    mapSeed: 'economy-map',
+    combatSeed: 'economy-combat',
+    strategies: ['superturtle', 'default'],
   });
   for (const entry of match.standings) {
     const near = (a, b) => Math.abs(a - b) <= Math.max(0.015, Math.abs(b) * 1e-12);
@@ -442,8 +445,13 @@ test('ending economy equals active plus invested with per-node base and 10% inve
 
 test('300-round strategy batches keep reproducible endgame energy and income medians', () => {
   const options = {
-    matches: 3, seed: 'economy-batch', count: 20, players: 2,
-    maxRounds: 300, turtleRounds: 150, attackPct: 5,
+    matches: 3,
+    seed: 'economy-batch',
+    count: 20,
+    players: 2,
+    maxRounds: 300,
+    turtleRounds: 150,
+    attackPct: 5,
     strategies: ['turtlecounter', 'default'],
   };
   const a = simulateBatch(options);
