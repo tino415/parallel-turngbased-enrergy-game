@@ -707,8 +707,8 @@ function renderDashboard() {
 function attachNavigation() {
   const svg = $('map');
   let drag = null;
-  const canPanTouch = () =>
-    document.getElementById('mapViewport').classList.contains('touch-pan-mode');
+  let suppressClick = false;
+  const canPanTouch = () => $('mapViewport').classList.contains('touch-pan-mode');
   svg.addEventListener(
     'wheel',
     (e) => {
@@ -720,22 +720,40 @@ function attachNavigation() {
     },
     { passive: false },
   );
+
   svg.addEventListener('pointerdown', (e) => {
-    // Node clicks must remain native click events. Only pan on empty background.
-    if (
-      e.button !== 0 ||
-      (e.pointerType === 'touch' ? !canPanTouch() : Boolean(e.target.closest('.node-hit')))
-    )
-      return;
-    if (e.pointerType === 'touch') svg.setPointerCapture(e.pointerId);
-    drag = { x: e.clientX, y: e.clientY, ox: camera.x, oy: camera.y, id: e.pointerId };
+    // Only an actual drag pans the map. Touch taps on nodes must remain clicks
+    // even when Pan mode is enabled.
+    suppressClick = false;
+    if (e.button !== 0) return;
+    const onNode = Boolean(e.target.closest('.node-hit'));
+    if (e.pointerType === 'touch' ? !canPanTouch() : onNode) return;
+    drag = {
+      id: e.pointerId,
+      x: e.clientX,
+      y: e.clientY,
+      ox: camera.x,
+      oy: camera.y,
+      panning: false,
+      pointerType: e.pointerType,
+    };
   });
+
   svg.addEventListener('pointermove', (e) => {
     if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x;
+    const dy = e.clientY - drag.y;
+    if (!drag.panning) {
+      // Avoid hijacking the browser's synthesized click from a stationary tap.
+      const threshold = drag.pointerType === 'touch' ? 8 : 4;
+      if (Math.hypot(dx, dy) < threshold) return;
+      drag.panning = true;
+      svg.setPointerCapture(e.pointerId);
+    }
     const rect = svg.getBoundingClientRect();
     const factor = svg.viewBox.baseVal.width / rect.width;
-    camera.x = drag.ox + (e.clientX - drag.x) * factor;
-    camera.y = drag.oy + (e.clientY - drag.y) * factor;
+    camera.x = drag.ox + dx * factor;
+    camera.y = drag.oy + dy * factor;
     const g = svg.querySelector('g');
     if (g)
       g.setAttribute(
@@ -743,15 +761,27 @@ function attachNavigation() {
         'translate(' + camera.x + ' ' + camera.y + ') scale(' + camera.scale + ')',
       );
   });
+
   const stop = (e) => {
-    if (drag && e.pointerId === drag.id) {
-      drag = null;
-      if (svg.hasPointerCapture(e.pointerId)) svg.releasePointerCapture(e.pointerId);
-    }
+    if (!drag || e.pointerId !== drag.id) return;
+    // A completed drag should not accidentally activate a node under the finger.
+    if (drag.panning) suppressClick = true;
+    drag = null;
+    if (svg.hasPointerCapture(e.pointerId)) svg.releasePointerCapture(e.pointerId);
   };
   svg.addEventListener('pointerup', stop);
   svg.addEventListener('pointercancel', stop);
   window.addEventListener('pointerup', stop);
+  svg.addEventListener(
+    'click',
+    (e) => {
+      if (!suppressClick) return;
+      suppressClick = false;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    },
+    true,
+  );
 }
 
 const mobileNodeQuery = window.matchMedia('(max-width:760px)');
