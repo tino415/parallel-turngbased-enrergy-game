@@ -223,78 +223,126 @@
     return planned;
   }
 
-  // Capacity-aware AI, separate from the legacy strategy. Every player (not
-  // only Blue) gets identical reserve withdrawal and frontier logistics rules.
+  // Capacity-aware AI, separate from the legacy strategy. Players share the
+  // same rules, but Blue is human-controlled in normal browser matches.
   function economicAI(nodes, links, includePlayerZero = false) {
     const orders = {};
     const withdrawals = {};
-    const adjacent = (id) => links.flatMap(([a, b]) => (a === id ? [b] : b === id ? [a] : []));
-    for (const n of nodes) {
-      if (n.owner === null || (n.owner === 0 && !includePlayerZero)) continue;
-      const near = adjacent(n.id);
-      const hostiles = near.filter((id) => nodes[id].owner !== n.owner);
-      const owned = near.filter((id) => nodes[id].owner === n.owner);
-      const threat = hostiles.reduce(
-        (sum, id) => (nodes[id].owner === null ? sum : sum + nodes[id].active),
-        0,
+    const net = 1 - SOFT_CAP_RULES.withdrawalFee;
+    const adjacent = nodes.map(() => []);
+    for (const [a, b] of links) {
+      adjacent[a].push(b);
+      adjacent[b].push(a);
+    }
+    const power = (n) => n.active + n.invested * net;
+    const garrison = (n) => Math.min(12, Math.max(2, power(n) * 0.08));
+    const committed = new Set();
+
+    for (const owner of new Set(nodes.map((n) => n.owner).filter((n) => n !== null))) {
+      if (owner === 0 && !includePlayerZero) continue;
+      // Pick common targets for all adjacent allied nodes: several modest
+      // attacks can defeat a single well-defended frontier position.
+      const targets = nodes.filter((target) =>
+        target.owner !== owner &&
+        adjacent[target.id].some((source) => nodes[source].owner === owner),
       );
-      const reserve = Math.max(3, threat * 1.5 + 2);
-      const net = 1 - SOFT_CAP_RULES.withdrawalFee;
-      const possible = n.active + n.invested * net;
-      const defensiveWithdrawal = Math.min(n.invested, Math.max(0, reserve - n.active) / net);
-      const targets = hostiles.sort(
-        (a, b) =>
-          Number(nodes[a].owner !== null) - Number(nodes[b].owner !== null) ||
-          nodes[a].active - nodes[b].active ||
-          a - b,
+      // Prefer attacking players over passively exhausting neutral territory.
+      targets.sort((a, b) =>
+        Number(a.owner === null) - Number(b.owner === null) ||
+        a.active - b.active || a.id - b.id,
       );
-      const target = targets[0];
-      const attackEnergy = target === undefined ? Infinity : nodes[target].active * 1.5 + 0.5;
-      let withdrawal = defensiveWithdrawal;
-      let available = n.active + withdrawal * net;
-      // Allow limited mobilization for a conquest; don't drain all capital.
-      if (target !== undefined && available - reserve < attackEnergy) {
-        const mobilize = Math.min(n.invested * 0.3, (reserve + attackEnergy - n.active) / net);
-        withdrawal = Math.max(withdrawal, mobilize);
-        available = n.active + withdrawal * net;
-      }
-      if (withdrawal > 1e-9) withdrawals[n.id] = withdrawal;
-      const free = Math.max(0, available - Math.min(reserve, possible));
-      if (target !== undefined && attackEnergy <= free + 1e-8) {
-        const invest = Math.max(0, free - attackEnergy);
-        orders[n.id] = [
-          { source: n.id, type: 'attack', amount: attackEnergy, dest: target },
-          ...(invest > 1e-9 ? [{ source: n.id, type: 'invest', amount: invest, dest: null }] : []),
-        ];
-        continue;
-      }
-      // Rear nodes support an under-cap frontier rather than hoarding
-      // beyond the soft cap. Transfer cannot finance the receiver this turn.
-      const frontier = owned
-        .filter((id) => adjacent(id).some((other) => nodes[other].owner !== n.owner))
-        .filter((id) => nodes[id].active + nodes[id].invested < SOFT_CAP_RULES.capacity * 0.8)
-        .sort(
-          (a, b) =>
-            nodes[a].active + nodes[a].invested - (nodes[b].active + nodes[b].invested) || a - b,
-        )[0];
-      if (frontier !== undefined && free > 2) {
-        const room = SOFT_CAP_RULES.capacity - nodes[frontier].active - nodes[frontier].invested;
-        const amount = Math.max(0, Math.min(free * 0.7, room));
-        if (amount > 1e-9) {
-          orders[n.id] = { source: n.id, type: 'transfer', amount, dest: frontier };
-          continue;
+
+      for (const target of targets) {
+        const sources = adjacent[target.id]
+          .map((id) => nodes[id])
+          .filter((n) => n.owner === owner && !committed.has(n.id))
+          .map((n) => ({
+            node: n,
+            reserve: garrison(n),
+            // The full spendable pool includes withdrawable reserves, but no
+            // incoming transfer from this or any other round's orders.
+            capacity: Math.max(0, power(n) - garrison(n)),
+            activeFree: Math.max(0, n.active - garrison(n)),
+            amount: 0,
+          }))
+          .sort((a, b) => b.activeFree - a.activeFree || a.node.id - b.node.id);
+        const combined = sources.reduce((sum, s) => sum + s.capacity, 0);
+        // Commit enough to beat a defense through moderate combat variance.
+        // Unlike the previous AI, this does NOT also demand a second large
+        // reserve equal to the enemy's entire defense.
+        const captureForce = target.active * 1.3 + 2;
+        let attack = 0;
+        if (combined + 1e-8 >= captureForce) {
+          attack = captureForce;
+        } else if (
+          target.owner !== null &&
+          combined >= Math.max(12, target.active * 0.55)
+        ) {
+          // When conquest is too expensive, press the frontier to drain the
+          // defender instead of leaving two fully invested armies motionless.
+          attack = Math.min(combined * 0.8, target.active * 0.95);
+        }
+        if (attack <= 1e-8) continue;
+
+        let remaining = attack;
+        // Use already-active energy before paying to withdraw any principal.
+        for (const s of sources) {
+          const amount = Math.min(remaining, s.activeFree);
+          s.amount += amount;
+          remaining -= amount;
+        }
+        for (const s of sources) {
+          if (remaining <= 1e-8) break;
+          const amount = Math.min(remaining, s.capacity - s.amount);
+          s.amount += amount;
+          remaining -= amount;
+        }
+        if (remaining > 1e-6) continue;
+        for (const s of sources) {
+          if (s.amount <= 1e-8) continue;
+          const n = s.node;
+          const withdrawal = Math.min(
+            n.invested,
+            Math.max(0, (s.amount + s.reserve - n.active) / net),
+          );
+          if (withdrawal > 1e-8) withdrawals[n.id] = withdrawal;
+          orders[n.id] = { source: n.id, type: 'attack', amount: s.amount, dest: target.id };
+          committed.add(n.id);
         }
       }
-      // Avoid investment when it simply causes preventable over-cap decay.
-      const room = Math.max(0, SOFT_CAP_RULES.capacity - n.active - n.invested);
-      const amount = Math.min(free * 0.8, room);
-      if (amount > 1e-9)
-        orders[n.id] = {
-          source: n.id,
-          type: 'invest',
-          amount,
-          dest: null,
-        };
+
+      // Uncommitted nodes retain a smaller, meaningful defensive reserve,
+      // reinforce under-cap adjacent frontier nodes and invest only spare power.
+      for (const n of nodes) {
+        if (n.owner !== owner || committed.has(n.id)) continue;
+        const near = adjacent[n.id];
+        const enemies = near.filter((id) => nodes[id].owner !== owner && nodes[id].owner !== null);
+        const highestThreat = Math.max(0, ...enemies.map((id) => nodes[id].active));
+        const reserve = Math.min(power(n), Math.max(3, highestThreat * 0.65));
+        const withdrawal = Math.min(n.invested, Math.max(0, reserve - n.active) / net);
+        if (withdrawal > 1e-8) withdrawals[n.id] = withdrawal;
+        const free = Math.max(0, n.active + withdrawal * net - reserve);
+        const frontier = near
+          .filter((id) => nodes[id].owner === owner)
+          .filter((id) => adjacent[id].some((other) => nodes[other].owner !== owner))
+          .filter((id) => nodes[id].active + nodes[id].invested < SOFT_CAP_RULES.capacity * 0.8)
+          .sort((a, b) =>
+            nodes[a].active + nodes[a].invested - nodes[b].active - nodes[b].invested || a - b,
+          )[0];
+        if (frontier !== undefined && free > 2) {
+          const room = SOFT_CAP_RULES.capacity - nodes[frontier].active - nodes[frontier].invested;
+          const amount = Math.max(0, Math.min(free * 0.7, room));
+          if (amount > 1e-8) {
+            orders[n.id] = { source: n.id, type: 'transfer', amount, dest: frontier };
+            continue;
+          }
+        }
+        const room = Math.max(0, SOFT_CAP_RULES.capacity - n.active - n.invested);
+        const amount = Math.min(free * 0.8, room);
+        if (amount > 1e-8) {
+          orders[n.id] = { source: n.id, type: 'invest', amount, dest: null };
+        }
+      }
     }
     return { orders, withdrawals };
   }
