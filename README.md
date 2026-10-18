@@ -63,7 +63,7 @@ The build copies `index.html`, `_headers`, and `src/` into `dist/`. No bundling 
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `index.html`        | Page, tabs, map area, dashboard container and New game dialog                                                                               |
 | `src/styles.css`    | Responsive layout and styling                                                                                                               |
-| `src/ux.js`        | Responsive full-screen editor, contextual map overlays, orders/settings dialogs and dashboard mobile cards; presentation only                         |
+| `src/ux.js`         | Responsive full-screen editor, contextual dialogs, map overlays and mobile dashboard cards                                                  |
 | `src/game.js`       | Browser UI, order entry, map rendering, autosave and view navigation                                                                        |
 | `src/engine.js`     | Browser-independent map generation, policy evaluation, forecasts, AI and full round resolution; accepts injected RNG for reproducible tests |
 | `tests/*.test.mjs`  | Syntax/structure, graph generation, economy/policy and round-resolution regression tests                                                    |
