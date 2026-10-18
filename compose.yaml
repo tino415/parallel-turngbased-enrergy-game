@@ -1,0 +1,18 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: localhost/parallel-energy-game-dev
+    command: sleep infinity
+    init: true
+    working_dir: /workspace
+    ports:
+      - '127.0.0.1:4173:4173'
+    volumes:
+      - .:/workspace:Z
+      # Built for the image's libc, so it is not shared with the host.
+      - node_modules:/workspace/node_modules
+
+volumes:
+  node_modules: {}
