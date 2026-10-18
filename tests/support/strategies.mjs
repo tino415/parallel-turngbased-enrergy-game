@@ -71,7 +71,8 @@ function planNode(node, name, nodes, adjacent, { round, turtleRounds, attackPct,
       dest, Math.min(budget, nodes[dest].active * 1.5 + 0.2),
     );
     const savings = invest(free - (strike?.amount ?? 0));
-    return [savings, strike].filter(Boolean);
+    const orders = [savings, strike].filter(Boolean);
+    return orders.length ? orders : null;
   }
 
   if (name === 'turtlecounter') {
