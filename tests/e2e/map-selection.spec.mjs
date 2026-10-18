@@ -51,11 +51,14 @@ test('desktop map pans and wheel zoom remains modifier-only', async ({ page }, t
 
 test('node clicks and editor input and text selection remain usable', async ({ page }) => {
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
-  await expect(page.locator('#nodeDialog')).toBeVisible();
+  await expect(page.locator('#tacticalInspector')).toBeHidden();
+  await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
+  await expect(page.locator('#tacticalInspector')).toBeVisible();
+  await page.getByText('Manual investment, withdrawal and allocations').click();
   const input = page.locator('#allocator input[type="number"]').first();
   await input.fill('2');
   await expect(input).toHaveValue('2');
   // Native double-click selection outside the map must still work.
-  await page.locator('#uxEditorStats').dblclick();
+  await page.locator('#tacticalInspector .tactical-inspector-head strong').dblclick();
   expect(await page.evaluate(() => window.getSelection().toString())).not.toBe('');
 });
