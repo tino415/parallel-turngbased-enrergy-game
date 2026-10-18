@@ -285,7 +285,12 @@ test('mobile bottom actions stay reachable and the page itself never scrolls', a
   const node = page.locator('#map .node-hit[fill="#3278c8"]').first();
   await node.tap();
   await expect(inspector).toBeVisible();
-  await expect(dock).toBeHidden();
+  await expect(dock).toBeVisible();
+  await expect(resolve).toBeHidden();
+  expect(await inspector.evaluate((el) => el.parentElement?.classList.contains('ux-dock'))).toBe(
+    true,
+  );
+  expect(await inspector.evaluate((el) => getComputedStyle(el).position)).toBe('static');
   let inspectorBox = await inspector.boundingBox();
   expect(inspectorBox.y + inspectorBox.height).toBeLessThanOrEqual(page.viewportSize().height + 2);
   await expect(inspector.getByRole('button', { name: 'Resolve →' })).toBeVisible();
@@ -295,7 +300,8 @@ test('mobile bottom actions stay reachable and the page itself never scrolls', a
   await expect(inspector).toHaveClass(/is-editing/);
   inspectorBox = await inspector.boundingBox();
   expect(inspectorBox.y + inspectorBox.height).toBeLessThanOrEqual(page.viewportSize().height + 2);
-  await expect(dock).toBeHidden();
+  await expect(dock).toBeVisible();
+  await expect(resolve).toBeHidden();
   await expectLockedViewport();
 
   await page.locator('#tableView').click();
@@ -400,7 +406,8 @@ test('Orders dialog replaces the contextual inspector instead of stacking modals
   await expect(page.locator('#nodeDialog')).toBeHidden();
   await expect(page.locator('#tacticalInspector')).toBeVisible();
   if (testInfo.project.name.startsWith('mobile')) {
-    await expect(page.locator('.ux-dock')).toBeHidden();
+    await expect(page.locator('.ux-dock')).toBeVisible();
+    await expect(page.locator('#uxDockResolve')).toBeHidden();
     await page.locator('#tacticalInspector').getByRole('button', { name: 'Orders' }).click();
   } else {
     await page.locator('#tacticalMenu summary').click();
@@ -411,4 +418,50 @@ test('Orders dialog replaces the contextual inspector instead of stacking modals
   await page.locator('#uxOrdersDialog .ux-dialog-close').click();
   await expect(page.locator('#tacticalInspector')).toBeVisible();
   await expect(page.locator('#nodeDialog')).toBeHidden();
+});
+
+test('selected connection replaces the dock content without a second mobile modal', async ({
+  page,
+}, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith('mobile'), 'Mobile-only regression');
+  const dock = page.locator('.ux-dock');
+  const inspector = page.locator('#tacticalInspector');
+  const edge = page.locator('.tactical-edge-hit[data-edge="0-1"]');
+
+  await expect(inspector).toBeHidden();
+  await expect(dock).toBeVisible();
+  await expect(page.locator('#uxDockResolve')).toBeVisible();
+
+  await edge.tap();
+  await expect(inspector).toBeVisible();
+  await expect(dock).toBeVisible();
+  await expect(page.locator('#uxDockResolve')).toBeHidden();
+  await expect(inspector.getByRole('button', { name: 'Resolve →' })).toBeVisible();
+  await expect(page.locator('#nodeDialog')).toBeHidden();
+
+  const structure = await page.evaluate(() => {
+    const dock = document.querySelector('.ux-dock');
+    const inspector = document.querySelector('#tacticalInspector');
+    return {
+      inspectorInsideDock: dock.contains(inspector),
+      inspectorPosition: getComputedStyle(inspector).position,
+      fixedSurfaces: [...document.querySelectorAll('#tacticalInspector, .ux-dock')].filter(
+        (el) => getComputedStyle(el).position === 'fixed' && el.getBoundingClientRect().height > 0,
+      ).length,
+    };
+  });
+  expect(structure).toEqual({
+    inspectorInsideDock: true,
+    inspectorPosition: 'static',
+    fixedSurfaces: 1,
+  });
+  await expect(inspector.locator('.tactical-inspector-body')).toBeHidden();
+
+  await edge.tap();
+  await expect(inspector).toHaveClass(/is-editing/);
+  await expect(page.locator('#tacticalEdgeAmount')).toBeVisible();
+
+  await inspector.getByRole('button', { name: 'Clear map selection' }).click();
+  await expect(inspector).toBeHidden();
+  await expect(page.locator('#uxDockResolve')).toBeVisible();
 });
