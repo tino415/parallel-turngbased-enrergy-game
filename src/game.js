@@ -932,10 +932,9 @@ function render() {
           n.owner === null
             ? '#768092'
             : ['#3278c8', '#cc6255', '#b18adc', '#d9a44d', '#72b995', '#da7dba'][n.owner % 6],
-        class:
-          'node node-hit' +
-          (selected === n.id ? ' selected' : '') +
-          (orders[n.id] ? ' node-ordered' : ''),
+        // The modal identifies the node under inspection; a map selection
+        // ring would be hidden behind that modal and adds no useful feedback.
+        class: 'node node-hit' + (orders[n.id] ? ' node-ordered' : ''),
       },
       group,
     );
