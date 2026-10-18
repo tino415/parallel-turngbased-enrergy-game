@@ -467,7 +467,6 @@ test('300-round strategy batches keep reproducible endgame energy and income med
   }
 });
 
-
 test('compounding expansion reinvests exactly as Super Turtle when no conquest is affordable', () => {
   const nodes = [
     { id: 0, owner: 0, active: 100, invested: 400 },
@@ -499,17 +498,27 @@ test('compounding expansion reserves defense, attacks neutral and reinvests ever
     { id: 4, owner: null, active: 2, invested: 0 },
   ];
   const orders = planStrategyOrders({
-    engine, nodes, links: [[0,1],[0,2],[3,4]],
-    homeNodes:[0,1], strategies:['compoundexpand','default'],
-    round: 1, attackPct: 5,
+    engine,
+    nodes,
+    links: [
+      [0, 1],
+      [0, 2],
+      [3, 4],
+    ],
+    homeNodes: [0, 1],
+    strategies: ['compoundexpand', 'default'],
+    round: 1,
+    attackPct: 5,
   });
-  const reserve = defensiveReserve(nodes[0], nodes, [1,2]);
+  const reserve = defensiveReserve(nodes[0], nodes, [1, 2]);
   assert.equal(reserve, 8);
   assert.equal(orders[0][1].type, 'attack');
   assert.equal(orders[0][1].dest, 2, 'prefer cheaper neutral capture');
   assert.ok(orders[0][1].amount <= 5, 'attack at most 5% of active energy');
   assert.equal(orders[0][0].type, 'invest');
-  assert.ok(Math.abs(orders[0][0].amount + orders[0][1].amount - (nodes[0].active-reserve)) < 1e-9);
+  assert.ok(
+    Math.abs(orders[0][0].amount + orders[0][1].amount - (nodes[0].active - reserve)) < 1e-9,
+  );
   assert.ok(Array.isArray(orders[3]), 'captured nodes follow the same compounding strategy');
   assert.equal(orders[3][1].type, 'attack');
   assert.equal(orders[3][1].dest, 4);
@@ -518,28 +527,48 @@ test('compounding expansion reserves defense, attacks neutral and reinvests ever
 
 test('compoundexpand strategy is deterministic across 300-round 20-node and 40-node matches', () => {
   for (const [count, players, names] of [
-    [20,2,['compoundexpand','default']],
-    [40,4,['compoundexpand','default','default','default']],
+    [20, 2, ['compoundexpand', 'default']],
+    [40, 4, ['compoundexpand', 'default', 'default', 'default']],
   ]) {
-    const opts = { count, players, maxRounds:300, strategies:names,
-      mapSeed:'equal-invest-'+count, combatSeed:'equal-invest-combat-'+count,
-      attackPct:5 };
-    const a=simulateMatch(opts),b=simulateMatch(opts);
-    assert.deepEqual(a,b);
-    assert.equal(a.playerStats[0].strategy,'compoundexpand');
-    assert.ok(a.playerStats[0].firstAttackRound===null || a.playerStats[0].firstAttackRound>=1);
-    assert.ok(a.playerStats[0].attackEnergyCommitted>=0);
-    assert.ok(a.playerStats[0].investmentEnergyCommitted>=0);
+    const opts = {
+      count,
+      players,
+      maxRounds: 300,
+      strategies: names,
+      mapSeed: 'equal-invest-' + count,
+      combatSeed: 'equal-invest-combat-' + count,
+      attackPct: 5,
+    };
+    const a = simulateMatch(opts),
+      b = simulateMatch(opts);
+    assert.deepEqual(a, b);
+    assert.equal(a.playerStats[0].strategy, 'compoundexpand');
+    assert.ok(a.playerStats[0].firstAttackRound === null || a.playerStats[0].firstAttackRound >= 1);
+    assert.ok(a.playerStats[0].attackEnergyCommitted >= 0);
+    assert.ok(a.playerStats[0].investmentEnergyCommitted >= 0);
     assert.ok(Number.isFinite(a.standings[0].grossIncome));
   }
 });
 
 test('CLI accepts compoundexpand strategy and produces endgame economy', () => {
-  const report=JSON.parse(execFileSync(process.execPath,[
-    cli,'--matches=2','--nodes=20','--players=2','--rounds=70',
-    '--strategies=compoundexpand,default','--attack-pct=5','--seed=expand-cli','--json'
-  ],{encoding:'utf8'}));
-  assert.equal(report.strategies[0],'compoundexpand');
-  assert.equal(report.medianEndingEconomy.length,2);
-  assert.ok(report.results[0].playerStats[0].investmentEnergyCommitted>0);
+  const report = JSON.parse(
+    execFileSync(
+      process.execPath,
+      [
+        cli,
+        '--matches=2',
+        '--nodes=20',
+        '--players=2',
+        '--rounds=70',
+        '--strategies=compoundexpand,default',
+        '--attack-pct=5',
+        '--seed=expand-cli',
+        '--json',
+      ],
+      { encoding: 'utf8' },
+    ),
+  );
+  assert.equal(report.strategies[0], 'compoundexpand');
+  assert.equal(report.medianEndingEconomy.length, 2);
+  assert.ok(report.results[0].playerStats[0].investmentEnergyCommitted > 0);
 });

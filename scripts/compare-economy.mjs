@@ -5,10 +5,13 @@ if (process.argv.length !== 4) {
   console.error('Usage: node scripts/compare-economy.mjs baseline.json treatment.json');
   process.exit(1);
 }
-const [baseline, treatment] = process.argv.slice(2).map((path) =>
-  JSON.parse(readFileSync(path, 'utf8')),
-);
-if (baseline.matches !== treatment.matches || baseline.results.length !== treatment.results.length) {
+const [baseline, treatment] = process.argv
+  .slice(2)
+  .map((path) => JSON.parse(readFileSync(path, 'utf8')));
+if (
+  baseline.matches !== treatment.matches ||
+  baseline.results.length !== treatment.results.length
+) {
   throw new Error('The simulation batches must have equal sizes');
 }
 const median = (values) => {
@@ -17,14 +20,21 @@ const median = (values) => {
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 };
-const compact = (n) => new Intl.NumberFormat('en', {
-  notation: 'compact', maximumFractionDigits: 3,
-}).format(n);
+const compact = (n) =>
+  new Intl.NumberFormat('en', {
+    notation: 'compact',
+    maximumFractionDigits: 3,
+  }).format(n);
 const pct = (n) => n.toFixed(2) + '%';
 const pairs = baseline.results.map((a, index) => {
   const b = treatment.results[index];
-  if (a.mapSeed !== b.mapSeed || a.combatSeed !== b.combatSeed ||
-    a.maxRounds !== b.maxRounds || a.count !== b.count || a.players !== b.players) {
+  if (
+    a.mapSeed !== b.mapSeed ||
+    a.combatSeed !== b.combatSeed ||
+    a.maxRounds !== b.maxRounds ||
+    a.count !== b.count ||
+    a.players !== b.players
+  ) {
     throw new Error('Mismatched seeds, round caps, or map sizes at match ' + index);
   }
   return [a, b];
@@ -49,16 +59,27 @@ const summarize = (index) => {
 const output = [
   '## Seed-matched economic comparison (P0)',
   '',
-  '**Maps:** ' + baseline.results[0].count + ' nodes, ' + baseline.results[0].players +
-    ' players · **matches:** ' + baseline.matches + ' · **round limit:** ' +
-    baseline.results[0].maxRounds + ' · **seed:** `' + baseline.seed.replaceAll('`', '') + '`',
+  '**Maps:** ' +
+    baseline.results[0].count +
+    ' nodes, ' +
+    baseline.results[0].players +
+    ' players · **matches:** ' +
+    baseline.matches +
+    ' · **round limit:** ' +
+    baseline.results[0].maxRounds +
+    ' · **seed:** `' +
+    baseline.seed.replaceAll('`', '') +
+    '`',
   '',
   '| Strategy | Wins | Survived | Expanded | Median total energy | Median gross income/round | Median income share |',
   '| --- | ---: | ---: | ---: | ---: | ---: | ---: |',
   '| ' + summarize(0) + ' |',
   '| ' + summarize(1) + ' |',
   '',
-  '**Comparable full-length pairs:** ' + capped.length + '/' + pairs.length +
+  '**Comparable full-length pairs:** ' +
+    capped.length +
+    '/' +
+    pairs.length +
     ' (both reached the round cap).',
   '',
   '**Median treatment / baseline gross-income ratio, comparable pairs only:** ' +

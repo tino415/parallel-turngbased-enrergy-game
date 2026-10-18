@@ -154,7 +154,6 @@ The `--strategies` CSV must contain exactly one strategy per player. Add `--json
 
 To run simulations from GitHub, open **Actions → Run balance simulations → Run workflow**, select the number of games, map size, player count, round cap, P0 strategy and opponent strategy. GitHub provides a summary table and downloadable JSON/Markdown artifacts retained for 30 days. This workflow starts only when manually dispatched; it is not part of the game deployment. The GitHub UI offers P0 vs all other players; use the CLI for arbitrary per-player combinations.
 
-
 ### Investment policy versus territorial expansion
 
 Use **paired identical seeds** and compare `superturtle` against `compoundexpand`, with all other players using identical strategies. Unlike the Default AI (which invests only 60% of a node's active energy in some situations), both strategies invest **100% of their surplus after the same defensive reserve**. The Compounding Expander alone spends a bounded amount of that surplus on conquest. Additional captured nodes use that exact same compounding rule, not Default AI.
