@@ -376,26 +376,57 @@ body > header #resolve {
   }
 }
 
-/* Only one thumb-reachable action surface: the selected inspector replaces the
-   general Orders / Resolve dock, instead of appearing above a second toolbar. */
+/* ONE mobile bottom surface: the inspector is a child of the dock, never
+   a second floating modal sitting above another Orders / Resolve toolbar. */
 @media (max-width: 760px) {
   body.tactical-selection-active .ux-dock {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0;
+    height: auto;
+    min-height: 0;
+    max-height: min(70dvh, calc(100dvh - 105px));
+    padding: 0 0 env(safe-area-inset-bottom);
+    overflow: hidden;
+  }
+
+  body.tactical-selection-active .ux-dock > button {
     display: none !important;
   }
 
   body.tactical-selection-active #tacticalInspector {
-    bottom: 0;
-    padding-bottom: env(safe-area-inset-bottom);
-    max-height: min(64dvh, calc(100dvh - 105px));
-    z-index: 36;
+    position: static;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    max-height: min(70dvh, calc(100dvh - 105px));
+    padding: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: #101d30;
   }
 
-  body.tactical-selection-active #tacticalInspector:not(.is-editing) {
-    max-height: 180px;
+  /* First tap: compact selection controls, not an overlapping modal. */
+  body.tactical-selection-active #tacticalInspector:not(.is-editing) .tactical-inspector-body {
+    display: none;
+  }
+
+  #tacticalInspector .tactical-inspector-head {
+    padding: 7px 12px 2px;
+    background: #101d30;
+  }
+
+  #tacticalInspector .tactical-inspector-body {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
   }
 
   #tacticalInspector .tactical-inspector-actions {
     gap: 5px;
+    background: #101d30;
   }
 
   #tacticalInspector .tactical-inspector-actions button {
