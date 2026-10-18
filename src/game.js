@@ -250,7 +250,8 @@ function renderAllocator() {
     const max =
       target === 'withdraw' ? n.invested : Math.max(n.active, availableEnergy(selected, p));
     const input = numberField(amount, max, (value) => setAllocation(selected, target, value));
-    input.dataset.allocation = target === null ? 'invest' : target === 'withdraw' ? 'withdraw' : 'edge-' + target;
+    input.dataset.allocation =
+      target === null ? 'invest' : target === 'withdraw' ? 'withdraw' : 'edge-' + target;
     row.append(name, input);
     fields.append(row);
   };

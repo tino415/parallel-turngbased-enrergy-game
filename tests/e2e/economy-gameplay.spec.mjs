@@ -59,8 +59,8 @@ test('legacy saved games do not silently switch on new gameplay rules', async ({
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
   await expect(page.locator('#uxManualSection')).not.toContainText('Withdraw invested');
   await expect(page.locator('#details')).not.toContainText('sustainable capacity');
-  const storedVersion = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem('parallel-energy-game-v1')).state.rulesVersion,
+  const storedVersion = await page.evaluate(
+    () => JSON.parse(localStorage.getItem('parallel-energy-game-v1')).state.rulesVersion,
   );
   expect(storedVersion).toBeUndefined();
 
