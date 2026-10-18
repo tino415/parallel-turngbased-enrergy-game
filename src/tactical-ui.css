@@ -274,3 +274,96 @@ body > header #resolve {
     min-height: 39px;
   }
 }
+
+/* Mobile: viewport-sized game shell. Only content panels and the inspector scroll. */
+@media (max-width: 760px) {
+  :root {
+    --tactical-action-height: calc(66px + env(safe-area-inset-bottom));
+  }
+
+  html {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  body > header,
+  .toolbar {
+    flex: 0 0 auto;
+  }
+
+  /* Use the remaining height instead of subtracting guessed header sizes. */
+  .layout,
+  .layout.ux-wide-view {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 3px 3px 0;
+  }
+
+  .layout > .panel:first-child {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .ux-map-heading {
+    flex: 0 0 auto;
+  }
+
+  #mapViewport {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  #dashboard,
+  #messagesView {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  #messagesView .log {
+    max-height: none;
+  }
+
+  body > header #resolve {
+    display: none !important;
+  }
+
+  /* The existing Orders/Resolve controls now live near the player's thumb. */
+  .ux-dock {
+    display: flex !important;
+    z-index: 35;
+    min-height: var(--tactical-action-height);
+    padding: 8px 12px calc(9px + env(safe-area-inset-bottom));
+  }
+
+  #tacticalInspector {
+    bottom: var(--tactical-action-height);
+    max-height: min(56dvh, calc(100dvh - var(--tactical-action-height) - 110px));
+    padding-bottom: 0;
+  }
+
+  #tacticalInspector:not(.is-editing) {
+    max-height: 145px;
+  }
+}
