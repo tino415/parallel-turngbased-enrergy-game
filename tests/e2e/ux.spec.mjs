@@ -23,9 +23,7 @@ test('selected friendly node opens full-screen editor with live budget', async (
   await expect(page.locator('#nodeDialog')).toBeHidden();
 });
 
-test('mobile keyboard resize keeps manual-order input focused', async ({
-  page,
-}, testInfo) => {
+test('mobile keyboard resize keeps manual-order input focused', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('mobile'), 'Mobile keyboard regression');
 
   await page.locator('#map .node-hit[fill="#3278c8"]').first().tap();
