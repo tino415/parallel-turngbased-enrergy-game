@@ -58,7 +58,7 @@ test('withdrawal cannot use non-owned capital, more than invested, or nonfinite 
   const r = engine.resolveRound(params([
     node(0, 0, 1, 40), node(1, 1, 4, 100), node(2, null, 4),
   ], { 1: { withdraw: 60, invest: 0, edges: {} } }));
-  assert.ok(r.state.nodes[1].invested < 100, 'normal overflow may affect invested');
+  near(r.state.nodes[1].invested, 100); // Blue cannot withdraw Red principal.
 });
 
 test('a same-turn friendly incoming transfer cannot fund a second-hop attack', () => {
