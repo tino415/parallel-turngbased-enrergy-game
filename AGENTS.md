@@ -9,18 +9,33 @@ development commands.
 
 The toolchain lives in the `app` service of `compose.yaml`, built from
 `Dockerfile.dev` (the Playwright image: Node 24, the version CI uses, Chromium,
-python3). Nothing is installed on the host.
+python3). `.devcontainer/devcontainer.json` attaches to that same service, so
+VS Code, JetBrains and Codespaces open the repository inside it. Nothing is
+installed on the host.
+
+With the devcontainer CLI:
 
 ```sh
-podman compose up -d --build         # once per checkout, and after Dockerfile.dev changes
-podman compose exec app npm ci       # node_modules lives in a volume, built for the image
+devcontainer up --workspace-folder .                 # builds the image, runs npm ci on first create
+devcontainer exec --workspace-folder . <command>
 ```
 
-Every command below runs as `podman compose exec app <command>`. `docker compose`
-works the same way.
+Without it, plain Compose (`docker compose` works the same way):
+
+```sh
+podman compose up -d --build
+podman compose exec app npm ci                       # node_modules lives in a volume, built for the image
+podman compose exec app <command>
+```
+
+Run commands through the tool that started the stack. The devcontainer CLI
+derives a different Compose project name from the directory than `podman compose`
+does, so `podman compose exec` does not find a stack `devcontainer up` started.
 
 The `Dockerfile.dev` base image tag must equal the `@playwright/test` version in
-`package-lock.json`. Bump both together, then `podman compose up -d --build`.
+`package-lock.json`. Bump both together, then rebuild: `devcontainer up
+--workspace-folder . --remove-existing-container`, or `podman compose up -d
+--build`.
 
 ## Build, run, test
 

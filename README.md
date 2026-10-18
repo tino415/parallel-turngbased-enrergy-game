@@ -47,12 +47,11 @@ Selecting a node opens an editable details dialog on both desktop and mobile. On
 
 This is a static site; **no game server or runtime dependency** is required. Serve the repository with a simple local static web server and open `index.html`. (Directly opening `file://` may have browser-dependent storage behavior.)
 
-Node.js is used only for the development commands. They can run in the Compose stack instead of a host Node, see `AGENTS.md`:
+Node.js is used only for the development commands. They can run in the dev container instead of a host Node: open the repository in an editor with devcontainer support, or use the CLI (plain Compose works too, see `AGENTS.md`):
 
 ```sh
-podman compose up -d --build
-podman compose exec app npm ci
-podman compose exec app npm run check
+devcontainer up --workspace-folder .
+devcontainer exec --workspace-folder . npm run check
 ```
 
 ```sh
