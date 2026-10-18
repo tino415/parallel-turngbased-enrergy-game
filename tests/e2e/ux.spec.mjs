@@ -35,7 +35,8 @@ test('closing the node editor clears selection but Focus remembers the last node
 
   await neutral.click();
   await expect(page.locator('#nodeDialog')).toBeVisible();
-  await expect(page.locator('#map .node.selected')).toHaveCount(1);
+  // The selected node is identified by the editor; no map ring is ever drawn.
+  await expect(page.locator('#map .node.selected')).toHaveCount(0);
 
   await page.locator('#uxDone').click();
   await expect(page.locator('#nodeDialog')).toBeHidden();
