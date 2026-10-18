@@ -705,8 +705,14 @@
   }
 
   function showInspector() {
+    // Mobile selection only highlights the map on first tap. There is no
+    // preview modal: the second tap (or a direct dashboard edit) opens the
+    // editor inside the one existing bottom action area.
     root.hidden =
-      !active || currentView !== 'map' || Boolean(document.querySelector('dialog[open]'));
+      !active ||
+      currentView !== 'map' ||
+      (mobileLayout.matches && !editing) ||
+      Boolean(document.querySelector('dialog[open]'));
     document.body.classList.toggle('tactical-selection-active', !root.hidden);
     if (root.hidden) return;
     root.classList.toggle('is-editing', editing);
