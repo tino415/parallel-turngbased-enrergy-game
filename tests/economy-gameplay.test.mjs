@@ -207,7 +207,7 @@ test('AI avoids impossible spending and leaves garrisons for every attacking sou
 });
 
 test('AI attacks a strong opponent even when no safe immediate conquest exists', () => {
-  const nodes = [node(0, 0, 180, 90), node(1, 1, 55, 40)];
+  const nodes = [node(0, 0, 120, 90), node(1, 1, 55, 40)];
   const plan = engine.economicAI(nodes, [[0, 1]]);
   assert.equal(plan.orders[1].type, 'attack');
   assert.ok(plan.orders[1].amount > 15, 'siege pressure should not be zero');
