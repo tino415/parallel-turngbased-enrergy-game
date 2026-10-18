@@ -30,6 +30,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
 .ux-map-heading .muted{font-size:12px;margin:3px 0 0}
 .ux-map-heading label{display:flex;align-items:center;gap:7px;font-size:12px;color:#afc2d9}
 .ux-map-heading select{width:145px}
+#map .ux-flow-overlay{pointer-events:none}
 #mapViewport .map-zoom-controls{right:12px;top:12px;bottom:auto;gap:6px}
 #mapViewport .map-zoom-controls button{min-width:43px;min-height:43px;font-size:15px;background:#203956eb}
 #mapViewport .map-zoom-controls #focusMap{font-size:12px}
@@ -283,8 +284,8 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
       const dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy)||1;
       const fromX=ax+dx/len*32,fromY=ay+dy/len*32,toX=bx-dx/len*35,toY=by-dy/len*35;
       const color=o.type==='attack'?'#ff987f':o.automatic?'#76b3ff':'#63d9af';
-      element('line',{x1:fromX,y1:fromY,x2:toX,y2:toY,stroke:color,'stroke-width':4,'stroke-dasharray':o.automatic?'8 5':'none'},graph);
-      const arrow=element('path',{d:'M '+toX+' '+toY+' l '+(-dx/len*12-dy/len*5)+' '+(-dy/len*12+dx/len*5)+' l '+(dy/len*10)+' '+(-dx/len*10)+' Z',fill:color},graph);
+      element('line',{x1:fromX,y1:fromY,x2:toX,y2:toY,stroke:color,'stroke-width':4,'stroke-dasharray':o.automatic?'8 5':'none',class:'ux-flow-overlay'},graph);
+      const arrow=element('path',{d:'M '+toX+' '+toY+' l '+(-dx/len*12-dy/len*5)+' '+(-dy/len*12+dx/len*5)+' l '+(dy/len*10)+' '+(-dx/len*10)+' Z',fill:color,class:'ux-flow-overlay'},graph);
       const label=element('text',{x:(ax+bx)/2-dy/len*15,y:(ay+by)/2+dx/len*15,class:'flow-label'},graph);
       label.textContent=fmtUX(o.amount);
     }
@@ -305,7 +306,6 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   };
   const oldClickNode = clickNode;
   clickNode = function(id) {
-    if (mobile() && byId('mapViewport').classList.contains('touch-pan-mode')) return;
     if (state.nodes[id] && state.nodes[id].owner === 0) {
       selected=id;
       render();
