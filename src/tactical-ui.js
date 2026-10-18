@@ -34,6 +34,7 @@
     button.textContent = label;
     button.onclick = () => {
       menu.open = false;
+      menu.querySelector('summary').focus();
       byId(original).click();
     };
     menu.querySelector('.tactical-menu-content').append(button);
@@ -247,6 +248,25 @@
     selected = null;
     editing = false;
     render();
+  }
+
+  function dismissAndReturnFocus() {
+    const item = activeMapItemSelector();
+    dismiss();
+    if (item) svg.querySelector(item)?.focus();
+  }
+
+  function activeMapItemSelector() {
+    if (active?.kind === 'node') return '[data-node="' + active.id + '"]';
+    if (active?.kind === 'edge') return '[data-edge="' + active.a + '-' + active.b + '"]';
+    return null;
+  }
+
+  function mapItemSelector(element) {
+    if (!svg.contains(element)) return null;
+    if (element.dataset.node !== undefined) return '[data-node="' + element.dataset.node + '"]';
+    if (element.dataset.edge !== undefined) return '[data-edge="' + element.dataset.edge + '"]';
+    return null;
   }
 
   // These entry points are also used by Dashboard and the Orders review dialog.
@@ -807,7 +827,7 @@
     close.type = 'button';
     close.textContent = '×';
     close.setAttribute('aria-label', 'Clear map selection');
-    close.onclick = dismiss;
+    close.onclick = dismissAndReturnFocus;
     header.append(close);
     const body = document.createElement('div');
     body.className = 'tactical-inspector-body';
@@ -828,11 +848,13 @@
       previousRound = state.round;
     }
     if (active?.kind === 'node' && !state.nodes[active.id]) active = null;
+    const focusedMapItem = mapItemSelector(document.activeElement);
     oldRender();
     // The thumb-reachable control mirrors the authoritative round button.
     byId('uxDockResolve').disabled = byId('resolve').disabled;
     drawSelection();
     showInspector();
+    if (focusedMapItem) svg.querySelector(focusedMapItem)?.focus();
   };
   byId('generate').addEventListener(
     'click',
@@ -862,7 +884,7 @@
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || !active) return;
     if (document.querySelector('dialog[open]')) return;
-    dismiss();
+    dismissAndReturnFocus();
   });
   render();
 })();

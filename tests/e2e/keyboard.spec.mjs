@@ -8,9 +8,6 @@ import {
   activeElementName,
 } from './support/game.mjs';
 
-const KEYBOARD_TASK =
-  'proposed Todoist task "Keyboard map selection and focus return in the contextual inspector"';
-
 async function tabUntil(page, name, limit = 30) {
   for (let step = 0; step < limit; step++) {
     await page.keyboard.press('Tab');
@@ -38,7 +35,6 @@ test('Space opens the editor of a highlighted connection', async ({ page }) => {
 });
 
 test('a second Enter on a connection opens its editor', async ({ page }) => {
-  test.fail(true, 'render() rebuilds the SVG and focus drops to <body>; ' + KEYBOARD_TASK);
   await edgeHit(page, '0-1').focus();
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
@@ -46,7 +42,6 @@ test('a second Enter on a connection opens its editor', async ({ page }) => {
 });
 
 test('map nodes are reachable from the keyboard', async ({ page }) => {
-  test.fail(true, 'node hits have no tabindex or role; ' + KEYBOARD_TASK);
   const focusable = page.locator('#map [tabindex]');
   const names = await focusable.evaluateAll((elements) =>
     elements.map((element) => element.getAttribute('aria-label') || ''),
@@ -64,7 +59,6 @@ test('Escape closes the editor and leaves state untouched', async ({ page }) => 
 });
 
 test('Escape returns focus to the map item that was being edited', async ({ page }) => {
-  test.fail(true, 'focus lands on <body>; ' + KEYBOARD_TASK);
   await openNodeEditor(page);
   await page.locator('#tacticalPolicyPercent').focus();
   await page.keyboard.press('Escape');
@@ -75,10 +69,6 @@ test('Escape returns focus to the map item that was being edited', async ({ page
 });
 
 test('Escape in a dialog opened from the ☰ menu returns focus to the menu', async ({ page }) => {
-  test.fail(
-    true,
-    'the opener sits inside the closed <details>, focus lands on <body>; ' + KEYBOARD_TASK,
-  );
   await page.locator('#tacticalMenu summary').click();
   await page.locator('#tacticalMenu button').filter({ hasText: 'Settings' }).click();
   await expect(page.locator('#uxSettingsDialog')).toBeVisible();
