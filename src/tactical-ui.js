@@ -711,7 +711,7 @@
     root.hidden =
       !active ||
       currentView !== 'map' ||
-      (mobileLayout.matches && !editing) ||
+      !editing ||
       Boolean(document.querySelector('dialog[open]'));
     document.body.classList.toggle('tactical-selection-active', !root.hidden);
     if (root.hidden) return;
