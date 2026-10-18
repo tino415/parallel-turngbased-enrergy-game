@@ -37,6 +37,37 @@ test('manual orders can be edited from the separate orders dialog', async ({ pag
   await expect(page.locator('#uxOrdersDialog')).toBeHidden();
 });
 
+test('planned attack arrows remain visible when another node is selected', async ({ page }) => {
+  await expect(page.locator('#overlay')).toHaveValue('selected');
+  await expect(page.locator('#overlay option[value="selected"]')).toHaveText(
+    'Attacks + selected',
+  );
+  await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
+  const attackInput = page
+    .locator('#allocator .allocation-line')
+    .filter({ hasText: 'Attack → Node 1' })
+    .locator('input');
+  await attackInput.fill('6');
+  await attackInput.dispatchEvent('change');
+  await page.locator('#closeNodeDialog').click();
+
+  const attacks = page.locator('#map > g > line[stroke="#ff987f"]');
+  await expect(attacks).toHaveCount(1);
+
+  // Choosing a different node must not hide an existing attack plan.
+  await page.locator('#fit').click();
+  await page.locator('#map .node-hit[fill="#768092"]').first().click();
+  await expect(page.locator('#nodeDialog')).toBeVisible();
+  await page.locator('#closeNodeDialog').click();
+  await expect(attacks).toHaveCount(1);
+
+  // Explicit overlay filters still control what is displayed.
+  await page.locator('#overlay').selectOption('none');
+  await expect(attacks).toHaveCount(0);
+  await page.locator('#overlay').selectOption('selected');
+  await expect(attacks).toHaveCount(1);
+});
+
 test('map and settings expose separate controls on mobile', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('mobile'), 'Mobile layout only');
   await expect(page.locator('#uxDockOrders')).toBeVisible();
