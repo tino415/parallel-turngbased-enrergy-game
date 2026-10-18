@@ -1,5 +1,5 @@
 'use strict';
-const { buildMap, evaluatePolicy, forecast, playerColor } = GameEngine;
+const { buildMap, evaluatePolicy, forecast, playerColor, SOFT_CAP_RULES } = GameEngine;
 let N = 14;
 let edges = [
   [0, 1],
@@ -56,6 +56,10 @@ let state,
   viewDashboard = false,
   currentView = 'map',
   autosaveAvailable = false;
+const softCapEnabled = () => state?.rulesVersion === SOFT_CAP_RULES.version;
+const withdrawal = (source, p = plan(source)) => (softCapEnabled() ? p.withdraw || 0 : 0);
+const availableEnergy = (source, p = plan(source)) =>
+  state.nodes[source].active + withdrawal(source, p) * (1 - SOFT_CAP_RULES.withdrawalFee);
 function fresh() {
   const nodes = Array.from({ length: N }, (_, id) => ({
     id,
@@ -73,7 +77,7 @@ function fresh() {
     node.active = 24;
     node.invested = 14;
   }
-  state = { round: 1, nodes, finished: false };
+  state = { round: 1, nodes, finished: false, rulesVersion: SOFT_CAP_RULES.version };
   orders = {};
   policies = {};
   selected = null;
@@ -139,7 +143,7 @@ function generate() {
   playerCount = map.players;
   xy = map.positions;
   edges = map.links;
-  state = { round: 1, nodes: map.nodes, finished: false };
+  state = { round: 1, nodes: map.nodes, finished: false, rulesVersion: SOFT_CAP_RULES.version };
   orders = {};
   policies = {};
   selected = null;
@@ -161,7 +165,7 @@ function log(message) {
 }
 
 function plan(source) {
-  return orders[source] ?? { invest: 0, edges: {} };
+  return orders[source] ?? { invest: 0, withdraw: 0, edges: {} };
 }
 function allocated(source, p = plan(source)) {
   return p.invest + Object.values(p.edges).reduce((sum, n) => sum + n, 0);
@@ -172,20 +176,25 @@ function setAllocation(source, destination, value) {
     node = state.nodes[source],
     p = {
       invest: plan(source).invest,
+      withdraw: withdrawal(source),
       edges: { ...plan(source).edges },
       hold: plan(source).hold || false,
     };
   if (!Number.isFinite(amount) || amount < 0) return;
-  if (destination === null) p.invest = amount;
+  if (destination === 'withdraw' && softCapEnabled()) {
+    if (amount > node.invested + 1e-8) return;
+    p.withdraw = amount;
+  } else if (destination === null) p.invest = amount;
   else if (neighbors(source).includes(destination)) {
     if (amount === 0) delete p.edges[destination];
     else p.edges[destination] = amount;
   } else return;
-  if (allocated(source, p) > node.active + 1e-8) {
-    $('hint').textContent = 'Over budget: total allocations cannot exceed ' + fmt(node.active);
+  if (allocated(source, p) > availableEnergy(source, p) + 1e-8) {
+    $('hint').textContent =
+      'Over budget: allocations cannot exceed ' + fmt(availableEnergy(source, p));
     return;
   }
-  if (allocated(source, p) < 1e-9 && !p.hold) delete orders[source];
+  if (allocated(source, p) < 1e-9 && !p.hold && !p.withdraw) delete orders[source];
   else orders[source] = p;
   render();
 }
@@ -214,11 +223,19 @@ function renderAllocator() {
   const n = state.nodes[selected],
     p = plan(selected),
     used = allocated(selected),
-    remain = Math.max(0, n.active - used);
+    remain = Math.max(0, availableEnergy(selected, p) - used);
   const summary = document.createElement('div');
   summary.className = 'order-row';
   summary.textContent =
-    'Allocated ' + fmt(used) + ' / ' + fmt(n.active) + ' · Defense reserve ' + fmt(remain);
+    'Allocated ' +
+    fmt(used) +
+    ' / ' +
+    fmt(availableEnergy(selected, p)) +
+    ' · Defense reserve ' +
+    fmt(remain) +
+    (softCapEnabled()
+      ? ' · Total ' + fmt(n.active + n.invested) + ' / ' + SOFT_CAP_RULES.capacity + ' capacity'
+      : '');
   container.append(summary);
   const fields = document.createElement('div');
   fields.className = 'order-row';
@@ -230,10 +247,26 @@ function renderAllocator() {
     row.className = 'allocation-line';
     const name = document.createElement('label');
     name.textContent = label;
-    const input = numberField(amount, n.active, (value) => setAllocation(selected, target, value));
+    const max =
+      target === 'withdraw' ? n.invested : Math.max(n.active, availableEnergy(selected, p));
+    const input = numberField(amount, max, (value) => setAllocation(selected, target, value));
+    input.dataset.allocation =
+      target === null ? 'invest' : target === 'withdraw' ? 'withdraw' : 'edge-' + target;
     row.append(name, input);
     fields.append(row);
   };
+  if (softCapEnabled()) {
+    makeRow('Withdraw invested → active (5% fee)', withdrawal(selected, p), 'withdraw');
+    const note = document.createElement('small');
+    note.className = 'muted';
+    note.textContent =
+      'Withdrawn energy is spendable this round; overflow above ' +
+      SOFT_CAP_RULES.capacity +
+      ' decays ' +
+      Math.round(100 * SOFT_CAP_RULES.overflowDecay) +
+      '% at round end (including invested principal).';
+    fields.append(note);
+  }
   makeRow('Invest', p.invest, null);
   for (const dest of neighbors(selected))
     makeRow(
@@ -257,7 +290,7 @@ function defaultPolicy() {
 function policyOrders(source) {
   return evaluatePolicy({
     policy: policies[source],
-    node: state.nodes[source],
+    node: { ...state.nodes[source], active: availableEnergy(source) },
     manualSpent: allocated(source),
     manualHold: Boolean(plan(source).hold),
     neighbors: neighbors(source),
@@ -351,7 +384,7 @@ function renderPolicyEditor() {
     pause.checked = Boolean(plan(source).hold);
     pause.onchange = () => {
       const m = { ...plan(source), edges: { ...plan(source).edges }, hold: pause.checked };
-      if (allocated(source, m) === 0 && !m.hold) delete orders[source];
+      if (allocated(source, m) === 0 && !m.hold && !m.withdraw) delete orders[source];
       else orders[source] = m;
       render();
     };
@@ -369,7 +402,7 @@ function renderPolicyEditor() {
           .join(' · ')
       : 'No automatic spending') +
     ' · Defense ' +
-    fmt(Math.max(0, state.nodes[source].active - allocated(source) - spent));
+    fmt(Math.max(0, availableEnergy(source) - allocated(source) - spent));
   box.append(preview);
   container.append(box);
 }
@@ -410,6 +443,7 @@ function renderOrders() {
     const details = document.createElement('div');
     details.className = 'muted';
     const parts = [];
+    if (p.withdraw > 0) parts.push('Withdraw ' + fmt(p.withdraw));
     if (p.invest > 0) parts.push('Invest ' + fmt(p.invest));
     for (const [dest, amount] of Object.entries(p.edges))
       parts.push(
@@ -427,7 +461,7 @@ function renderOrders() {
             .join(', ')
         : '') +
       ' · Defense ' +
-      fmt(Math.max(0, state.nodes[id].active - allocated(id) - spent));
+      fmt(Math.max(0, availableEnergy(id) - allocated(id) - spent));
     row.append(details);
     container.append(row);
   }
@@ -491,6 +525,7 @@ function projection(id) {
     state.nodes[id],
     incoming,
     scheduled.filter((o) => o.source === id),
+    { softCap: softCapEnabled(), withdraw: withdrawal(id) },
   );
 }
 function renderFlows(svg, graph, element) {
@@ -692,10 +727,10 @@ function renderDashboard() {
       amount = Math.max(0, Number($('bulkManualInvest').value) || 0);
     for (const id of ids) {
       const p = { ...plan(id), edges: { ...plan(id).edges } },
-        available = state.nodes[id].active - Object.values(p.edges).reduce((a, b) => a + b, 0);
+        available = availableEnergy(id, p) - Object.values(p.edges).reduce((a, b) => a + b, 0);
       if (amount <= available + 1e-8) {
         p.invest = amount;
-        if (allocated(id, p) < 1e-9 && !p.hold) delete orders[id];
+        if (allocated(id, p) < 1e-9 && !p.hold && !p.withdraw) delete orders[id];
         else orders[id] = p;
       }
     }
@@ -945,7 +980,17 @@ function render() {
   let selectedNode = selected === null ? null : nodes[selected];
   $('selectedTitle').textContent = selectedNode ? 'Node ' + selected : 'Select a blue node';
   $('details').textContent = selectedNode
-    ? 'Active ' + fmt(selectedNode.active) + ' · Invested ' + fmt(selectedNode.invested)
+    ? 'Active ' +
+      fmt(selectedNode.active) +
+      ' · Invested ' +
+      fmt(selectedNode.invested) +
+      (softCapEnabled() && selectedNode.owner !== null
+        ? ' · Total ' +
+          fmt(selectedNode.active + selectedNode.invested) +
+          ' / ' +
+          SOFT_CAP_RULES.capacity +
+          ' sustainable capacity'
+        : '')
     : 'Choose a blue node to issue an order.';
   $('hint').textContent = state.finished
     ? 'Game over. Start a new game.'

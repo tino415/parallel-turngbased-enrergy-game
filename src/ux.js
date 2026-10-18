@@ -306,7 +306,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
       if (n.owner !== 0) continue;
       const p=projection(n.id),[x,y]=xy[n.id];
       const t=element('text',{x,y:y+53,'font-size':12,fill:'#92ebc9',class:'ux-income-label'},graph);
-      t.textContent='+'+fmtUX(p.income)+' / I '+fmtUX(p.invest);
+      t.textContent='+'+fmtUX(p.income)+' / I '+fmtUX(p.invest)+(softCapEnabled()&&p.overflow>.05?' / −'+fmtUX(p.overflow):'');
     }
   };
 
@@ -379,7 +379,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
       edit.onclick=()=>{selected=n.id;switchView('map');showNodeOnMobile();};
       head.append(label,edit);
       const desc=document.createElement('div');desc.className='muted';
-      desc.textContent='Active '+fmtUX(n.active)+' · Invested '+fmtUX(n.invested)+' · Defense '+fmtUX(p.defense)+' · Next '+fmtUX(p.next);
+      desc.textContent='Active '+fmtUX(n.active)+' · Invested '+fmtUX(n.invested)+' · Defense '+fmtUX(p.defense)+' · Next '+fmtUX(p.next)+(softCapEnabled()?' · Capacity '+fmtUX(n.active+n.invested)+'/'+SOFT_CAP_RULES.capacity+' · Overflow loss '+fmtUX(p.overflow):'');
       desc.style.cssText='font-size:12px;line-height:1.7;margin-top:8px';
       card.append(head,desc);cards.append(card);
     }
@@ -455,7 +455,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
       const card=document.createElement('div');card.className='ux-node-card';
       const title=document.createElement('strong');title.textContent='Node '+selected;
       const subtitle=document.createElement('p');subtitle.className='muted';
-      subtitle.textContent=fmtUX(selectedNode.active)+' active · '+fmtUX(selectedNode.invested)+' invested';
+      subtitle.textContent=fmtUX(selectedNode.active)+' active · '+fmtUX(selectedNode.invested)+' invested'+(softCapEnabled()?' · '+fmtUX(selectedNode.active+selectedNode.invested)+'/'+SOFT_CAP_RULES.capacity+' capacity':'');
       const edit=document.createElement('button');edit.textContent=selectedNode.owner===0?'Edit orders →':'Inspect node →';edit.onclick=()=>showNodeOnMobile();
       card.append(title,subtitle,edit);sideSelection.append(card);
     } else {
@@ -474,25 +474,26 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
     else {
       const id=selected, p=projection(id),manual=selectedNode.owner===0?allocated(id):0;
       const auto=selectedNode.owner===0?policyOrders(id).reduce((s,o)=>s+o.amount,0):0;
-      const defense=Math.max(0,selectedNode.active-manual-auto);
+      const defense=Math.max(0,(selectedNode.owner===0?availableEnergy(id):selectedNode.active)-manual-auto);
       statsEl.innerHTML='';
-      for (const [label,value] of [['Active',fmtUX(selectedNode.active)],['Invested',fmtUX(selectedNode.invested)],['Defense',fmtUX(defense)]]) {
+      for (const [label,value] of [['Active',fmtUX(selectedNode.active)],['Invested',fmtUX(selectedNode.invested)],['Defense',fmtUX(defense)],...(softCapEnabled()&&selectedNode.owner!==null?[['Total / cap',fmtUX(selectedNode.active+selectedNode.invested)+' / '+SOFT_CAP_RULES.capacity]]:[])]) {
         const box=document.createElement('div');box.className='ux-stat';
         const name=document.createElement('span');name.textContent=label;
         const v=document.createElement('strong');v.textContent=value;
         box.append(name,v);statsEl.append(box);
       }
-      const portion = n => selectedNode.active>0?Math.max(0,100*n/selectedNode.active):0;
+      const budgetTotal=selectedNode.owner===0?availableEnergy(id):selectedNode.active;
+      const portion = n => budgetTotal>0?Math.max(0,100*n/budgetTotal):0;
       budget.hidden=selectedNode.owner!==0;
-      budget.innerHTML='<div class="ux-budget-head"><strong>Energy budget</strong><span>'+fmtUX(selectedNode.active)+' available</span></div><div class="ux-budget-bar"><span style="background:#5398f7;width:'+portion(manual)+'%"></span><span style="background:#8b79db;width:'+portion(auto)+'%"></span><span style="background:#60d5a6;width:'+portion(defense)+'%"></span></div><div class="ux-budget-legend"><span>Manual <b>'+fmtUX(manual)+'</b></span><span>Policy <b>'+fmtUX(auto)+'</b></span><span>Defense <b>'+fmtUX(defense)+'</b></span></div>';
+      budget.innerHTML='<div class="ux-budget-head"><strong>Energy budget</strong><span>'+fmtUX(budgetTotal)+' available'+(softCapEnabled()&&selectedNode.owner===0?' (withdraw '+fmtUX(withdrawal(id))+')':'')+'</span></div><div class="ux-budget-bar"><span style="background:#5398f7;width:'+portion(manual)+'%"></span><span style="background:#8b79db;width:'+portion(auto)+'%"></span><span style="background:#60d5a6;width:'+portion(defense)+'%"></span></div><div class="ux-budget-legend"><span>Manual <b>'+fmtUX(manual)+'</b></span><span>Policy <b>'+fmtUX(auto)+'</b></span><span>Defense <b>'+fmtUX(defense)+'</b></span></div>';
       byId('uxManualSection').hidden=selectedNode.owner!==0;
       byId('uxPolicySection').hidden=selectedNode.owner!==0;
       jumps.hidden=selectedNode.owner!==0;
       // Existing combat math is unchanged: show strength intervals, not win odds.
       if (selectedNode.owner===0) {
         allocator.querySelectorAll('.allocation-line').forEach((row,i)=>{
-          if (i===0) return;
-          const dest=neighbors(id)[i-1], target=state.nodes[dest];
+          if (i<(softCapEnabled()?2:1)) return;
+          const dest=neighbors(id)[i-(softCapEnabled()?2:1)], target=state.nodes[dest];
           if(!target || target.owner===0) return;
           const attack=plan(id).edges[dest]||0;
           const cap=document.createElement('small');
@@ -505,7 +506,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
         ? 'Opponent and neutral energy can be inspected here. Select a friendly adjacent node to allocate an attack.'
         : 'Attack and defense each receive independent ×0.8–1.2 strength modifiers. Targets can change during simultaneous resolution; displayed energy is not a win probability.';
       foot.textContent=selectedNode.owner===0
-        ? 'Defense '+fmtUX(defense)+' · Next active '+fmtUX(p.next)+' (estimate without combat)'
+        ? 'Defense '+fmtUX(defense)+' · Next active '+fmtUX(p.next)+(softCapEnabled()?' · Overflow '+fmtUX(p.overflow):'')+' (estimate without combat)'
         : 'No orders can be issued from this node.';
     }
   };

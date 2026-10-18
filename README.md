@@ -3,18 +3,18 @@
 A browser-based, simultaneous-turn, graph strategy game. The final game name is not settled.
 
 **Play:** https://pteg.otin.dev  
-**Current version:** v0.8.4 (UI redesign in review on feature branch)
+**Live version:** v0.8.4 · **Gameplay update:** proposed on an unmerged, unapproved feature branch.
 
 ## Play and rules
 
 You control the blue nodes. Other player colors are AI opponents; gray nodes are neutral. Each node has its own **active energy** and **invested energy**—there is no shared resource pool.
 
-- Each round, you may allocate a node's current active energy among **investment**, **transfers to adjacent friendly nodes**, and **attacks on adjacent nonfriendly nodes**. Any unallocated active energy defends the node.
-- All allocations from a node must fit within the active energy available **at the start of the round**. Incoming transfers cannot fund outgoing orders in the same round.
-- Invested principal is locked. Each round, invested energy earns **10%** as active energy; active energy decays **10%**; every node also produces **+1 active energy**.
+- Each round you can **withdraw invested energy into active**, invest active energy, transfer to neighboring allies, or attack neighboring enemies/neutral nodes. Unspent active energy defends the node.
+- **Withdrawals resolve first** in the same turn, so a source can immediately spend that energy. After withdrawal, outgoing allocations must fit within the source's start-of-round active energy plus net withdrawals. **Incoming transfers cannot finance outgoing orders in the same round**, including second-hop transfers.
+- **Proposed new-match economy:** Each owned node sustainably holds **250 combined active + invested** energy. Going above 250 is allowed, but at the end of the round **25% of the excess is destroyed**, proportionally from active and invested pools. Withdrawing from invested principal into active costs **5%** of the amount withdrawn. Remaining investment earns **10% per round** as active energy; active energy decays **10%**, and each node produces **+1**. Neutral nodes do not suffer overflow until captured. These values are review defaults, not final balance approval.
 - Rounds resolve simultaneously. Attack orders from the same player targeting the same node combine; competing attack groups are shuffled. Attack and defense receive independent random strength modifiers between **0.8× and 1.2×**. The surviving side retains energy based on the resulting effective strengths.
 - When a node changes owner, its investment is reduced by a random **25–75%**. A player wins by eliminating all other players' owned nodes; neutral nodes need not be captured.
-- An AI player chooses attacks, transfers, or investments automatically each round. AI behavior is intentionally simple; the game is not balance-tested.
+- **Reworked AI for new matches:** AI coordinates simultaneous assaults from adjacent nodes, mobilizes invested reserves for offense and defense, can pressure stronger enemy positions instead of waiting for a guaranteed conquest, avoids routine investment above available capacity, and sends surplus from back-line nodes to under-cap frontline neighbors. It still uses heuristic tactics and is **not** proven balanced against human players or coordinated adversaries.
 
 ## Interface
 
@@ -26,6 +26,8 @@ The main content has three tabs:
 | **Dashboard** | Review your nodes' energy, defense and production; apply bulk policies or manual investments; edit each node's policy investment %, reserve and enabled state directly in the table. |
 | **Messages**  | See combat events and round summaries (the most recent 70 entries).                                                                                                                  |
 
+In the proposed new-match rules, selecting a friendly node shows **total energy versus sustainable capacity**, a **Withdraw invested → active** entry, funded order budget and a **projected overflow-loss estimate** (before combat). Legacy saves keep their original economy rather than silently changing rules mid-match.
+
 Selecting a node opens an editable details dialog on both desktop and mobile. On mobile the editor fills the screen, with active/invested/defending energy, a live manual/policy energy budget, combat-strength ranges, manual allocations, and persistent policy controls. The desktop sidebar instead provides a compact selection and next-round overview. Planned orders and conquest defaults live in separate Orders and Settings dialogs; mobile keeps Orders and Resolve round in a bottom action bar.
 
 **Persistent policies:** For each blue node, reserve some active energy, invest a specified percentage of the remaining surplus, and optionally transfer the rest to **one adjacent friendly node**. Policies do not initiate attacks. Manual orders take priority; a policy can be disabled, removed, copied, pasted, or paused for one round. The dashboard can apply reserve/invest percentages to multiple selected nodes at once; existing transfer destinations are preserved when applying these bulk changes.
@@ -36,7 +38,7 @@ Selecting a node opens an editable details dialog on both desktop and mobile. On
 
 ## Saving and recovery
 
-- The game **automatically saves** its current match to the browser's `localStorage`, including topology, round state, pending orders, policies, recent messages and default conquest-policy settings.
+- The game **automatically saves** its current match to the browser's `localStorage`, including topology, round state, pending orders, policies, recent messages and default conquest-policy settings. **Versioned rule snapshots:** existing v1 saves continue under legacy economics, while new games created after approval would use rules version 2; pending withdrawals are saved in node orders.
 - Reloading or returning in the **same browser profile and origin** automatically restores the saved match. There is currently **one save slot**: starting another match overwrites it.
 - For an active match, the game asks the browser to confirm navigation away or refresh using `beforeunload`. **Browsers may skip the prompt**, especially on mobile; autosave is the main recovery mechanism.
 - Saves are **not synchronized across devices or browsers**, and deleting site data/private browsing cleanup can erase them. No account, server-side persistence, or save export/import is implemented.
@@ -69,6 +71,8 @@ The build copies `index.html`, `_headers`, and `src/` into `dist/`. No bundling 
 | `tests/*.test.mjs`  | Syntax/structure, graph generation, economy/policy and round-resolution regression tests                                                    |
 | `scripts/build.mjs` | Prepare `dist/`                                                                                                                             |
 | `wrangler.toml`     | Cloudflare Worker name and static assets directory                                                                                          |
+
+The new economy implementation is in `src/engine.js`, not in a simulation-only patch. The existing standalone baseline harness continues to use version 1 unless a test explicitly enables version 2, protecting historical 300-turn comparisons. Version 2 economic-AI decisions occur in `economicAI`; old saves keep the original AI. The production implementation must remain **unmerged and undeployed** until reviewed.
 
 The game engine is extracted from the DOM. However, the application is still a prototype: UI state is managed in `game.js`, combat randomness during normal play is not seeded for replays, and there is no online multiplayer.
 
@@ -169,6 +173,10 @@ npm run simulate -- --matches=30 --nodes=40 --players=4 --rounds=300 --seed=inve
 ```
 
 Inspect final **total controlled energy**, gross income, investment income and production share, alongside wins, survival, expanded games and total energy allocated to investment/attack (reported in each match's `playerStats`). The economic policy is matched, but the resulting investments will differ as expansion spends energy, adds +1-per-node base income and exposes captured capital to risk. For a fuller experiment, compare multiple attack budgets, maps and opponents.
+
+## Gameplay implementation review
+
+The gameplay implementation PR is separate from [draft simulation research PR #12](https://github.com/tino415/parallel-turngbased-enrergy-game/pull/12). Both remain review material, not an instruction to deploy. Review capacity (250), overflow decay (25% of above-cap total), withdrawal fee (5%), legacy save handling, and behavior under coordinated offensive and defensive AI. The experiment found that smaller caps often caused catastrophic defense failures against Default AI, and demonstrated no reliable elimination wins. Human testing and symmetric capacity-aware AI evaluation are required before promotion.
 
 ## Known limitations
 

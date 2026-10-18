@@ -13,6 +13,15 @@
   const playerName = (owner) => (owner === null ? 'Neutral' : players[owner].name);
   const playerColor = (owner) => (owner === null ? '#768092' : players[owner].color);
 
+  // Version 2 is enabled for NEW matches; legacy autosaves retain original rules.
+  const SOFT_CAP_RULES = Object.freeze({
+    version: 2,
+    capacity: 250,
+    overflowDecay: 0.25,
+    withdrawalFee: 0.05,
+  });
+  const isSoftCap = (state) => state.rulesVersion === SOFT_CAP_RULES.version;
+
   // Pure, browser-independent map and economy functions.
   function seeded(seed) {
     let h = 2166136261;
@@ -130,16 +139,44 @@
       });
     return result;
   }
-  function forecast(node, incoming, outgoing) {
+  function applyOverflow(node, rules = SOFT_CAP_RULES) {
+    const next = { ...node };
+    const total = Math.max(0, next.active + next.invested);
+    const loss =
+      node.owner === null ? 0 : Math.max(0, total - rules.capacity) * rules.overflowDecay;
+    if (loss > 0 && total > 0) {
+      next.active = Math.max(0, next.active * (1 - loss / total));
+      next.invested = Math.max(0, next.invested * (1 - loss / total));
+    }
+    return { node: next, loss };
+  }
+
+  function forecast(node, incoming, outgoing, options = {}) {
+    const withdraw = options.softCap
+      ? Math.min(node.invested, Math.max(0, options.withdraw || 0))
+      : 0;
     const invest = outgoing.filter((o) => o.type === 'invest').reduce((a, o) => a + o.amount, 0);
     const spent = outgoing.reduce((a, o) => a + o.amount, 0);
-    const defense = Math.max(0, node.active - spent);
+    const available = node.active + withdraw * (1 - SOFT_CAP_RULES.withdrawalFee);
+    const defense = Math.max(0, available - spent);
+    const invested = node.invested - withdraw + invest;
+    const income = 1 + 0.1 * invested;
+    const beforeOverflow = { ...node, active: 0.9 * (defense + incoming) + income, invested };
+    const projection = options.softCap
+      ? applyOverflow(beforeOverflow)
+      : { node: beforeOverflow, loss: 0 };
     return {
       invest,
+      withdraw,
+      available,
       incoming,
       defense,
-      income: 1 + 0.1 * (node.invested + invest),
-      next: 0.9 * (defense + incoming) + 1 + 0.1 * (node.invested + invest),
+      income,
+      next: projection.node.active,
+      nextInvested: projection.node.invested,
+      overflow: projection.loss,
+      capacity: options.softCap ? SOFT_CAP_RULES.capacity : null,
+      total: projection.node.active + projection.node.invested,
     };
   }
   function aiOrders(nodes, links, includePlayerZero = false) {
@@ -186,6 +223,129 @@
     return planned;
   }
 
+  // Capacity-aware AI, separate from the legacy strategy. Players share the
+  // same rules, but Blue is human-controlled in normal browser matches.
+  function economicAI(nodes, links, includePlayerZero = false) {
+    const orders = {};
+    const withdrawals = {};
+    const net = 1 - SOFT_CAP_RULES.withdrawalFee;
+    const adjacent = nodes.map(() => []);
+    for (const [a, b] of links) {
+      adjacent[a].push(b);
+      adjacent[b].push(a);
+    }
+    const power = (n) => n.active + n.invested * net;
+    const garrison = (n) => Math.min(12, Math.max(2, power(n) * 0.08));
+    const committed = new Set();
+
+    for (const owner of new Set(nodes.map((n) => n.owner).filter((n) => n !== null))) {
+      if (owner === 0 && !includePlayerZero) continue;
+      // Pick common targets for all adjacent allied nodes: several modest
+      // attacks can defeat a single well-defended frontier position.
+      const targets = nodes.filter(
+        (target) =>
+          target.owner !== owner &&
+          adjacent[target.id].some((source) => nodes[source].owner === owner),
+      );
+      // Prefer attacking players over passively exhausting neutral territory.
+      targets.sort(
+        (a, b) =>
+          Number(a.owner === null) - Number(b.owner === null) || a.active - b.active || a.id - b.id,
+      );
+
+      for (const target of targets) {
+        const sources = adjacent[target.id]
+          .map((id) => nodes[id])
+          .filter((n) => n.owner === owner && !committed.has(n.id))
+          .map((n) => ({
+            node: n,
+            reserve: garrison(n),
+            // The full spendable pool includes withdrawable reserves, but no
+            // incoming transfer from this or any other round's orders.
+            capacity: Math.max(0, power(n) - garrison(n)),
+            activeFree: Math.max(0, n.active - garrison(n)),
+            amount: 0,
+          }))
+          .sort((a, b) => b.activeFree - a.activeFree || a.node.id - b.node.id);
+        const combined = sources.reduce((sum, s) => sum + s.capacity, 0);
+        // Commit enough to beat a defense through moderate combat variance.
+        // Unlike the previous AI, this does NOT also demand a second large
+        // reserve equal to the enemy's entire defense.
+        const captureForce = target.active * 1.3 + 2;
+        let attack = 0;
+        if (combined + 1e-8 >= captureForce) {
+          attack = captureForce;
+        } else if (target.owner !== null && combined >= Math.max(12, target.active * 0.55)) {
+          // When conquest is too expensive, press the frontier to drain the
+          // defender instead of leaving two fully invested armies motionless.
+          attack = Math.min(combined * 0.8, target.active * 0.95);
+        }
+        if (attack <= 1e-8) continue;
+
+        let remaining = attack;
+        // Use already-active energy before paying to withdraw any principal.
+        for (const s of sources) {
+          const amount = Math.min(remaining, s.activeFree);
+          s.amount += amount;
+          remaining -= amount;
+        }
+        for (const s of sources) {
+          if (remaining <= 1e-8) break;
+          const amount = Math.min(remaining, s.capacity - s.amount);
+          s.amount += amount;
+          remaining -= amount;
+        }
+        if (remaining > 1e-6) continue;
+        for (const s of sources) {
+          if (s.amount <= 1e-8) continue;
+          const n = s.node;
+          const withdrawal = Math.min(
+            n.invested,
+            Math.max(0, (s.amount + s.reserve - n.active) / net),
+          );
+          if (withdrawal > 1e-8) withdrawals[n.id] = withdrawal;
+          orders[n.id] = { source: n.id, type: 'attack', amount: s.amount, dest: target.id };
+          committed.add(n.id);
+        }
+      }
+
+      // Uncommitted nodes retain a smaller, meaningful defensive reserve,
+      // reinforce under-cap adjacent frontier nodes and invest only spare power.
+      for (const n of nodes) {
+        if (n.owner !== owner || committed.has(n.id)) continue;
+        const near = adjacent[n.id];
+        const enemies = near.filter((id) => nodes[id].owner !== owner && nodes[id].owner !== null);
+        const highestThreat = Math.max(0, ...enemies.map((id) => nodes[id].active));
+        const reserve = Math.min(power(n), Math.max(3, highestThreat * 0.65));
+        const withdrawal = Math.min(n.invested, Math.max(0, reserve - n.active) / net);
+        if (withdrawal > 1e-8) withdrawals[n.id] = withdrawal;
+        const free = Math.max(0, n.active + withdrawal * net - reserve);
+        const frontier = near
+          .filter((id) => nodes[id].owner === owner)
+          .filter((id) => adjacent[id].some((other) => nodes[other].owner !== owner))
+          .filter((id) => nodes[id].active + nodes[id].invested < SOFT_CAP_RULES.capacity * 0.8)
+          .sort(
+            (a, b) =>
+              nodes[a].active + nodes[a].invested - nodes[b].active - nodes[b].invested || a - b,
+          )[0];
+        if (frontier !== undefined && free > 2) {
+          const room = SOFT_CAP_RULES.capacity - nodes[frontier].active - nodes[frontier].invested;
+          const amount = Math.max(0, Math.min(free * 0.7, room));
+          if (amount > 1e-8) {
+            orders[n.id] = { source: n.id, type: 'transfer', amount, dest: frontier };
+            continue;
+          }
+        }
+        const room = Math.max(0, SOFT_CAP_RULES.capacity - n.active - n.invested);
+        const amount = Math.min(free * 0.8, room);
+        if (amount > 1e-8) {
+          orders[n.id] = { source: n.id, type: 'invest', amount, dest: null };
+        }
+      }
+    }
+    return { orders, withdrawals };
+  }
+
   function resolveRound({
     state,
     playerCount = state.playerCount ?? Math.max(2, ...state.nodes.map((n) => (n.owner ?? -1) + 1)),
@@ -195,6 +355,7 @@
     defaultConquestPolicy = null,
     rng = Math.random,
     aiOrdersOverride = null,
+    aiWithdrawalsOverride = null,
   }) {
     if (state.finished) return { state, policies, events: [] };
     const nodes = state.nodes.map((n) => ({ ...n })),
@@ -205,6 +366,35 @@
       log = (message) => events.push(message),
       rnd = (a, b) => a + rng() * (b - a),
       clamp = (v) => Math.max(0, v);
+    const softCap = isSoftCap(state);
+    const aiPlan = softCap && aiOrdersOverride === null ? economicAI(state.nodes, links) : null;
+    // Withdrawal is a start-of-round order: it can fund an action from this
+    // source, but neither an incoming transfer nor a later capture can.
+    if (softCap) {
+      const requested = {};
+      for (const [id, p] of Object.entries(orders || {})) {
+        if (state.nodes[Number(id)]?.owner === 0) requested[id] = p.withdraw ?? 0;
+      }
+      const aiWithdrawals = aiWithdrawalsOverride ?? aiPlan?.withdrawals ?? {};
+      for (const [id, amount] of Object.entries(aiWithdrawals)) {
+        if (state.nodes[Number(id)]?.owner !== null && state.nodes[Number(id)]?.owner !== 0)
+          requested[id] = amount;
+      }
+      for (const [source, amount] of Object.entries(requested)) {
+        const n = nodes[Number(source)];
+        if (
+          !n ||
+          n.owner === null ||
+          !Number.isFinite(amount) ||
+          amount < 0 ||
+          amount > n.invested + 1e-8
+        )
+          continue;
+        const withdrawal = Math.min(amount, n.invested);
+        n.invested -= withdrawal;
+        n.active += withdrawal * (1 - SOFT_CAP_RULES.withdrawalFee);
+      }
+    }
     const allocated = (p) => p.invest + Object.values(p.edges).reduce((sum, n) => sum + n, 0);
     const manual = Object.entries(orders).flatMap(([source, p]) => [
       ...(p.invest > 0
@@ -232,7 +422,10 @@
           owners: nodes.map((n) => n.owner),
         }),
       );
-    const ai = aiOrdersOverride === null ? Object.values(aiOrders(nodes, links)) : aiOrdersOverride;
+    const ai =
+      aiOrdersOverride === null
+        ? Object.values(aiPlan ? aiPlan.orders : aiOrders(nodes, links)).flat()
+        : aiOrdersOverride;
     const all = [...manual, ...automatic, ...ai];
     const valid = [],
       spent = {};
@@ -325,6 +518,17 @@
       const income = 1 + n.invested * 0.1;
       n.active = clamp(n.active * 0.9 + income);
     }
+    if (softCap) {
+      let totalLoss = 0;
+      for (const n of nodes) {
+        const projection = applyOverflow(n);
+        n.active = projection.node.active;
+        n.invested = projection.node.invested;
+        totalLoss += projection.loss;
+      }
+      if (totalLoss > 0.05)
+        log('Round ' + state.round + ' · Overflow decay destroyed ' + fmt(totalLoss) + ' energy.');
+    }
     for (const id of Object.keys(nextPolicies)) {
       if (nodes[Number(id)].owner !== 0) delete nextPolicies[id];
     }
@@ -355,6 +559,9 @@
     evaluatePolicy,
     forecast,
     aiOrders,
+    economicAI,
+    SOFT_CAP_RULES,
+    applyOverflow,
     resolveRound,
   });
 })();

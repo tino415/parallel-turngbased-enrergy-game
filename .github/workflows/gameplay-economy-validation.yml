@@ -1,0 +1,71 @@
+name: Gameplay economy verification
+
+on:
+  pull_request:
+    paths:
+      - 'src/engine.js'
+      - 'scripts/compare-live-economy.mjs'
+      - 'tests/economy-gameplay.test.mjs'
+      - '.github/workflows/gameplay-economy-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  paired-live-ai:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - scenario: duel
+            nodes: 20
+            players: 2
+          - scenario: three-player
+            nodes: 30
+            players: 3
+          - scenario: field
+            nodes: 40
+            players: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Validate production unit tests and formatting
+        run: npm run check
+      - name: Seed-matched AI and rules comparisons
+        run: |
+          mkdir -p reports
+          node scripts/compare-live-economy.mjs --matches=30 --rounds=300 \
+            --nodes=${{ matrix.nodes }} --players=${{ matrix.players }} \
+            --seed=real-economy-v2 --json=true > reports/full.json
+          node -e '
+            const report = require("./reports/full.json");
+            const lines = [
+              "### Production gameplay comparison: " + report.metadata.count + " nodes",
+              "30 matched seeds, 300 turns, " + report.metadata.players + " players",
+              "| Economy + AI | Blue wins | Blue survived | Expanded | Stalemate | Median nodes | Median controlled energy | Median gross / round |",
+              "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"
+            ];
+            for (const [version, item] of Object.entries(report.versions)) {
+              const s = item.summary;
+              lines.push("| v" + version + " | " + s.winsP0 +
+                "/30 | " + s.survivalP0 + "/30 | " + s.expansionP0 + "/30 | " +
+                s.stalemates + "/30 | " + s.medianNodes + " | " +
+                s.medianTotal.toFixed(1) + " | " + s.medianGross.toFixed(1) + " |");
+            }
+            lines.push("", "Old and new tests use different AI AND economy; no isolated causal inference.");
+            require("node:fs").writeFileSync("reports/summary.md", lines.join("\n") + "\n");
+          '
+          cat reports/summary.md | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Upload reproducible paired observations
+        uses: actions/upload-artifact@v4
+        with:
+          name: gameplay-economy-${{ matrix.scenario }}-${{ github.run_id }}
+          path: reports/
+          retention-days: 30
