@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
+import { normalizeStrategies, planStrategyOrders } from './strategies.mjs';
 
 // Run the exact same browser-independent engine that the live game uses.
 const engineSource = readFileSync(new URL('../../src/engine.js', import.meta.url), 'utf8');
@@ -78,10 +79,9 @@ export function assertValidMap(map, { count, players }) {
   assert.equal(owners.size, players, 'not every player has an initial node');
 }
 
-function zeroPlayerOrders(state, links) {
-  // Normal resolveRound already creates AI orders for owners 1..N.
-  // Only convert owner 0's bot choices into ordinary manual orders.
-  const botChoices = engine.aiOrders(state.nodes, links, true);
+function zeroPlayerOrders(state, botChoices) {
+  // Player zero uses the normal manual-order shape. The simulation injects
+  // explicit AI choices for opponents, leaving live behavior unchanged.
   const orders = {};
   for (const node of state.nodes) {
     if (node.owner !== 0 || !botChoices[node.id]) continue;
@@ -101,6 +101,7 @@ export function simulateMatch({
   players = 3,
   density = 'normal',
   maxRounds = 200,
+  strategies,
 } = {}) {
   assert.ok(Number.isInteger(count) && count >= 10 && count <= 120, 'count must be 10..120');
   assert.ok(
@@ -108,6 +109,7 @@ export function simulateMatch({
     'players must be 2..6',
   );
   assert.ok(validDensities.has(density), 'invalid density');
+  const strategyNames = normalizeStrategies(strategies, players);
   assert.ok(
     Number.isInteger(maxRounds) && maxRounds > 0 && maxRounds <= 10000,
     'maxRounds must be 1..10000',
@@ -120,17 +122,46 @@ export function simulateMatch({
   let policies = {},
     captures = 0;
   let alive = new Set(Array.from({ length: players }, (_, i) => i));
+  let lastCaptureRound = 0;
+  const playerProgress = Array.from({ length: players }, (_, player) => ({
+    player,
+    strategy: strategyNames[player],
+    eliminatedRound: null,
+    peakNodes: 1,
+    peakInvested: 14,
+  }));
   const hash = createHash('sha256');
   hash.update(JSON.stringify({ positions: map.positions, links: map.links, nodes: map.nodes }));
   while (!state.finished && state.round <= maxRounds) {
     const before = state;
-    const orders = zeroPlayerOrders(before, map.links);
-    const next = engine.resolveRound({ state: before, orders, policies, links: map.links, rng });
+    const botChoices = planStrategyOrders({
+      engine, nodes: before.nodes, links: map.links, strategies: strategyNames,
+    });
+    const orders = zeroPlayerOrders(before, botChoices);
+    const aiOrdersOverride = Object.values(botChoices).filter(
+      (order) => before.nodes[order.source].owner !== 0,
+    );
+    const next = engine.resolveRound({
+      state: before, orders, policies, links: map.links, rng, aiOrdersOverride,
+    });
     assert.equal(before.round + 1, next.state.round, 'round must advance exactly once');
     assertValidState(before, { count, players }); // Input objects must remain valid.
     const nowAlive = assertValidState(next.state, { count, players, previousOwners: alive });
     for (let id = 0; id < count; id++) {
-      if (next.state.nodes[id].owner !== before.nodes[id].owner) captures++;
+      if (next.state.nodes[id].owner !== before.nodes[id].owner) {
+        captures++;
+        lastCaptureRound = before.round;
+      }
+    }
+    for (const progress of playerProgress) {
+      const owned = next.state.nodes.filter((node) => node.owner === progress.player);
+      progress.peakNodes = Math.max(progress.peakNodes, owned.length);
+      progress.peakInvested = Math.max(
+        progress.peakInvested,
+        owned.reduce((sum, node) => sum + node.invested, 0),
+      );
+      if (!nowAlive.has(progress.player) && progress.eliminatedRound === null)
+        progress.eliminatedRound = before.round;
     }
     alive = nowAlive;
     state = next.state;
@@ -147,7 +178,17 @@ export function simulateMatch({
       invested: Number(owned.reduce((total, n) => total + n.invested, 0).toFixed(3)),
     };
   });
+  const playerStats = playerProgress.map((progress) => ({
+    ...progress,
+    survived: alive.has(progress.player),
+    peakInvested: Number(progress.peakInvested.toFixed(3)),
+    roundsSurvived: progress.eliminatedRound ?? (state.round - 1),
+  }));
   return {
+    strategies: strategyNames,
+    playerStats,
+    stalledAtCap: !state.finished && state.round - 1 - lastCaptureRound >= 25,
+    roundsWithoutCapture: state.round - 1 - lastCaptureRound,
     mapSeed: String(mapSeed),
     combatSeed: String(combatSeed),
     count,
@@ -168,6 +209,7 @@ export function simulateBatch({ matches = 20, seed = 'balance', ...options } = {
     Number.isInteger(matches) && matches > 0 && matches <= 10000,
     'matches must be 1..10000',
   );
+  const strategies = normalizeStrategies(options.strategies, options.players ?? 3);
   const results = Array.from({ length: matches }, (_, index) =>
     simulateMatch({
       ...options,
@@ -179,10 +221,18 @@ export function simulateBatch({ matches = 20, seed = 'balance', ...options } = {
     { length: options.players ?? 3 },
     (_, player) => results.filter((r) => r.winner === player).length,
   );
+  const survivalCounts = strategies.map((_, player) =>
+    results.filter((result) => result.playerStats[player].survived).length,
+  );
   return {
     seed: String(seed),
+    strategies,
     matches,
     wins,
+    winRates: wins.map((count) => Number((100 * count / matches).toFixed(2))),
+    survivalCounts,
+    survivalRates: survivalCounts.map((count) => Number((100 * count / matches).toFixed(2))),
+    stalledAtCap: results.filter((result) => result.stalledAtCap).length,
     unresolved: results.filter((r) => !r.finished).length,
     averageRounds: Number((results.reduce((sum, r) => sum + r.rounds, 0) / matches).toFixed(2)),
     minRounds: Math.min(...results.map((r) => r.rounds)),
