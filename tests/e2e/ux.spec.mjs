@@ -42,6 +42,11 @@ test('map and settings expose separate controls on mobile', async ({ page }, tes
   await expect(page.locator('#uxDockOrders')).toBeVisible();
   await expect(page.locator('#focusMap')).toBeVisible();
   await expect(page.locator('#overlay')).toBeVisible();
+  const navBox = await page.locator('#fit').boundingBox();
+  const dockBox = await page.locator('.ux-dock').boundingBox();
+  expect(navBox).not.toBeNull();
+  expect(dockBox).not.toBeNull();
+  expect(navBox.y + navBox.height).toBeLessThan(dockBox.y);
   await page.locator('#mobileSettings').click();
   await expect(page.locator('#uxSettingsDialog')).toBeVisible();
   await expect(page.locator('#uxSettingsDialog #autoConquer')).toBeVisible();
