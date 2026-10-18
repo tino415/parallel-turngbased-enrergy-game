@@ -242,14 +242,15 @@
       if (owner === 0 && !includePlayerZero) continue;
       // Pick common targets for all adjacent allied nodes: several modest
       // attacks can defeat a single well-defended frontier position.
-      const targets = nodes.filter((target) =>
-        target.owner !== owner &&
-        adjacent[target.id].some((source) => nodes[source].owner === owner),
+      const targets = nodes.filter(
+        (target) =>
+          target.owner !== owner &&
+          adjacent[target.id].some((source) => nodes[source].owner === owner),
       );
       // Prefer attacking players over passively exhausting neutral territory.
-      targets.sort((a, b) =>
-        Number(a.owner === null) - Number(b.owner === null) ||
-        a.active - b.active || a.id - b.id,
+      targets.sort(
+        (a, b) =>
+          Number(a.owner === null) - Number(b.owner === null) || a.active - b.active || a.id - b.id,
       );
 
       for (const target of targets) {
@@ -274,10 +275,7 @@
         let attack = 0;
         if (combined + 1e-8 >= captureForce) {
           attack = captureForce;
-        } else if (
-          target.owner !== null &&
-          combined >= Math.max(12, target.active * 0.55)
-        ) {
+        } else if (target.owner !== null && combined >= Math.max(12, target.active * 0.55)) {
           // When conquest is too expensive, press the frontier to drain the
           // defender instead of leaving two fully invested armies motionless.
           attack = Math.min(combined * 0.8, target.active * 0.95);
@@ -326,8 +324,9 @@
           .filter((id) => nodes[id].owner === owner)
           .filter((id) => adjacent[id].some((other) => nodes[other].owner !== owner))
           .filter((id) => nodes[id].active + nodes[id].invested < SOFT_CAP_RULES.capacity * 0.8)
-          .sort((a, b) =>
-            nodes[a].active + nodes[a].invested - nodes[b].active - nodes[b].invested || a - b,
+          .sort(
+            (a, b) =>
+              nodes[a].active + nodes[a].invested - nodes[b].active - nodes[b].invested || a - b,
           )[0];
         if (frontier !== undefined && free > 2) {
           const room = SOFT_CAP_RULES.capacity - nodes[frontier].active - nodes[frontier].invested;

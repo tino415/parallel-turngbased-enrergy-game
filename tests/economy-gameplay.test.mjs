@@ -166,14 +166,15 @@ test('AI attacks an idle human at roughly equal frontier strength', () => {
 });
 
 test('AI coordinates adjacent allies against one strong defended node', () => {
-  const nodes = [
-    node(0, 1, 30, 20),
-    node(1, 0, 60, 10),
-    node(2, 1, 30, 20),
+  const nodes = [node(0, 1, 30, 20), node(1, 0, 60, 10), node(2, 1, 30, 20)];
+  const links = [
+    [0, 1],
+    [2, 1],
   ];
-  const links = [[0, 1], [2, 1]];
   const plan = engine.economicAI(nodes, links);
-  const attacks = Object.values(plan.orders).flat().filter((o) => o.type === 'attack');
+  const attacks = Object.values(plan.orders)
+    .flat()
+    .filter((o) => o.type === 'attack');
   assert.equal(attacks.length, 2, 'both neighboring attackers must cooperate');
   assert.ok(attacks.every((o) => o.dest === 1));
   assert.ok(attacks.reduce((sum, o) => sum + o.amount, 0) >= 78);
@@ -193,7 +194,14 @@ test('AI avoids impossible spending and leaves garrisons for every attacking sou
     node(3, 2, 90, 180),
     node(4, null, 4),
   ];
-  const links = [[0, 1], [2, 1], [3, 2], [0, 4], [2, 4], [3, 4]];
+  const links = [
+    [0, 1],
+    [2, 1],
+    [3, 2],
+    [0, 4],
+    [2, 4],
+    [3, 4],
+  ];
   const plan = engine.economicAI(nodes, links, true);
   for (const n of nodes.filter((n) => n.owner !== null)) {
     const actions = Object.values(plan.orders[n.id] ?? []).flat();
@@ -201,7 +209,10 @@ test('AI avoids impossible spending and leaves garrisons for every attacking sou
     const withdraw = plan.withdrawals[n.id] ?? 0;
     assert.ok(Number.isFinite(spent) && Number.isFinite(withdraw));
     assert.ok(withdraw >= 0 && withdraw <= n.invested + 1e-8);
-    assert.ok(spent <= n.active + withdraw * 0.95 + 1e-8, 'orders must fit initial energy plus withdrawals');
+    assert.ok(
+      spent <= n.active + withdraw * 0.95 + 1e-8,
+      'orders must fit initial energy plus withdrawals',
+    );
     assert.ok(n.active + withdraw * 0.95 - spent >= -1e-8);
   }
 });
