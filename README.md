@@ -126,6 +126,7 @@ Simulation-only strategies are **default**, **aggressive**, **balanced**, **turt
 - **Balanced:** Reserves energy against immediate threats, then attacks or invests.
 - **Turtle:** Heavy investment and defense, with occasional neutral-only expansion; never attacks an opposing player's node.
 - **Super Turtle:** Single starting node, no transfers and no attacks. It invests all energy above a dynamic defensive reserve (minimum 3 active, or approximately 1.5 times adjacent enemy active energy plus 2). The reserve is a heuristic, not a guarantee of survival.
+- **Compounding Expander (`compoundexpand`):** Uses **exactly the same reserve and reinvestment rule on every owned node** as Super Turtle. When a neighboring neutral or enemy node is affordable, diverts up to `--attack-pct` (default 5%) of that node's **start-of-round active energy** to a single conservative attack, prioritizing affordable neutral nodes and committing only enough to beat the current defense even with unfavorable combat multipliers. Reinvests all surplus after reserving and attacking; captured nodes follow the same compound-and-expand logic. Does not withdraw invested principal or transfer energy. The strategy starts expanding from round 1 (no 150-round wait).
 - **Turtle Counterattack:** Copies Super Turtle for the first 150 resolved turns. Starting in round 151, its original node can use up to 5% of its **start-of-round active energy** to attack a neighboring node when that budget is enough to overcome the target's current defense even with unfavorable combat rolls, while continuing to reserve defensive energy and reinvest surplus. Newly conquered nodes use the **Default AI** starting the next turn instead of turtling. Investment principal remains locked. The 150-round delay and 5% active-energy budget are configurable in simulations only.
 
 A smaller 1-vs-1 comparison with 20 nodes is available in the existing GitHub workflow by setting **Players=2**, **Nodes=20**, **P0=Turtle Counterattack**, **Opponents=Default**, **Rounds=250**, **Turtle rounds=150**, and **Attack %=5**. Repeat with **P0=Super Turtle** and the **same seed** to compare survival and victories fairly:
@@ -153,6 +154,21 @@ For the 300-round income-dominance comparison, keep the same seeds in all runs a
 The `--strategies` CSV must contain exactly one strategy per player. Add `--json` for machine-readable per-match details. Results include victory rates, survival rates, node count and peak investment per player, and matches unresolved by the round cap. A "stalled" match is unresolved with no captures in the last 25 rounds; it does **not** imply that the game has formally ended. Survival alone is not a win.
 
 To run simulations from GitHub, open **Actions → Run balance simulations → Run workflow**, select the number of games, map size, player count, round cap, P0 strategy and opponent strategy. GitHub provides a summary table and downloadable JSON/Markdown artifacts retained for 30 days. This workflow starts only when manually dispatched; it is not part of the game deployment. The GitHub UI offers P0 vs all other players; use the CLI for arbitrary per-player combinations.
+
+### Investment policy versus territorial expansion
+
+Use **paired identical seeds** and compare `superturtle` against `compoundexpand`, with all other players using identical strategies. Unlike the Default AI (which invests only 60% of a node's active energy in some situations), both strategies invest **100% of their surplus after the same defensive reserve**. The Compounding Expander alone spends a bounded amount of that surplus on conquest. Additional captured nodes use that exact same compounding rule, not Default AI.
+
+```sh
+npm run simulate -- --matches=30 --nodes=20 --players=2 --rounds=300 --seed=invest-vs-expand-duel \
+  --strategies=superturtle,default
+npm run simulate -- --matches=30 --nodes=20 --players=2 --rounds=300 --seed=invest-vs-expand-duel \
+  --strategies=compoundexpand,default --attack-pct=5
+npm run simulate -- --matches=30 --nodes=40 --players=4 --rounds=300 --seed=invest-vs-expand-field \
+  --strategies=compoundexpand,default,default,default --attack-pct=5
+```
+
+Inspect final **total controlled energy**, gross income, investment income and production share, alongside wins, survival, expanded games and total energy allocated to investment/attack (reported in each match's `playerStats`). The economic policy is matched, but the resulting investments will differ as expansion spends energy, adds +1-per-node base income and exposes captured capital to risk. For a fuller experiment, compare multiple attack budgets, maps and opponents.
 
 ## Known limitations
 
