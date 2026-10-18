@@ -33,8 +33,8 @@ test('node selection opens contextual policy controls on second click', async ({
 }, testInfo) => {
   const node = page.locator('#map .node-hit[fill="#3278c8"]').first();
   await node.click();
-  await expect(page.locator('#tacticalInspector')).toBeVisible();
-  await expect(page.locator('#tacticalInspector')).not.toHaveClass(/is-editing/);
+  await expect(page.locator('#tacticalInspector')).toBeHidden();
+  await expect(page.locator('#map .tactical-node-selected')).toHaveCount(1);
   await node.click();
   await expect(page.locator('#tacticalPolicyPercent')).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('node-details.png') });
