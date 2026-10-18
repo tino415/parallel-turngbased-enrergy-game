@@ -6,7 +6,7 @@ This is a **testing baseline**, not a claim that the current UI passes all requi
 
 - At 360–430px widths, map, round status, and primary action are immediately accessible without excessive scrolling.
 - The active map consumes most of the usable viewport; controls may not obstruct the selected node.
-- Selecting a node opens a dismissible details dialog. It is full-screen on mobile and a large editor dialog on desktop; the desktop sidebar is only a compact overview.
+- Tapping a node opens a dismissible details dialog (full-screen on mobile, large dialog on desktop). Selection is temporary: closing by Done, Back or Escape clears the map highlight. Focus centers the last inspected node, or the player's first node before any inspection. The desktop sidebar is a compact overview.
 - Manual orders, automatic policy allocations and remaining defense are shown in one budget. Combat intervals are explicitly described as strength ranges, not guaranteed outcomes.
 - Planned orders are reviewed separately from game settings; both remain reachable on mobile without losing the map state.
 - Applying bulk policy reserve/invest changes preserves pre-existing transfer destinations.
