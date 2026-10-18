@@ -1,0 +1,1221 @@
+{
+  "seed": "duel-v1",
+  "strategies": [
+    "superturtle",
+    "aggressive"
+  ],
+  "turtleRounds": 150,
+  "attackPct": 5,
+  "expansionCounts": [
+    0,
+    20
+  ],
+  "firstAttackCounts": [
+    0,
+    20
+  ],
+  "matches": 20,
+  "wins": [
+    0,
+    0
+  ],
+  "winRates": [
+    0,
+    0
+  ],
+  "survivalCounts": [
+    20,
+    20
+  ],
+  "survivalRates": [
+    100,
+    100
+  ],
+  "stalledAtCap": 18,
+  "unresolved": 20,
+  "averageRounds": 250,
+  "minRounds": 250,
+  "maxRounds": 250,
+  "results": [
+    {
+      "strategies": [
+        "superturtle",
+        "aggressive"
+      ],
+      "turtleRounds": 150,
+      "attackPct": 5,
+      "playerStats": [
+        {
+          "player": 0,
+          "strategy": "superturtle",
+          "eliminatedRound": null,
+          "peakNodes": 1,
+          "peakInvested": 848541388631.862,
+          "firstAttackRound": null,
+          "firstConquestRound": null,
+          "survived": true,
+          "roundsSurvived": 250
+        },
+        {
+          "player": 1,
+          "strategy": "aggressive",
+          "eliminatedRound": null,
+          "peakNodes": 19,
+          "peakInvested": 1602507417.196,
+          "firstAttackRound": 1,
+          "firstConquestRound": 1,
+          "survived": true,
+          "roundsSurvived": 250
+        }
+      ],
+      "stalledAtCap": true,
+      "roundsWithoutCapture": 113,
+      "mapSeed": "duel-v1:map:0",
+      "combatSeed": "duel-v1:combat:0",
+      "count": 20,
+      "players": 2,
+      "density": "normal",
+      "rounds": 250,
+      "maxRounds": 250,
+      "finished": false,
+      "winner": null,
+      "captures": 18,
+      "standings": [
+        {
+          "player": 0,
+          "nodes": 1,
+          "active": 84856573542.74,
+          "invested": 848541388631.862
+        },
+        {
+          "player": 1,
+          "nodes": 19,
+          "active": 390401594.063,
+          "invested": 1602507417.196
+        }
+      ],
+      "checksum": "03b7b8b11147449e764a62d6fc37045de2c7285ec1027925e38be4bf84cc69a8"
+    },
+    {
+      "strategies": [
+        "superturtle",
+        "aggressive"
+      ],
+      "turtleRounds": 150,
+      "attackPct": 5,
+      "playerStats": [
+        {
+          "player": 0,
+          "strategy": "superturtle",
+          "eliminatedRound": null,
+          "peakNodes": 1,
+          "peakInvested": 850741175103.226,
+          "firstAttackRound": null,
+          "firstConquestRound": null,
+          "survived": true,
+          "roundsSurvived": 250
+        },
+        {
+          "player": 1,
+          "strategy": "aggressive",
+          "eliminatedRound": null,
+          "peakNodes": 18,
+          "peakInvested": 1526104201.055,
+          "firstAttackRound": 1,
+          "firstConquestRound": 1,
+          "survived": true,
+          "roundsSurvived": 250
+        }
+      ],
+      "stalledAtCap": true,
+      "roundsWithoutCapture": 83,
+      "mapSeed": "duel-v1:map:1",
+      "combatSeed": "duel-v1:combat:1",
+      "count": 20,
+      "players": 2,
+      "density": "normal",
+      "rounds": 250,
+      "maxRounds": 250,
+      "finished": false,
+      "winner": null,
+      "captures": 17,
+      "standings": [
+        {
+          "player": 0,
+          "nodes": 1,
+          "active": 85074857100.359,
+          "invested": 850741175103.226
+        },
+        {
+          "player": 1,
+          "nodes": 18,
+          "active": 371788302.53,
+          "invested": 1526104201.055
+        }
+      ],
+      "checksum": "bbb100d1fe4588c238e5e36b84ad0ec74fe55940f4904bf3f55c5a7548f666f5"
+    },
+    {
+      "strategies": [
+        "superturtle",
+        "aggressive"
+      ],
+      "turtleRounds": 150,
+      "attackPct": 5,
+      "playerStats": [
+        {
+          "player": 0,
+          "strategy": "superturtle",
+          "eliminatedRound": null,
+          "peakNodes": 1,
+          "peakInvested": 851172685231.463,
+          "firstAttackRound": null,
+          "firstConquestRound": null,
+          "survived": true,
+          "roundsSurvived": 250
+        },
+        {
+          "player": 1,
+          "strategy": "aggressive",
+          "eliminatedRound": null,
+          "peakNodes": 19,
+          "peakInvested": 1559790817.988,
+          "firstAttackRound": 1,
+          "firstConquestRound": 1,
+          "survived": true,
+          "roundsSurvived": 250
+        }
+      ],
+      "stalledAtCap": true,
+      "roundsWithoutCapture": 106,
+      "mapSeed": "duel-v1:map:2",
+      "combatSeed": "duel-v1:combat:2",
+      "count": 20,
+      "players": 2,
+      "density": "normal",
+      "rounds": 250,
+      "maxRounds": 250,
+      "finished": false,
+      "winner": null,
+      "captures": 18,
+      "standings": [
+        {
+          "player": 0,
+          "nodes": 1,
+          "active": 85117343370.107,
+          "invested": 851172685231.463
+        },
+        {
+          "player": 1,
+          "nodes": 19,
+          "active": 379995011.063,
+          "invested": 1559790817.988
+        }
+      ],
+      "checksum": "e8a5f2316562512c445c27dfb25335958d9fcabe943869f566a99e360aec9d1f"
+    },
+    {
+      "strategies": [
+        "superturtle",
+        "aggressive"
+      ],
+      "turtleRounds": 150,
+      "attackPct": 5,
+      "playerStats": [
+        {
+          "player": 0,
+          "strategy": "superturtle",
+          "eliminatedRound": null,
+          "peakNodes": 1,
+          "peakInvested": 848836319105.422,
+          "firstAttackRound": null,
+          "firstConquestRound": null,
+          "survived": true,
+          "roundsSurvived": 250
+        },
+        {
+          "player": 1,
+          "strategy": "aggressive",
+          "eliminatedRound": null,
+          "peakNodes": 17,
+          "peakInvested": 1604443862.265,
+          "firstAttackRound": 1,
+          "firstConquestRound": 1,
+          "survived": true,
+          "roundsSurvived": 250
+        }
+      ],
+      "stalledAtCap": true,
+      "roundsWithoutCapture": 133,
+      "mapSeed": "duel-v1:map:3",
+      "combatSeed": "duel-v1:combat:3",
+      "count": 20,
+      "players": 2,
+      "density": "normal",
+      "rounds": 250,
+      "maxRounds": 250,
+      "finished": false,
+      "winner": null,
+      "captures": 16,
+      "standings": [
+        {
+          "player": 0,
+          "nodes": 1,
+          "active": 84885331966.851,
+          "invested": 848836319105.422
+        },
+        {
+          "player": 1,
+          "nodes": 17,
+          "active": 390873344.357,
+          "invested": 1604443862.265
+        }
+      ],
+      "checksum": "f6824c47f8e2bfd0cd0fb9d8d9f9a6e75c7494f882f441dfcd0235faba71d560"
+    },
+    {
+      "strategies": [
+        "superturtle",
+        "aggressive"
+      ],
+      "turtleRounds": 150,
+      "attackPct": 5,
+      "playerStats": [
+        {
+          "player": 0,
+          "strategy": "superturtle",
+          "eliminatedRound": null,
+          "peakNodes": 1,
+          "peakInvested": 851192001142.193,
+          "firstAttackRound": null,
+          "firstConquestRound": null,
+          "survived": true,
+          "roundsSurvived": 250
+        },
+        {
+          "player": 1,
+          "strategy": "aggressive",
+          "eliminatedRound": null,
+          "peakNodes": 19,
+          "peakInvested": 1518429426.897,
+          "firstAttackRound": 1,
+          "firstConquestRound": 1,
+          "survived": true,
+          "roundsSurvived": 250
+        }
+      ],
+      "stalledAtCap": true,
+      "roundsWithoutCapture": 42,
+      "mapSeed": "duel-v1:map:4",
+      "combatSeed": "duel-v1:combat:4",
+      "count": 20,
+      "players": 2,
+      "density": "normal",
+      "rounds": 250,
+      "maxRounds": 250,
+      "finished": false,
+      "winner": null,
+      "captures": 18,
+      "standings": [
+        {
+          "player": 0,
+          "nodes": 1,
+          "active": 85119206825.113,
+          "invested": 851192001142.193
+        },
+        {
+          "player": 1,
+          "nodes": 19,
+          "active": 369918582.756,
+          "invested": 1518429426.897
+        }
+      ],
+      "checksum": "4f04ef2462efd39ff461f544126d7620083eb226c085f80a0a2741bae7a4f73f"
+    },
+    {
+      "strategies": [
+        "superturtle",
+        "aggressive"
+      ],
+      "turtleRounds": 150,
+      "attackPct": 5,
+      "playerStats": [
+        {
+          "player": 0,
+          "strategy": "superturtle",
+          "eliminatedRound": null,
+          "peakNodes": 1,
+          "peakInvested": 851191476225.324,
+          "firstAttackRound": null,
+          "firstConquestRound": null,
+          "survived": true,
+          "roundsSurvived": 250
+        },
+        {
+          "player": 1,
+          "strategy": "aggressive",
+          "eliminatedRound": null,
+          "peakNodes": 19,
+          "peakInvested": 1560171434.407,
+          "firstAttackRound": 1,
+          "firstConquestRound": 1,
+          "survived": true,
+          "roundsSurvived": 250
+        }
+      ],
+      "stalledAtCap": true,
+      "roundsWithoutCapture": 79,
+      "mapSeed": "duel-v1:map:5",
+      "combatSeed": "duel-v1:combat:5",
+      "count": 20,
+      "players": 2,
+      "density": "normal",
+      "rounds": 250,
+      "maxRounds": 250,
+      "finished": false,
+      "winner": null,
+      "captures": 18,
+      "standings": [
+        {
+          "player": 0,
+          "nodes": 1,
+          "active": 85119157896.874,
+          "invested": 851191476225.324
+        },
+        {
+          "player": 1,
+          "nodes": 19,
+          "active": 380087736.523,
+          "invested": 1560171434.407
+        }
+      ],
+      "checksum": "7e19c59bde4818ce2d343339e3d09a09ea58930d3a2e3f8708dbf12a9b95900d"
+    },
+    {
+      "strategies": [
+        "superturtle",
+        "aggressive"
+      ],
+      "turtleRounds": 150,
+      "attackPct": 5,
+      "playerStats": [
+        {
+          "player": 0,
+          "strategy": "superturtle",
+          "eliminatedRound": null,
+          "peakNodes": 1,
+          "peakInvested": 851168968780.403,
+          "firstAttackRound": null,
+          "firstConquestRound": null,
+          "survived": true,
+          "roundsSurvived": 250
+        },
+        {
+          "player": 1,
+          "strategy": "aggressive",
+          "eliminatedRound": null,
+          "peakNodes": 19,
+          "peakInvested": 1619761046.349,
+          "firstAttackRound": 1,
+          "firstConquestRound": 1,
+          "survived": true,
+          "roundsSurvived": 250
+        }
+      ],
+      "stalledAtCap": true,
+      "roundsWithoutCapture": 112,
+      "mapSeed": "duel-v1:map:6",
+      "combatSeed": "duel-v1:combat:6",
+      "count": 20,
+      "players": 2,
+      "density": "normal",
+      "rounds": 250,
+      "maxRounds": 250,
+      "finished": false,
+      "winner": null,
+      "captures": 18,
+      "standings": [
+        {
+          "player": 0,
+          "nodes": 1,
+          "active": 85116977331.054,
+          "invested": 851168968780.403
+        },
+        {
+          "player": 1,
+          "nodes": 19,
+          "active": 394604909.102,
+          "invested": 1619761046.349
+        }
+      ],
+      "checksum": "d4af93598ddbe59b08a2391a0fa0783317c23a932a610770abfb1f911af388b0"
+    },
+    {
+      "strategies": [
+        "superturtle",
+        "aggressive"
+      ],
+      "turtleRounds": 150,
+      "attackPct": 5,
+      "playerStats": [
+        {
+          "player": 0,
+          "strategy": "superturtle",
+          "eliminatedRound": null,
+          "peakNodes": 1,
+          "peakInvested": 849172719640.936,
+          "firstAttackRound": null,
+          "firstConquestRound": null,
+          "survived": true,
+          "roundsSurvived": 250
+        },
+        {
+          "player": 1,
+          "strategy": "aggressive",
+          "eliminatedRound": null,
+          "peakNodes": 13,
+          "peakInvested": 1619029905.056,
+          "firstAttackRound": 1,
+          "firstConquestRound": 1,
+          "survived": true,
+          "roundsSurvived": 250
+        }
+      ],
+      "stalledAtCap": true,
+      "roundsWithoutCapture": 170,
+      "mapSeed": "duel-v1:map:7",
+      "combatSeed": "duel-v1:combat:7",
+      "count": 20,
+      "players": 2,
+      "density": "normal",
+      "rounds": 250,
+      "maxRounds": 250,
+      "finished": false,
+      "winner": null,
+      "captures": 12,
+      "standings": [
+        {
+          "player": 0,
+          "nodes": 1,
+          "active": 84919401344.029,
+          "invested": 849172719640.936
+        },
+        {
+          "player": 1,
+          "nodes": 13,
+          "active": 394426774.44,
+          "invested": 1619029905.056
+        }
+      ],
+      "checksum": "d5ac88fbd110c35837392274243c7ad34f200754f06e2d4b43e2583b288bbd26"
+    },
+    {
+      "strategies": [
+        "superturtle",
+        "aggressive"
+      ],
+      "turtleRounds": 150,
+      "attackPct": 5,
+      "playerStats": [
+        {
+          "player": 0,
+          "strategy": "superturtle",
+          "eliminatedRound": null,
+          "peakNodes": 1,
+          "peakInvested": 851192678846.676,
+          "firstAttackRound": null,
+          "firstConquestRound": null,
+          "survived": true,
+          "roundsSurvived": 250
+        },
+        {
+          "player": 1,
+          "strategy": "aggressive",
+          "eliminatedRound": null,
+          "peakNodes": 19,
+          "peakInvested": 1478059670.895,
+          "firstAttackRound": 1,
+          "firstConquestRound": 1,
+          "survived": true,
+          "roundsSurvived": 250
+        }
+      ],
+      "stalledAtCap": true,
+      "roundsWithoutCapture": 50,
+      "mapSeed": "duel-v1:map:8",
+      "combatSeed": "duel-v1:combat:8",
+      "count": 20,
+      "players": 2,
+      "density": "normal",
+      "rounds": 250,
+      "maxRounds": 250,
+      "finished": false,
+      "winner": null,
+      "captures": 18,
+      "standings": [
+        {
+          "player": 0,
+          "nodes": 1,
+          "active": 85119268461.291,
+          "invested": 851192678846.676
+        },
+        {
+          "player": 1,
+          "nodes": 19,
+          "active": 360083735.78,
+          "invested": 1478059670.895
+        }
+      ],
+      "checksum": "0c3b9106d4b1180075126798bbbbcc6571a458008c0bbaeecf843adabb8ee7e7"
+    },
+    {
+      "strategies": [
+        "superturtle",
+        "aggressive"
+      ],
+      "turtleRounds": 150,
+      "attackPct": 5,
+      "playerStats": [
+        {
+          "player": 0,
+          "strategy": "superturtle",
+          "eliminatedRound": null,
+          "peakNodes": 1,
+          "peakInvested": 851192394307.251,
+          "firstAttackRound": null,
+          "firstConquestRound": null,
+          "survived": true,
+          "roundsSurvived": 250
+        },
+        {
+          "player": 1,
+          "strategy": "aggressive",
+          "eliminatedRound": null,
+          "peakNodes": 19,
+          "peakInvested": 1577425305.859,
+          "firstAttackRound": 1,
+          "firstConquestRound": 1,
+          "survived": true,
+          "roundsSurvived": 250
+        }
+      ],
+      "stalledAtCap": false,
+      "roundsWithoutCapture": 21,
+      "mapSeed": "duel-v1:map:9",
+      "combatSeed": "duel-v1:combat:9",
+      "count": 20,
+      "players": 2,
+      "density": "normal",
+      "rounds": 250,
+      "maxRounds": 250,
+      "finished": false,
+      "winner": null,
+      "captures": 18,
+      "standings": [
+        {
+          "player": 0,
+          "nodes": 1,
+          "active": 85119242596.307,
+          "invested": 851192394307.251
+        },
+        {
+          "player": 1,
+          "nodes": 19,
+          "active": 384291111.116,
+          "invested": 1577425305.859
+        }
+      ],
+      "checksum": "99b382c9824f614c0a485a8cc348a17907bac1d3f51011076c713208ab0271ad"
+    },
+    {
+      "strategies": [
+        "superturtle",
+        "aggressive"
+      ],
+      "turtleRounds": 150,
+      "attackPct": 5,
+      "playerStats": [
+        {
+          "player": 0,
+          "strategy": "superturtle",
+          "eliminatedRound": null,
+          "peakNodes": 1,
+          "peakInvested": 850241625604.595,
+          "firstAttackRound": null,
+          "firstConquestRound": null,
+          "survived": true,
+          "roundsSurvived": 250
+        },
+        {
+          "player": 1,
+          "strategy": "aggressive",
+          "eliminatedRound": null,
+          "peakNodes": 19,
+          "peakInvested": 1651692471.916,
+          "firstAttackRound": 1,
+          "firstConquestRound": 1,
+          "survived": true,
+          "roundsSurvived": 250
+        }
+      ],
+      "stalledAtCap": true,
+      "roundsWithoutCapture": 127,
+      "mapSeed": "duel-v1:map:10",
+      "combatSeed": "duel-v1:combat:10",
+      "count": 20,
+      "players": 2,
+      "density": "normal",
+      "rounds": 250,
+      "maxRounds": 250,
+      "finished": false,
+      "winner": null,
+      "captures": 18,
+      "standings": [
+        {
+          "player": 0,
+          "nodes": 1,
+          "active": 85025471024.472,
+          "invested": 850241625604.595
+        },
+        {
+          "player": 1,
+          "nodes": 19,
+          "active": 402384016.911,
+          "invested": 1651692471.916
+        }
+      ],
+      "checksum": "17d658f5586518ccdae19528cfb44f45a15e8acf4b2ac724081a2c7196810fee"
+    },
+    {
+      "strategies": [
+        "superturtle",
+        "aggressive"
+      ],
+      "turtleRounds": 150,
+      "attackPct": 5,
+      "playerStats": [
+        {
+          "player": 0,
+          "strategy": "superturtle",
+          "eliminatedRound": null,
+          "peakNodes": 1,
+          "peakInvested": 848287796348.746,
+          "firstAttackRound": null,
+          "firstConquestRound": null,
+          "survived": true,
+          "roundsSurvived": 250
+        },
+        {
+          "player": 1,
+          "strategy": "aggressive",
+          "eliminatedRound": null,
+          "peakNodes": 19,
+          "peakInvested": 1527337043.339,
+          "firstAttackRound": 1,
+          "firstConquestRound": 1,
+          "survived": true,
+          "roundsSurvived": 250
+        }
+      ],
+      "stalledAtCap": true,
+      "roundsWithoutCapture": 88,
+      "mapSeed": "duel-v1:map:11",
+      "combatSeed": "duel-v1:combat:11",
+      "count": 20,
+      "players": 2,
+      "density": "normal",
+      "rounds": 250,
+      "maxRounds": 250,
+      "finished": false,
+      "winner": null,
+      "captures": 18,
+      "standings": [
+        {
+          "player": 0,
+          "nodes": 1,
+          "active": 84831186185.92,
+          "invested": 848287796348.746
+        },
+        {
+          "player": 1,
+          "nodes": 19,
+          "active": 372088648.996,
+          "invested": 1527337043.339
+        }
+      ],
+      "checksum": "d164e20581d94aa9327598db897ed586dda9575d1f6c94e2b4259935dd0afbf2"
+    },
+    {
+      "strategies": [
+        "superturtle",
+        "aggressive"
+      ],
+      "turtleRounds": 150,
+      "attackPct": 5,
+      "playerStats": [
+        {
+          "player": 0,
+          "strategy": "superturtle",
+          "eliminatedRound": null,
+          "peakNodes": 1,
+          "peakInvested": 851176640999.32,
+          "firstAttackRound": null,
+          "firstConquestRound": null,
+          "survived": true,
+          "roundsSurvived": 250
+        },
+        {
+          "player": 1,
+          "strategy": "aggressive",
+          "eliminatedRound": null,
+          "peakNodes": 16,
+          "peakInvested": 1564280621.163,
+          "firstAttackRound": 1,
+          "firstConquestRound": 1,
+          "survived": true,
+          "roundsSurvived": 250
+        }
+      ],
+      "stalledAtCap": true,
+      "roundsWithoutCapture": 118,
+      "mapSeed": "duel-v1:map:12",
+      "combatSeed": "duel-v1:combat:12",
+      "count": 20,
+      "players": 2,
+      "density": "normal",
+      "rounds": 250,
+      "maxRounds": 250,
+      "finished": false,
+      "winner": null,
+      "captures": 15,
+      "standings": [
+        {
+          "player": 0,
+          "nodes": 1,
+          "active": 85117717885.306,
+          "invested": 851176640999.32
+        },
+        {
+          "player": 1,
+          "nodes": 16,
+          "active": 381088805.935,
+          "invested": 1564280621.163
+        }
+      ],
+      "checksum": "1a5651dfd65081b0f890befe3c55d9c60ec3419c62b01e93323b1d4679c85a6c"
+    },
+    {
+      "strategies": [
+        "superturtle",
+        "aggressive"
+      ],
+      "turtleRounds": 150,
+      "attackPct": 5,
+      "playerStats": [
+        {
+          "player": 0,
+          "strategy": "superturtle",
+          "eliminatedRound": null,
+          "peakNodes": 1,
+          "peakInvested": 848071745506.768,
+          "firstAttackRound": null,
+          "firstConquestRound": null,
+          "survived": true,
+          "roundsSurvived": 250
+        },
+        {
+          "player": 1,
+          "strategy": "aggressive",
+          "eliminatedRound": null,
+          "peakNodes": 19,
+          "peakInvested": 1612020701.921,
+          "firstAttackRound": 1,
+          "firstConquestRound": 1,
+          "survived": true,
+          "roundsSurvived": 250
+        }
+      ],
+      "stalledAtCap": true,
+      "roundsWithoutCapture": 98,
+      "mapSeed": "duel-v1:map:13",
+      "combatSeed": "duel-v1:combat:13",
+      "count": 20,
+      "players": 2,
+      "density": "normal",
+      "rounds": 250,
+      "maxRounds": 250,
+      "finished": false,
+      "winner": null,
+      "captures": 18,
+      "standings": [
+        {
+          "player": 0,
+          "nodes": 1,
+          "active": 84809744304.435,
+          "invested": 848071745506.768
+        },
+        {
+          "player": 1,
+          "nodes": 19,
+          "active": 392719212.716,
+          "invested": 1612020701.921
+        }
+      ],
+      "checksum": "07e9130e85d5508072a62b09de2d9759d823665b7887422b20a810a538c4f4e7"
+    },
+    {
+      "strategies": [
+        "superturtle",
+        "aggressive"
+      ],
+      "turtleRounds": 150,
+      "attackPct": 5,
+      "playerStats": [
+        {
+          "player": 0,
+          "strategy": "superturtle",
+          "eliminatedRound": null,
+          "peakNodes": 1,
+          "peakInvested": 851186567420.279,
+          "firstAttackRound": null,
+          "firstConquestRound": null,
+          "survived": true,
+          "roundsSurvived": 250
+        },
+        {
+          "player": 1,
+          "strategy": "aggressive",
+          "eliminatedRound": null,
+          "peakNodes": 19,
+          "peakInvested": 1510090952.962,
+          "firstAttackRound": 1,
+          "firstConquestRound": 1,
+          "survived": true,
+          "roundsSurvived": 250
+        }
+      ],
+      "stalledAtCap": true,
+      "roundsWithoutCapture": 134,
+      "mapSeed": "duel-v1:map:14",
+      "combatSeed": "duel-v1:combat:14",
+      "count": 20,
+      "players": 2,
+      "density": "normal",
+      "rounds": 250,
+      "maxRounds": 250,
+      "finished": false,
+      "winner": null,
+      "captures": 18,
+      "standings": [
+        {
+          "player": 0,
+          "nodes": 1,
+          "active": 85118683319.934,
+          "invested": 851186567420.279
+        },
+        {
+          "player": 1,
+          "nodes": 19,
+          "active": 367887170.548,
+          "invested": 1510090952.962
+        }
+      ],
+      "checksum": "ffcedcaeb7db1f902548a309210fb2f33d7712516423372fa0bf1c403178eaa3"
+    },
+    {
+      "strategies": [
+        "superturtle",
+        "aggressive"
+      ],
+      "turtleRounds": 150,
+      "attackPct": 5,
+      "playerStats": [
+        {
+          "player": 0,
+          "strategy": "superturtle",
+          "eliminatedRound": null,
+          "peakNodes": 1,
+          "peakInvested": 850968195825.429,
+          "firstAttackRound": null,
+          "firstConquestRound": null,
+          "survived": true,
+          "roundsSurvived": 250
+        },
+        {
+          "player": 1,
+          "strategy": "aggressive",
+          "eliminatedRound": null,
+          "peakNodes": 19,
+          "peakInvested": 1496662129.365,
+          "firstAttackRound": 1,
+          "firstConquestRound": 1,
+          "survived": true,
+          "roundsSurvived": 250
+        }
+      ],
+      "stalledAtCap": true,
+      "roundsWithoutCapture": 75,
+      "mapSeed": "duel-v1:map:15",
+      "combatSeed": "duel-v1:combat:15",
+      "count": 20,
+      "players": 2,
+      "density": "normal",
+      "rounds": 250,
+      "maxRounds": 250,
+      "finished": false,
+      "winner": null,
+      "captures": 18,
+      "standings": [
+        {
+          "player": 0,
+          "nodes": 1,
+          "active": 85097237421.919,
+          "invested": 850968195825.429
+        },
+        {
+          "player": 1,
+          "nodes": 19,
+          "active": 364615651.514,
+          "invested": 1496662129.365
+        }
+      ],
+      "checksum": "0f76550042f1b05e5739c9ee692ede1d155ad2f884e1aa054f884f2e06e91c25"
+    },
+    {
+      "strategies": [
+        "superturtle",
+        "aggressive"
+      ],
+      "turtleRounds": 150,
+      "attackPct": 5,
+      "playerStats": [
+        {
+          "player": 0,
+          "strategy": "superturtle",
+          "eliminatedRound": null,
+          "peakNodes": 1,
+          "peakInvested": 841443536134.907,
+          "firstAttackRound": null,
+          "firstConquestRound": null,
+          "survived": true,
+          "roundsSurvived": 250
+        },
+        {
+          "player": 1,
+          "strategy": "aggressive",
+          "eliminatedRound": null,
+          "peakNodes": 19,
+          "peakInvested": 1553706212.531,
+          "firstAttackRound": 1,
+          "firstConquestRound": 1,
+          "survived": true,
+          "roundsSurvived": 250
+        }
+      ],
+      "stalledAtCap": true,
+      "roundsWithoutCapture": 124,
+      "mapSeed": "duel-v1:map:16",
+      "combatSeed": "duel-v1:combat:16",
+      "count": 20,
+      "players": 2,
+      "density": "normal",
+      "rounds": 250,
+      "maxRounds": 250,
+      "finished": false,
+      "winner": null,
+      "captures": 18,
+      "standings": [
+        {
+          "player": 0,
+          "nodes": 1,
+          "active": 84150282296.323,
+          "invested": 841443536134.907
+        },
+        {
+          "player": 1,
+          "nodes": 19,
+          "active": 378512684.452,
+          "invested": 1553706212.531
+        }
+      ],
+      "checksum": "cbc0b3e5cc010be98097bd4173481f34fc03a37c41c16706fe6d8a68c5d977d7"
+    },
+    {
+      "strategies": [
+        "superturtle",
+        "aggressive"
+      ],
+      "turtleRounds": 150,
+      "attackPct": 5,
+      "playerStats": [
+        {
+          "player": 0,
+          "strategy": "superturtle",
+          "eliminatedRound": null,
+          "peakNodes": 1,
+          "peakInvested": 851192706500.855,
+          "firstAttackRound": null,
+          "firstConquestRound": null,
+          "survived": true,
+          "roundsSurvived": 250
+        },
+        {
+          "player": 1,
+          "strategy": "aggressive",
+          "eliminatedRound": null,
+          "peakNodes": 19,
+          "peakInvested": 1607716254.092,
+          "firstAttackRound": 1,
+          "firstConquestRound": 1,
+          "survived": true,
+          "roundsSurvived": 250
+        }
+      ],
+      "stalledAtCap": false,
+      "roundsWithoutCapture": 20,
+      "mapSeed": "duel-v1:map:17",
+      "combatSeed": "duel-v1:combat:17",
+      "count": 20,
+      "players": 2,
+      "density": "normal",
+      "rounds": 250,
+      "maxRounds": 250,
+      "finished": false,
+      "winner": null,
+      "captures": 18,
+      "standings": [
+        {
+          "player": 0,
+          "nodes": 1,
+          "active": 85119270770.2,
+          "invested": 851192706500.855
+        },
+        {
+          "player": 1,
+          "nodes": 19,
+          "active": 391670567.283,
+          "invested": 1607716254.092
+        }
+      ],
+      "checksum": "26dce7f105ecc6cae279f4e8cf43cbddb26bce4bfc46404f5762e50dfeed0269"
+    },
+    {
+      "strategies": [
+        "superturtle",
+        "aggressive"
+      ],
+      "turtleRounds": 150,
+      "attackPct": 5,
+      "playerStats": [
+        {
+          "player": 0,
+          "strategy": "superturtle",
+          "eliminatedRound": null,
+          "peakNodes": 1,
+          "peakInvested": 849079054463.008,
+          "firstAttackRound": null,
+          "firstConquestRound": null,
+          "survived": true,
+          "roundsSurvived": 250
+        },
+        {
+          "player": 1,
+          "strategy": "aggressive",
+          "eliminatedRound": null,
+          "peakNodes": 19,
+          "peakInvested": 1576461166.254,
+          "firstAttackRound": 1,
+          "firstConquestRound": 1,
+          "survived": true,
+          "roundsSurvived": 250
+        }
+      ],
+      "stalledAtCap": true,
+      "roundsWithoutCapture": 102,
+      "mapSeed": "duel-v1:map:18",
+      "combatSeed": "duel-v1:combat:18",
+      "count": 20,
+      "players": 2,
+      "density": "normal",
+      "rounds": 250,
+      "maxRounds": 250,
+      "finished": false,
+      "winner": null,
+      "captures": 18,
+      "standings": [
+        {
+          "player": 0,
+          "nodes": 1,
+          "active": 84910012519.593,
+          "invested": 849079054463.008
+        },
+        {
+          "player": 1,
+          "nodes": 19,
+          "active": 384056227.688,
+          "invested": 1576461166.254
+        }
+      ],
+      "checksum": "9416ffc5d6f46a79f8409b6f9f243292b2e6b148f8c5b91361b0c46981955f46"
+    },
+    {
+      "strategies": [
+        "superturtle",
+        "aggressive"
+      ],
+      "turtleRounds": 150,
+      "attackPct": 5,
+      "playerStats": [
+        {
+          "player": 0,
+          "strategy": "superturtle",
+          "eliminatedRound": null,
+          "peakNodes": 1,
+          "peakInvested": 851002910525.157,
+          "firstAttackRound": null,
+          "firstConquestRound": null,
+          "survived": true,
+          "roundsSurvived": 250
+        },
+        {
+          "player": 1,
+          "strategy": "aggressive",
+          "eliminatedRound": null,
+          "peakNodes": 19,
+          "peakInvested": 1531895411.048,
+          "firstAttackRound": 1,
+          "firstConquestRound": 1,
+          "survived": true,
+          "roundsSurvived": 250
+        }
+      ],
+      "stalledAtCap": true,
+      "roundsWithoutCapture": 133,
+      "mapSeed": "duel-v1:map:19",
+      "combatSeed": "duel-v1:combat:19",
+      "count": 20,
+      "players": 2,
+      "density": "normal",
+      "rounds": 250,
+      "maxRounds": 250,
+      "finished": false,
+      "winner": null,
+      "captures": 18,
+      "standings": [
+        {
+          "player": 0,
+          "nodes": 1,
+          "active": 85100646029.314,
+          "invested": 851002910525.157
+        },
+        {
+          "player": 1,
+          "nodes": 19,
+          "active": 373199154.814,
+          "invested": 1531895411.048
+        }
+      ],
+      "checksum": "0b267e1e072a36342a32e26adada1adbd76396582ffc88800d50aefa2e4561d3"
+    }
+  ]
+}
