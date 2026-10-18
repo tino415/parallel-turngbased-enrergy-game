@@ -1,0 +1,51 @@
+name: Experimental economy comparisons
+on:
+  pull_request:
+    paths:
+      - 'scripts/economy-experiment.mjs'
+      - '.github/workflows/economy-experiments.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  economy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: duel-default
+            nodes: 20
+            players: 2
+            opponent: default
+            seed: invest-vs-expand-duel
+          - name: duel-aggressive
+            nodes: 20
+            players: 2
+            opponent: aggressive
+            seed: invest-vs-expand-agg
+          - name: field-default
+            nodes: 40
+            players: 4
+            opponent: default
+            seed: invest-vs-expand-field
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run independent simulation-only treatments
+        run: |
+          mkdir -p reports
+          node scripts/economy-experiment.mjs --matches=30 --rounds=300 --nodes=${{ matrix.nodes }} --players=${{ matrix.players }} --opponent=${{ matrix.opponent }} --seed=${{ matrix.seed }} > reports/summary.md
+          node scripts/economy-experiment.mjs --matches=30 --rounds=300 --nodes=${{ matrix.nodes }} --players=${{ matrix.players }} --opponent=${{ matrix.opponent }} --seed=${{ matrix.seed }} --json=true > reports/full.json
+          cat reports/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Archive raw seeded runs
+        uses: actions/upload-artifact@v4
+        with:
+          name: economy-${{ matrix.name }}-${{ github.run_id }}
+          path: reports/
+          retention-days: 30
