@@ -204,7 +204,8 @@ test('AI avoids impossible spending and leaves garrisons for every attacking sou
   ];
   const plan = engine.economicAI(nodes, links, true);
   for (const n of nodes.filter((n) => n.owner !== null)) {
-    const actions = Object.values(plan.orders[n.id] ?? []).flat();
+    const choice = plan.orders[n.id];
+    const actions = choice ? (Array.isArray(choice) ? choice : [choice]) : [];
     const spent = actions.reduce((sum, o) => sum + o.amount, 0);
     const withdraw = plan.withdrawals[n.id] ?? 0;
     assert.ok(Number.isFinite(spent) && Number.isFinite(withdraw));
