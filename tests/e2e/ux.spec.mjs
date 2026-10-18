@@ -125,8 +125,9 @@ test('mobile keyboard resize keeps policy input focused', async ({ page }, testI
 
 test('manual orders can be edited from the separate orders dialog', async ({ page }) => {
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
-  await page.locator('#allocator input[type="number"]').first().fill('2');
-  await page.locator('#allocator input[type="number"]').first().dispatchEvent('change');
+  const investment = page.locator('#allocator input[data-allocation="invest"]');
+  await investment.fill('2');
+  await investment.dispatchEvent('change');
   await page.locator('#closeNodeDialog').click();
   const ordersButton = page.locator('#uxReviewHead');
   await ordersButton.click();
