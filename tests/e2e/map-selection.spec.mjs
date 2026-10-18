@@ -58,6 +58,6 @@ test('node clicks and editor input and text selection remain usable', async ({ p
   await input.fill('2');
   await expect(input).toHaveValue('2');
   // Native double-click selection outside the map must still work.
-  await page.locator('#tacticalInspector .tactical-metrics span').first().dblclick();
+  await page.locator('#tacticalInspector .tactical-inspector-head strong').dblclick();
   expect(await page.evaluate(() => window.getSelection().toString())).not.toBe('');
 });
