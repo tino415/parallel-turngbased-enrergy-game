@@ -154,7 +154,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   const oldClose = byId('closeNodeDialog');
   const slot = byId('nodeDetailsSlot');
   const originalAside = byId('gameSidebar');
-  const settingsBox = originalAside.querySelector('.policy-box');
+  const settingsBox = byId('autoConquer').closest('.policy-box');
   const rules = originalAside.querySelector('details');
   const ordersContainer = byId('orders');
   const count = byId('orderCount');

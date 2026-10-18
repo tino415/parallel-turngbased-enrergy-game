@@ -48,6 +48,17 @@ test('round state survives refresh using local save', async ({ page }) => {
   await expect(page.locator('#score')).toContainText('Round 2');
 });
 
+test('a save with a selected node still resolves after refresh', async ({ page }) => {
+  await page.evaluate(() => {
+    selected = state.nodes.find((node) => node.owner === 0).id;
+    saveGame();
+  });
+  page.on('dialog', (dialog) => dialog.accept());
+  await page.reload();
+  await page.locator('#uxDockResolve:visible, #resolve:visible').first().click();
+  await expect(page.locator('#score')).toContainText('Round 2');
+});
+
 test('viewport has no unexpected horizontal document overflow', async ({ page }) => {
   const overflow = await page.evaluate(() => ({
     page: document.documentElement.scrollWidth,
