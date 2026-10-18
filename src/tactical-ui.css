@@ -375,3 +375,39 @@ body > header #resolve {
     max-height: 145px;
   }
 }
+
+/* Only one thumb-reachable action surface: the selected inspector replaces the
+   general Orders / Resolve dock, instead of appearing above a second toolbar. */
+@media (max-width: 760px) {
+  body.tactical-selection-active .ux-dock {
+    display: none !important;
+  }
+
+  body.tactical-selection-active #tacticalInspector {
+    bottom: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    max-height: min(64dvh, calc(100dvh - 105px));
+    z-index: 36;
+  }
+
+  body.tactical-selection-active #tacticalInspector:not(.is-editing) {
+    max-height: 180px;
+  }
+
+  #tacticalInspector .tactical-inspector-actions {
+    gap: 5px;
+  }
+
+  #tacticalInspector .tactical-inspector-actions button {
+    min-width: 0;
+    padding: 8px 4px;
+    font-size: clamp(11px, 3.25vw, 13px);
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 761px) {
+  #tacticalInspector .tactical-mobile-action {
+    display: none;
+  }
+}
