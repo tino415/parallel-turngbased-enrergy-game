@@ -146,6 +146,10 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   document.head.append(style);
 
   const nodeDialog = byId('nodeDialog');
+  // Selection exists only while inspecting/editing a node; Focus remembers
+  // the latest inspected node independently of the active editor.
+  let lastInspectedNodeId = state.nodes[selected] ? selected : null;
+  selected = null;
   const oldHeader = nodeDialog.querySelector('.mobile-node-header');
   const oldClose = byId('closeNodeDialog');
   const slot = byId('nodeDetailsSlot');
@@ -191,6 +195,13 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   oldHeader.append(selectedTitle, oldClose);
   oldClose.textContent = '← Back to map';
   oldClose.onclick = () => nodeDialog.close();
+  nodeDialog.addEventListener('close', () => {
+    if (selected === null) return;
+    lastInspectedNodeId = selected;
+    selected = null;
+    // A closed editor must not leave a persistent node highlight or sidebar selection.
+    render();
+  });
   const scroll = document.createElement('div');
   scroll.className = 'ux-editor-scroll';
   const stats = document.createElement('div');
@@ -268,7 +279,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   focusButton.id = 'focusMap';
   focusButton.type = 'button';
   focusButton.textContent = 'Focus';
-  focusButton.title = 'Focus on selected node';
+  focusButton.title = 'Focus on the last inspected node';
   byId('fit').after(focusButton);
 
   // Keep the game's normal renderer and engine; only change graphical overlays.
@@ -304,17 +315,12 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   showNodeOnMobile = function() {
     if (selected !== null && !nodeDialog.open) nodeDialog.showModal();
   };
-  const oldClickNode = clickNode;
   clickNode = function(id) {
-    if (state.nodes[id] && state.nodes[id].owner === 0) {
-      selected=id;
-      render();
-      showNodeOnMobile();
-    } else {
-      selected=id;
-      render();
-      showNodeOnMobile();
-    }
+    if (!state.nodes[id]) return;
+    lastInspectedNodeId = id;
+    selected = id;
+    render();
+    showNodeOnMobile();
   };
   const originalOrders = renderOrders;
   renderOrders = function() {
@@ -507,7 +513,9 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   byId('zoomOut').onclick=()=>zoomUX(.8);
   byId('fit').onclick=fitCameraUX;
   focusButton.onclick=()=>{
-    const id=selected===null?state.nodes.find(n=>n.owner===0)?.id:selected;
+    const id=state.nodes[lastInspectedNodeId]
+      ? lastInspectedNodeId
+      : state.nodes.find(n=>n.owner===0)?.id;
     if(id!==undefined && id!==null)focusCameraUX(id);
   };
   // Opening the on-screen keyboard resizes the mobile viewport. Moving
