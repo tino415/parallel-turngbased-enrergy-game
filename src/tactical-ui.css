@@ -353,8 +353,16 @@ body > header #resolve {
   .ux-dock {
     display: flex !important;
     z-index: 35;
+    height: var(--tactical-action-height);
     min-height: var(--tactical-action-height);
     padding: 8px 12px calc(9px + env(safe-area-inset-bottom));
+  }
+
+  .ux-dock button {
+    min-width: 0;
+    padding: 6px 4px;
+    font-size: clamp(12px, 3.4vw, 14px);
+    white-space: nowrap;
   }
 
   #tacticalInspector {
