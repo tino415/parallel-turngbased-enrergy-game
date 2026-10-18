@@ -4,20 +4,19 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/');
 });
 
-test('node selection previews first and edits policy on second selection', async ({
+test('node tap highlights only and opens policy editor on second selection', async ({
   page,
 }, testInfo) => {
   const node = page.locator('#map .node-hit[fill="#3278c8"]').first();
   await node.click();
   const inspector = page.locator('#tacticalInspector');
+  await expect(inspector).toBeHidden();
+  await expect(page.locator('#map .tactical-node-selected')).toHaveCount(1);
+  await expect(page.locator('#nodeDialog')).toBeHidden();
+  await node.click();
   await expect(inspector).toBeVisible();
   await expect(inspector).toContainText('Node 0');
   await expect(inspector).toContainText('Policy');
-  await expect(inspector).not.toHaveClass(/is-editing/);
-  await expect(page.locator('#map .tactical-node-selected')).toHaveCount(1);
-  await expect(page.locator('#nodeDialog')).toBeHidden();
-
-  await node.click();
   await expect(inspector).toHaveClass(/is-editing/);
   await expect(page.locator('#tacticalPolicyPercent')).toBeVisible();
   await page.locator('#tacticalPolicyPercent').fill('73');
@@ -33,17 +32,18 @@ test('node selection previews first and edits policy on second selection', async
     expect(drawer.y).toBeGreaterThan(map.y + 90);
   }
   await inspector.getByRole('button', { name: 'Collapse' }).click();
-  await expect(inspector).not.toHaveClass(/is-editing/);
+  await expect(inspector).toBeHidden();
+  await expect(page.locator('#map .tactical-node-selected')).toHaveCount(1);
 });
 
-test('edge selection previews first and edits amount on second selection', async ({ page }) => {
+test('edge selection highlights only then edits amount on second selection', async ({ page }) => {
   await page.locator('#fit').click();
   const edge = page.locator('.tactical-edge-hit[data-edge="0-1"]');
   await edge.click();
-  await expect(page.locator('#tacticalInspector')).toContainText('Connection 0 — 1');
-  await expect(page.locator('#tacticalInspector')).not.toHaveClass(/is-editing/);
+  await expect(page.locator('#tacticalInspector')).toBeHidden();
   await expect(page.locator('#map .tactical-node-selected')).toHaveCount(2);
   await edge.click();
+  await expect(page.locator('#tacticalInspector')).toContainText('Connection 0 — 1');
   await expect(page.locator('#tacticalEdgeAmount')).toBeVisible();
   await page.locator('#tacticalEdgeAmount').fill('3.5');
   await page.locator('#tacticalEdgeAmount').blur();
@@ -55,7 +55,8 @@ test('edge selection previews first and edits amount on second selection', async
   await page.locator('#fit').click();
   const next = page.locator('.tactical-edge-hit[data-edge="0-2"]');
   await next.click();
-  await expect(page.locator('#tacticalInspector')).not.toHaveClass(/is-editing/);
+  await expect(page.locator('#tacticalInspector')).toBeHidden();
+  await expect(page.locator('#map .tactical-node-selected')).toHaveCount(2);
   expect(await page.evaluate(() => orders[0].edges[1])).toBe(3.5);
 });
 
@@ -79,6 +80,8 @@ test('friendly edge permits both transfer directions without overwriting', async
 
 test('closing selection keeps Focus on the last inspected node', async ({ page }) => {
   await page.locator('#fit').click();
+  await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
+  await expect(page.locator('#tacticalInspector')).toBeHidden();
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
   await page.locator('#tacticalInspector [aria-label="Clear map selection"]').click();
   await expect(page.locator('#tacticalInspector')).toBeHidden();
@@ -284,6 +287,10 @@ test('mobile bottom actions stay reachable and the page itself never scrolls', a
 
   const node = page.locator('#map .node-hit[fill="#3278c8"]').first();
   await node.tap();
+  await expect(inspector).toBeHidden();
+  await expect(resolve).toBeVisible();
+  await expectLockedViewport();
+  await node.tap();
   await expect(inspector).toBeVisible();
   await expect(dock).toBeVisible();
   await expect(resolve).toBeHidden();
@@ -296,7 +303,6 @@ test('mobile bottom actions stay reachable and the page itself never scrolls', a
   await expect(inspector.getByRole('button', { name: 'Resolve →' })).toBeVisible();
   await expectLockedViewport();
 
-  await inspector.getByRole('button', { name: 'Edit' }).click();
   await expect(inspector).toHaveClass(/is-editing/);
   inspectorBox = await inspector.boundingBox();
   expect(inspectorBox.y + inspectorBox.height).toBeLessThanOrEqual(page.viewportSize().height + 2);
@@ -320,7 +326,7 @@ test('mobile editor keeps its own scrolling without moving the map', async ({ pa
   test.skip(!testInfo.project.name.startsWith('mobile'), 'Mobile drawer layout');
   const node = page.locator('#map .node-hit[fill="#3278c8"]').first();
   await node.tap();
-  await page.locator('#tacticalInspector').getByRole('button', { name: 'Edit' }).click();
+  await node.tap();
   await page.getByText('Other policy settings').click();
   await page.getByText('Manual investment, withdrawal and allocations').click();
   const body = page.locator('#tacticalInspector .tactical-inspector-body');
@@ -404,6 +410,8 @@ test('Orders dialog replaces the contextual inspector instead of stacking modals
 }, testInfo) => {
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
   await expect(page.locator('#nodeDialog')).toBeHidden();
+  await expect(page.locator('#tacticalInspector')).toBeHidden();
+  await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
   await expect(page.locator('#tacticalInspector')).toBeVisible();
   if (testInfo.project.name.startsWith('mobile')) {
     await expect(page.locator('.ux-dock')).toBeVisible();
@@ -433,6 +441,11 @@ test('selected connection replaces the dock content without a second mobile moda
   await expect(page.locator('#uxDockResolve')).toBeVisible();
 
   await edge.tap();
+  await expect(inspector).toBeHidden();
+  await expect(dock).toBeVisible();
+  await expect(page.locator('#uxDockResolve')).toBeVisible();
+  await expect(page.locator('#map .tactical-node-selected')).toHaveCount(2);
+  await edge.tap();
   await expect(inspector).toBeVisible();
   await expect(dock).toBeVisible();
   await expect(page.locator('#uxDockResolve')).toBeHidden();
@@ -455,9 +468,7 @@ test('selected connection replaces the dock content without a second mobile moda
     inspectorPosition: 'static',
     fixedSurfaces: 1,
   });
-  await expect(inspector.locator('.tactical-inspector-body')).toBeHidden();
-
-  await edge.tap();
+  await expect(inspector.locator('.tactical-inspector-body')).toBeVisible();
   await expect(inspector).toHaveClass(/is-editing/);
   await expect(page.locator('#tacticalEdgeAmount')).toBeVisible();
 
