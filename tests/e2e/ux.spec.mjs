@@ -50,6 +50,9 @@ test('edge selection previews first and edits amount on second selection', async
   expect(await page.evaluate(() => orders[0].edges[1])).toBe(3.5);
   await expect(page.locator('#tacticalInspector')).toContainText('Attack');
 
+  // Keep the map reachable by collapsing the drawer and fitting the next edge.
+  await page.locator('#tacticalInspector').getByRole('button', { name: 'Collapse' }).click();
+  await page.locator('#fit').click();
   const next = page.locator('.tactical-edge-hit[data-edge="0-2"]');
   await next.click();
   await expect(page.locator('#tacticalInspector')).not.toHaveClass(/is-editing/);
