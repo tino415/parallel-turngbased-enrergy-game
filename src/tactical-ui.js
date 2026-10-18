@@ -208,9 +208,26 @@
   }
 
   function sourceForEdge(a, b) {
-    if (state.nodes[a].owner === 0) return a;
-    if (state.nodes[b].owner === 0) return b;
-    return null;
+    const aOwned = state.nodes[a].owner === 0;
+    const bOwned = state.nodes[b].owner === 0;
+    if (!aOwned) return bOwned ? b : null;
+    if (!bOwned) return a;
+
+    // Both directions are possible on friendly edges. Open an existing
+    // automatic surplus transfer in its saved direction instead of always
+    // defaulting to the first endpoint (which showed an unchecked box for
+    // policies configured in the reverse direction).
+    const aToB = policies[a]?.enabled && policies[a].dest === b;
+    const bToA = policies[b]?.enabled && policies[b].dest === a;
+    if (aToB !== bToA) return aToB ? a : b;
+
+    // An explicitly chosen, but disabled, policy destination is still useful
+    // context when no enabled direction exists.
+    const aConfigured = policies[a]?.dest === b;
+    const bConfigured = policies[b]?.dest === a;
+    if (aConfigured !== bConfigured) return aConfigured ? a : b;
+
+    return a;
   }
 
   function chooseEdge(a, b) {
