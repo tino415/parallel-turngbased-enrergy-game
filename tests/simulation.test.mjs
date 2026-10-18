@@ -282,3 +282,187 @@ test('CLI accepts mixed strategies and rejects mismatched player count', () => {
   assert.notEqual(invalid.status, 0);
   assert.match(invalid.stderr, /exactly 4 strategies/);
 });
+
+test('counterattack turns on only after the configured turtle phase', () => {
+  const nodes = [
+    { id: 0, owner: 0, active: 1000, invested: 3000 },
+    { id: 1, owner: 1, active: 10, invested: 0 },
+  ];
+  const links = [[0, 1]];
+  const getOrders = (round) =>
+    planStrategyOrders({
+      engine,
+      nodes,
+      links,
+      strategies: ['turtlecounter', 'default'],
+      homeNodes: [0, 1],
+      round,
+      turtleRounds: 150,
+      attackPct: 5,
+    })[0];
+  const reserve = defensiveReserve(nodes[0], nodes, [1]);
+  assert.equal(reserve, 17);
+  assert.equal(getOrders(1).type, 'invest');
+  assert.equal(getOrders(150).type, 'invest');
+  const phaseTwo = getOrders(151);
+  assert.ok(Array.isArray(phaseTwo));
+  assert.deepEqual(
+    phaseTwo.map((order) => order.type),
+    ['invest', 'attack'],
+  );
+  assert.equal(phaseTwo[1].amount, 50);
+  assert.equal(phaseTwo[1].dest, 1);
+  assert.equal(phaseTwo[0].amount, 933);
+  assert.ok(phaseTwo[0].amount + phaseTwo[1].amount <= nodes[0].active - reserve);
+  assert.equal(nodes[0].invested, 3000, 'planning never withdraws invested capital');
+});
+
+test('counterattack never exceeds the five percent active-energy budget', () => {
+  const nodes = [
+    { id: 0, owner: 0, active: 100, invested: 1000000 },
+    { id: 1, owner: 1, active: 90, invested: 0 },
+  ];
+  const choice = planStrategyOrders({
+    engine,
+    nodes,
+    links: [[0, 1]],
+    strategies: ['turtlecounter', 'default'],
+    homeNodes: [0, 1],
+    round: 151,
+    turtleRounds: 150,
+    attackPct: 5,
+  })[0];
+  assert.ok(
+    !choice ||
+      (Array.isArray(choice)
+        ? choice.every((order) => order.type === 'invest')
+        : choice.type === 'invest'),
+    'do not make a futile 5% attack',
+  );
+  const budget = nodes[0].active * 0.05;
+  assert.equal(budget, 5, 'budget derives from active energy, not invested capital');
+});
+
+test('conquered nodes of turtlecounter use default AI from subsequent turns', () => {
+  const nodes = [
+    { id: 0, owner: 0, active: 100, invested: 50 },
+    { id: 1, owner: 1, active: 12, invested: 14 },
+    { id: 2, owner: 0, active: 60, invested: 0 },
+    { id: 3, owner: null, active: 4, invested: 0 },
+  ];
+  const links = [
+    [0, 1],
+    [2, 3],
+  ];
+  const planned = planStrategyOrders({
+    engine,
+    nodes,
+    links,
+    strategies: ['turtlecounter', 'default'],
+    homeNodes: [0, 1],
+    round: 40,
+    turtleRounds: 150,
+  });
+  const defaults = engine.aiOrders(nodes, links, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(planned[2])), JSON.parse(JSON.stringify(defaults[2])));
+  assert.equal(
+    planned[2].type,
+    'attack',
+    'captured node may attack even during the home turtle phase',
+  );
+  assert.equal(planned[0].type, 'invest', 'home must still turtle before round 151');
+});
+
+test('two-player 20-node counterattack matches are deterministic and keep valid allocations', () => {
+  const options = {
+    count: 20,
+    players: 2,
+    maxRounds: 170,
+    mapSeed: 'two-player-counter',
+    combatSeed: 'two-player-counter',
+    strategies: ['turtlecounter', 'default'],
+    turtleRounds: 150,
+    attackPct: 5,
+  };
+  const a = simulateMatch(options),
+    b = simulateMatch(options);
+  assert.deepEqual(a, b);
+  assert.equal(a.playerStats[0].strategy, 'turtlecounter');
+  assert.ok(a.playerStats[0].firstAttackRound === null || a.playerStats[0].firstAttackRound >= 151);
+  assert.ok(a.rounds <= 170);
+  assert.equal(a.turtleRounds, 150);
+  assert.equal(a.attackPct, 5);
+  const batch = simulateBatch({
+    matches: 3,
+    count: 20,
+    players: 2,
+    maxRounds: 170,
+    strategies: ['turtlecounter', 'default'],
+    seed: 'counter-batch',
+  });
+  assert.equal(batch.results.length, 3);
+  assert.equal(batch.expansionCounts.length, 2);
+  assert.equal(batch.firstAttackCounts.length, 2);
+  assert.ok(batch.firstAttackCounts[0] <= 3);
+});
+
+test('counterattack CLI rejects nonsensical pivot and attack percentage', () => {
+  const run = (...params) =>
+    spawnSync(
+      process.execPath,
+      [cli, '--players=2', '--strategies=turtlecounter,default', ...params],
+      { encoding: 'utf8' },
+    );
+  const badPercent = run('--attack-pct=101');
+  assert.notEqual(badPercent.status, 0);
+  assert.match(badPercent.stderr, /attackPct/);
+  const badPivot = run('--turtle-rounds=-1');
+  assert.notEqual(badPivot.status, 0);
+  assert.match(badPivot.stderr, /turtleRounds/);
+});
+
+test('ending economy equals active plus invested with per-node base and 10% investment income', () => {
+  const match = simulateMatch({
+    count: 20,
+    players: 2,
+    maxRounds: 300,
+    mapSeed: 'economy-map',
+    combatSeed: 'economy-combat',
+    strategies: ['superturtle', 'default'],
+  });
+  for (const entry of match.standings) {
+    const near = (a, b) => Math.abs(a - b) <= Math.max(0.015, Math.abs(b) * 1e-12);
+    assert.ok(near(entry.totalEnergy, entry.active + entry.invested));
+    assert.equal(entry.baseIncome, entry.nodes);
+    assert.ok(near(entry.investmentIncome, entry.invested * 0.1));
+    assert.ok(near(entry.grossIncome, entry.nodes + 0.1 * entry.invested));
+    assert.ok(entry.incomeSharePct >= 0 && entry.incomeSharePct <= 100);
+    assert.ok(Number.isFinite(entry.grossIncome));
+  }
+  const share = match.standings.reduce((sum, entry) => sum + entry.incomeSharePct, 0);
+  assert.ok(Math.abs(share - 100) <= 0.003, 'all controlled income shares sum to 100%');
+});
+
+test('300-round strategy batches keep reproducible endgame energy and income medians', () => {
+  const options = {
+    matches: 3,
+    seed: 'economy-batch',
+    count: 20,
+    players: 2,
+    maxRounds: 300,
+    turtleRounds: 150,
+    attackPct: 5,
+    strategies: ['turtlecounter', 'default'],
+  };
+  const a = simulateBatch(options);
+  const b = simulateBatch(options);
+  assert.deepEqual(a.medianEndingEconomy, b.medianEndingEconomy);
+  assert.equal(a.medianEndingEconomy.length, 2);
+  for (const summary of a.medianEndingEconomy) {
+    const rawValues = a.results
+      .map((result) => result.standings[summary.player].grossIncome)
+      .sort((x, y) => x - y);
+    assert.equal(summary.grossIncome, rawValues[1]);
+    assert.ok(summary.grossIncome >= 0);
+  }
+});

@@ -3,12 +3,13 @@ import { simulateBatch } from '../tests/support/simulation.mjs';
 
 const usage = `Deterministic AI-vs-AI simulation
 
-Usage: npm run simulate -- [--matches=N] [--rounds=N] [--nodes=N] [--players=N] [--density=sparse|normal|dense] [--seed=TEXT] [--strategies=CSV] [--json]
+Usage: npm run simulate -- [--matches=N] [--rounds=N] [--nodes=N] [--players=N] [--density=sparse|normal|dense] [--seed=TEXT] [--strategies=CSV] [--turtle-rounds=N] [--attack-pct=N] [--json]
 
 Examples:
   npm run simulate -- --matches=50 --rounds=250 --seed=balance-v1
   npm run simulate -- --matches=5 --nodes=60 --players=4 --json
   npm run simulate -- --matches=100 --nodes=40 --players=4 --strategies=superturtle,default,default,default
+  npm run simulate -- --matches=100 --nodes=20 --players=2 --rounds=250 --strategies=turtlecounter,default --turtle-rounds=150 --attack-pct=5
 
 Repeat the same command to reproduce the same maps, combat rolls and results.
 Note: the seed controls this simulation only, not browser gameplay.`;
@@ -21,16 +22,30 @@ function parse(args) {
       options.json = true;
       continue;
     }
-    const match = /^--(matches|rounds|nodes|players|density|seed|strategies)=(.+)$/.exec(arg);
+    const match =
+      /^--(matches|rounds|nodes|players|density|seed|strategies|turtle-rounds|attack-pct)=(.+)$/.exec(
+        arg,
+      );
     if (!match) throw new Error('Unrecognized option: ' + arg);
     const [, key, value] = match;
     if (key === 'density' || key === 'seed' || key === 'strategies') options[key] = value;
     else {
       const number = Number(value);
-      if (!Number.isSafeInteger(number)) throw new Error('Expected integer for --' + key);
-      options[
-        { rounds: 'maxRounds', nodes: 'count', matches: 'matches', players: 'players' }[key]
-      ] = number;
+      if (key === 'attack-pct') {
+        if (!Number.isFinite(number)) throw new Error('Expected numeric percentage for --' + key);
+        options.attackPct = number;
+      } else {
+        if (!Number.isSafeInteger(number)) throw new Error('Expected integer for --' + key);
+        options[
+          {
+            rounds: 'maxRounds',
+            nodes: 'count',
+            matches: 'matches',
+            players: 'players',
+            'turtle-rounds': 'turtleRounds',
+          }[key]
+        ] = number;
+      }
     }
   }
   return options;
@@ -56,6 +71,10 @@ try {
     console.log(
       'Survival: ' +
         report.survivalRates.map((rate, player) => 'P' + player + '=' + rate + '%').join(' '),
+    );
+    console.log(
+      'Expanded beyond home node: ' +
+        report.expansionCounts.map((count, player) => 'P' + player + '=' + count).join(' '),
     );
     console.log(
       'Unresolved by round cap: ' + report.unresolved + ' (stalled: ' + report.stalledAtCap + ')',

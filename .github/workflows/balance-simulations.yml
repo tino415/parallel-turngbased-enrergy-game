@@ -22,7 +22,7 @@ on:
       rounds:
         description: 'Maximum rounds per match (1-500)'
         required: true
-        default: '200'
+        default: '300'
         type: string
       density:
         description: 'Map density'
@@ -35,13 +35,23 @@ on:
         required: true
         default: superturtle
         type: choice
-        options: [default, aggressive, balanced, turtle, superturtle]
+        options: [default, aggressive, balanced, turtle, superturtle, turtlecounter]
       opponents:
         description: 'Strategy for all other players'
         required: true
         default: default
         type: choice
-        options: [default, aggressive, balanced, turtle, superturtle]
+        options: [default, aggressive, balanced, turtle, superturtle, turtlecounter]
+      turtle_rounds:
+        description: 'Turtle phase duration (0-500 rounds)'
+        required: true
+        default: '150'
+        type: string
+      attack_pct:
+        description: 'Counterattack budget as % of active energy (0-100]'
+        required: true
+        default: '5'
+        type: string
       seed:
         description: 'Reproducible batch seed'
         required: true
@@ -72,11 +82,15 @@ jobs:
           PLAYER0: ${{ inputs.player0 }}
           OPPONENTS: ${{ inputs.opponents }}
           SEED: ${{ inputs.seed }}
+          TURTLE_ROUNDS: ${{ inputs.turtle_rounds }}
+          ATTACK_PCT: ${{ inputs.attack_pct }}
         run: |
           set -euo pipefail
           [[ "$MATCHES" =~ ^[0-9]+$ ]] && (( MATCHES >= 1 && MATCHES <= 1000 )) || { echo "Invalid matches"; exit 1; }
           [[ "$NODES" =~ ^[0-9]+$ ]] && (( NODES >= 10 && NODES <= 120 )) || { echo "Invalid nodes"; exit 1; }
           [[ "$ROUNDS" =~ ^[0-9]+$ ]] && (( ROUNDS >= 1 && ROUNDS <= 500 )) || { echo "Invalid rounds"; exit 1; }
+          [[ "$TURTLE_ROUNDS" =~ ^[0-9]+$ ]] && (( TURTLE_ROUNDS >= 0 && TURTLE_ROUNDS <= 500 )) || { echo "Invalid turtle rounds"; exit 1; }
+          [[ "$ATTACK_PCT" =~ ^([0-9]+)([.][0-9]+)?$ ]] || { echo "Invalid attack percentage"; exit 1; }
           strategies="$PLAYER0"
           for ((i = 1; i < PLAYERS; i++)); do
             strategies="$strategies,$OPPONENTS"
@@ -84,7 +98,8 @@ jobs:
           mkdir -p reports
           node scripts/simulate.mjs --matches="$MATCHES" --nodes="$NODES" --players="$PLAYERS" \
             --rounds="$ROUNDS" --density="$DENSITY" --seed="$SEED" \
-            --strategies="$strategies" --json > reports/simulation.json
+            --strategies="$strategies" --turtle-rounds="$TURTLE_ROUNDS" \
+            --attack-pct="$ATTACK_PCT" --json > reports/simulation.json
           node scripts/summarize-simulation.mjs reports/simulation.json |
             tee reports/summary.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload reproducible report

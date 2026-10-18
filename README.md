@@ -126,6 +126,18 @@ Simulation-only strategies are **default**, **aggressive**, **balanced**, **turt
 - **Balanced:** Reserves energy against immediate threats, then attacks or invests.
 - **Turtle:** Heavy investment and defense, with occasional neutral-only expansion; never attacks an opposing player's node.
 - **Super Turtle:** Single starting node, no transfers and no attacks. It invests all energy above a dynamic defensive reserve (minimum 3 active, or approximately 1.5 times adjacent enemy active energy plus 2). The reserve is a heuristic, not a guarantee of survival.
+- **Turtle Counterattack:** Copies Super Turtle for the first 150 resolved turns. Starting in round 151, its original node can use up to 5% of its **start-of-round active energy** to attack a neighboring node when that budget is enough to overcome the target's current defense even with unfavorable combat rolls, while continuing to reserve defensive energy and reinvest surplus. Newly conquered nodes use the **Default AI** starting the next turn instead of turtling. Investment principal remains locked. The 150-round delay and 5% active-energy budget are configurable in simulations only.
+
+A smaller 1-vs-1 comparison with 20 nodes is available in the existing GitHub workflow by setting **Players=2**, **Nodes=20**, **P0=Turtle Counterattack**, **Opponents=Default**, **Rounds=250**, **Turtle rounds=150**, and **Attack %=5**. Repeat with **P0=Super Turtle** and the **same seed** to compare survival and victories fairly:
+
+```sh
+npm run simulate -- --matches=100 --nodes=20 --players=2 --rounds=250 \
+  --strategies=turtlecounter,default --turtle-rounds=150 --attack-pct=5 --seed=duel-v1
+npm run simulate -- --matches=100 --nodes=20 --players=2 --rounds=250 \
+  --strategies=superturtle,default --seed=duel-v1
+```
+
+In the full JSON, `playerStats[0].firstAttackRound` and `firstConquestRound` show when the counterattack actually begins and when the first conquest occurs. The report's `expansionCounts` counts matches in which a player grew beyond their home node. These are measured outcomes, not assumptions of success.
 
 Reproduce the reported four-player turtle exploit with the following baseline scenario:
 
@@ -133,6 +145,10 @@ Reproduce the reported four-player turtle exploit with the following baseline sc
 npm run simulate -- --matches=100 --nodes=40 --players=4 --rounds=200 \
   --strategies=superturtle,default,default,default --seed=turtle-v1
 ```
+
+After each simulated match, the final standings also include **active energy**, **locked invested energy**, their sum (total controlled), **base income** (+1 per owned node), **investment income** (10% of invested energy), **gross income per round**, and each player's share of all owned-node gross income. GitHub summaries show per-player **medians** across matches (not sums); full JSON provides exact per-match final snapshots. Income is measured at the final resolved round, and does not subtract future active-energy decay or attack losses.
+
+For the 300-round income-dominance comparison, keep the same seeds in all runs and use 20 nodes / 2 players. Repeat on 40 nodes / 4 players to measure the impact of expansion on +1 production. Set the **Rounds** input to 300 (now the default in the manual workflow).
 
 The `--strategies` CSV must contain exactly one strategy per player. Add `--json` for machine-readable per-match details. Results include victory rates, survival rates, node count and peak investment per player, and matches unresolved by the round cap. A "stalled" match is unresolved with no captures in the last 25 rounds; it does **not** imply that the game has formally ended. Survival alone is not a win.
 
