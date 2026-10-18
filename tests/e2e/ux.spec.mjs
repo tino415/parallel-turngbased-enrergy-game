@@ -23,6 +23,58 @@ test('selected friendly node opens full-screen editor with live budget', async (
   await expect(page.locator('#nodeDialog')).toBeHidden();
 });
 
+test('closing the node editor clears selection but Focus remembers the last node', async ({
+  page,
+}) => {
+  await page.locator('#fit').click();
+  const neutral = page.locator('#map .node-hit[fill="#768092"]').first();
+  const nodeId = await neutral.evaluate((el) => {
+    const group = el.parentElement;
+    return Number(group.querySelectorAll('text')[2].textContent);
+  });
+
+  await neutral.click();
+  await expect(page.locator('#nodeDialog')).toBeVisible();
+  await expect(page.locator('#map .node.selected')).toHaveCount(1);
+
+  await page.locator('#uxDone').click();
+  await expect(page.locator('#nodeDialog')).toBeHidden();
+  await expect(page.locator('#map .node.selected')).toHaveCount(0);
+  expect(await page.evaluate(() => selected)).toBeNull();
+
+  await page.locator('#fit').click();
+  await page.locator('#focusMap').click();
+  const focused = await page.evaluate((id) => {
+    const svg = document.getElementById('map').viewBox.baseVal;
+    const [wx, wy] = xy[id];
+    return {
+      dx: camera.x + wx * camera.scale - svg.width / 2,
+      dy: camera.y + wy * camera.scale - svg.height / 2,
+    };
+  }, nodeId);
+  expect(Math.abs(focused.dx)).toBeLessThan(2);
+  expect(Math.abs(focused.dy)).toBeLessThan(2);
+
+  // Keyboard/Escape dismissal follows the same transient-selection rule.
+  await page.locator('#fit').click();
+  await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
+  await expect(page.locator('#nodeDialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#nodeDialog')).toBeHidden();
+  await expect(page.locator('#map .node.selected')).toHaveCount(0);
+  expect(await page.evaluate(() => selected)).toBeNull();
+  await page.locator('#focusMap').click();
+  const ownedCentered = await page.evaluate(() => {
+    const svg = document.getElementById('map').viewBox.baseVal;
+    return {
+      dx: camera.x + xy[0][0] * camera.scale - svg.width / 2,
+      dy: camera.y + xy[0][1] * camera.scale - svg.height / 2,
+    };
+  });
+  expect(Math.abs(ownedCentered.dx)).toBeLessThan(2);
+  expect(Math.abs(ownedCentered.dy)).toBeLessThan(2);
+});
+
 test('mobile keyboard resize keeps manual-order input focused', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('mobile'), 'Mobile keyboard regression');
 
