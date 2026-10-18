@@ -31,7 +31,7 @@ test('node tap highlights only and opens policy editor on second selection', asy
     expect(drawer).not.toBeNull();
     expect(drawer.y).toBeGreaterThan(map.y + 90);
   }
-  await inspector.getByRole('button', { name: 'Collapse' }).click();
+  await inspector.getByRole('button', { name: 'Clear map selection' }).click();
   await expect(inspector).toBeHidden();
   await expect(page.locator('#map .tactical-node-selected')).toHaveCount(1);
 });
@@ -50,8 +50,8 @@ test('edge selection highlights only then edits amount on second selection', asy
   expect(await page.evaluate(() => orders[0].edges[1])).toBe(3.5);
   await expect(page.locator('#tacticalInspector')).toContainText('Attack');
 
-  // Keep the map reachable by collapsing the drawer and fitting the next edge.
-  await page.locator('#tacticalInspector').getByRole('button', { name: 'Collapse' }).click();
+  // The map stays reachable after the inspector is dismissed.
+  await page.locator('#tacticalInspector').getByRole('button', { name: 'Clear map selection' }).click();
   await page.locator('#fit').click();
   const next = page.locator('.tactical-edge-hit[data-edge="0-2"]');
   await next.click();
@@ -155,19 +155,22 @@ test('planned arrows and income remain visible across selections and filters', a
     policies[0] = { enabled: true, reserve: 2, investPct: 0, dest: 1 };
     render();
   });
-  const attacks = page.locator('#map > g > line[stroke="#ff987f"]');
-  const support = page.locator('#map > g > line[stroke="#63d9af"]');
-  const policy = page.locator('#map > g > line[stroke="#76b3ff"]');
+  const styled = page.locator('#map > g > line.tactical-flow-connection');
   const income = page.locator('#map > g > text.ux-income-label');
-  await expect(attacks).toHaveCount(2);
-  await expect(support).toHaveCount(1);
-  await expect(policy).toHaveCount(1);
+  await expect(styled).toHaveCount(3);
+  await expect(page.locator('#map > g > line.ux-flow-overlay')).toHaveCount(0);
+  // Manual + policy support on the same connection has one shared stroke,
+  // but retains directional arrowheads/energy labels.
+  await expect(page.locator('#map > g > path.ux-flow-overlay')).toHaveCount(4);
   await expect(income).toHaveCount(2);
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
-  await expect(attacks).toHaveCount(2);
+  await expect(styled).toHaveCount(3);
   await page.locator('#overlay').selectOption('manual');
-  await expect(policy).toHaveCount(0);
+  await expect(styled).toHaveCount(3);
+  await page.locator('#overlay').selectOption('policy');
+  await expect(styled).toHaveCount(1);
   await page.locator('#overlay').selectOption('none');
+  await expect(styled).toHaveCount(0);
   await expect(income).toHaveCount(2);
 });
 
@@ -293,21 +296,17 @@ test('mobile bottom actions stay reachable and the page itself never scrolls', a
   await node.tap();
   await expect(inspector).toBeVisible();
   await expect(dock).toBeVisible();
-  await expect(resolve).toBeHidden();
-  expect(await inspector.evaluate((el) => el.parentElement?.classList.contains('ux-dock'))).toBe(
-    true,
-  );
-  expect(await inspector.evaluate((el) => getComputedStyle(el).position)).toBe('static');
-  let inspectorBox = await inspector.boundingBox();
-  expect(inspectorBox.y + inspectorBox.height).toBeLessThanOrEqual(page.viewportSize().height + 2);
-  await expect(inspector.getByRole('button', { name: 'Resolve →' })).toBeVisible();
-  await expectLockedViewport();
-
-  await expect(inspector).toHaveClass(/is-editing/);
-  inspectorBox = await inspector.boundingBox();
-  expect(inspectorBox.y + inspectorBox.height).toBeLessThanOrEqual(page.viewportSize().height + 2);
-  await expect(dock).toBeVisible();
-  await expect(resolve).toBeHidden();
+  await expect(resolve).toBeVisible();
+  expect(await inspector.evaluate((el) => el.parentElement === document.body)).toBe(true);
+  expect(await inspector.evaluate((el) => getComputedStyle(el).position)).toBe('fixed');
+  const inspectorBox = await inspector.boundingBox();
+  const dockAfter = await dock.boundingBox();
+  expect(inspectorBox.y + inspectorBox.height).toBeLessThanOrEqual(dockAfter.y + 2);
+  const closeBox = await inspector.getByRole('button', { name: 'Clear map selection' }).boundingBox();
+  expect(closeBox.width).toBeLessThanOrEqual(45);
+  expect(closeBox.height).toBeLessThanOrEqual(45);
+  await expect(inspector.getByRole('button', { name: 'Orders' })).toHaveCount(0);
+  await expect(inspector.getByRole('button', { name: 'Resolve →' })).toHaveCount(0);
   await expectLockedViewport();
 
   await page.locator('#tableView').click();
@@ -386,21 +385,19 @@ test('connection editor sets recurring support policy directly using default sou
     investPct: 50,
     dest: 1,
   });
-  await expect(page.locator('#tacticalSupportInvestPct')).toHaveValue('50');
+  await expect(page.locator('#tacticalSupportInvestPct')).toHaveCount(0);
+  await expect(page.locator('#tacticalInspector')).toContainText('invest 50% of surplus');
   const preview = await page.evaluate(() =>
     previewOrders().find(
       (o) => o.automatic && o.type === 'transfer' && o.source === 0 && o.dest === 1,
     ),
   );
   expect(preview?.amount).toBeGreaterThan(0);
-  await page.locator('#tacticalSupportInvestPct').fill('0');
-  await page.locator('#tacticalSupportInvestPct').blur();
-  expect(await page.evaluate(() => policies[0].investPct)).toBe(0);
   await page.locator('#tacticalAutoTransfer').uncheck();
   expect(await page.evaluate(() => policies[0])).toMatchObject({
     enabled: true,
     reserve: 5,
-    investPct: 0,
+    investPct: 50,
     dest: null,
   });
 });
@@ -415,8 +412,8 @@ test('Orders dialog replaces the contextual inspector instead of stacking modals
   await expect(page.locator('#tacticalInspector')).toBeVisible();
   if (testInfo.project.name.startsWith('mobile')) {
     await expect(page.locator('.ux-dock')).toBeVisible();
-    await expect(page.locator('#uxDockResolve')).toBeHidden();
-    await page.locator('#tacticalInspector').getByRole('button', { name: 'Orders' }).click();
+    await expect(page.locator('#uxDockResolve')).toBeVisible();
+    await page.locator('#uxDockOrders').click();
   } else {
     await page.locator('#tacticalMenu summary').click();
     await page.locator('#tacticalMenu button').filter({ hasText: 'Orders' }).click();
@@ -428,7 +425,7 @@ test('Orders dialog replaces the contextual inspector instead of stacking modals
   await expect(page.locator('#nodeDialog')).toBeHidden();
 });
 
-test('selected connection replaces the dock content without a second mobile modal', async ({
+test('mobile connection editor keeps original dock and closes on outside map tap', async ({
   page,
 }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('mobile'), 'Mobile-only regression');
@@ -436,43 +433,42 @@ test('selected connection replaces the dock content without a second mobile moda
   const inspector = page.locator('#tacticalInspector');
   const edge = page.locator('.tactical-edge-hit[data-edge="0-1"]');
 
-  await expect(inspector).toBeHidden();
-  await expect(dock).toBeVisible();
-  await expect(page.locator('#uxDockResolve')).toBeVisible();
-
   await edge.tap();
   await expect(inspector).toBeHidden();
-  await expect(dock).toBeVisible();
   await expect(page.locator('#uxDockResolve')).toBeVisible();
-  await expect(page.locator('#map .tactical-node-selected')).toHaveCount(2);
   await edge.tap();
   await expect(inspector).toBeVisible();
-  await expect(dock).toBeVisible();
-  await expect(page.locator('#uxDockResolve')).toBeHidden();
-  await expect(inspector.getByRole('button', { name: 'Resolve →' })).toBeVisible();
-  await expect(page.locator('#nodeDialog')).toBeHidden();
-
-  const structure = await page.evaluate(() => {
-    const dock = document.querySelector('.ux-dock');
-    const inspector = document.querySelector('#tacticalInspector');
-    return {
-      inspectorInsideDock: dock.contains(inspector),
-      inspectorPosition: getComputedStyle(inspector).position,
-      fixedSurfaces: [...document.querySelectorAll('#tacticalInspector, .ux-dock')].filter(
-        (el) => getComputedStyle(el).position === 'fixed' && el.getBoundingClientRect().height > 0,
-      ).length,
-    };
-  });
-  expect(structure).toEqual({
-    inspectorInsideDock: true,
-    inspectorPosition: 'static',
-    fixedSurfaces: 1,
-  });
-  await expect(inspector.locator('.tactical-inspector-body')).toBeVisible();
-  await expect(inspector).toHaveClass(/is-editing/);
-  await expect(page.locator('#tacticalEdgeAmount')).toBeVisible();
-
-  await inspector.getByRole('button', { name: 'Clear map selection' }).click();
-  await expect(inspector).toBeHidden();
   await expect(page.locator('#uxDockResolve')).toBeVisible();
+  await expect(page.locator('#uxDockOrders')).toBeVisible();
+  await expect(page.locator('#nodeDialog')).toBeHidden();
+  await expect(inspector.locator('.tactical-inspector-body')).toBeVisible();
+
+  const layout = await page.evaluate(() => {
+    const dock = document.querySelector('.ux-dock').getBoundingClientRect();
+    const inspector = document.querySelector('#tacticalInspector').getBoundingClientRect();
+    return { overlap: inspector.bottom - dock.top, parent: document.querySelector('#tacticalInspector').parentElement.tagName };
+  });
+  expect(layout.parent).toBe('BODY');
+  expect(layout.overlap).toBeLessThanOrEqual(2);
+  await expect(inspector.getByRole('button', { name: 'Resolve →' })).toHaveCount(0);
+  await expect(inspector.getByRole('button', { name: 'Orders' })).toHaveCount(0);
+  await expect(inspector.getByRole('button', { name: 'Collapse' })).toHaveCount(0);
+
+  // Tapping blank map space dismisses; the dock remains untouched.
+  const box = await page.locator('#map').boundingBox();
+  await page.mouse.click(box.x + box.width * 0.13, box.y + 8);
+  await expect(inspector).toBeHidden();
+  await expect(dock).toBeVisible();
+  await expect(page.locator('#uxDockResolve')).toBeVisible();
+});
+
+test('clicking toolbar outside a desktop editor dismisses selection', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'Desktop modal dismissal');
+  const node = page.locator('#map .node-hit[fill="#3278c8"]').first();
+  await node.click();
+  await node.click();
+  await expect(page.locator('#tacticalInspector')).toBeVisible();
+  await page.locator('#score').click();
+  await expect(page.locator('#tacticalInspector')).toBeHidden();
+  expect(await page.evaluate(() => selected)).toBeNull();
 });
