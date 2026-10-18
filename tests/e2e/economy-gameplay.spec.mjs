@@ -68,7 +68,7 @@ test('legacy saved games do not silently switch on new gameplay rules', async ({
   expect(storedVersion).toBeUndefined();
 
   // The old match remains on legacy rules even after round resolution.
-  await page.locator('#closeNodeDialog').click();
+  await page.locator('#tacticalInspector [aria-label="Clear map selection"]').click();
   await page.evaluate(() => document.getElementById('resolve').click());
   await expect(page.locator('#score')).toContainText('Round 2');
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
