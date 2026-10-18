@@ -495,7 +495,7 @@ test('compounding expansion reserves defense, attacks neutral and reinvests ever
     { id: 0, owner: 0, active: 100, invested: 400 },
     { id: 1, owner: 1, active: 4, invested: 10 },
     { id: 2, owner: null, active: 2, invested: 0 },
-    { id: 3, owner: 0, active: 60, invested: 20 },
+    { id: 3, owner: 0, active: 80, invested: 20 },
     { id: 4, owner: null, active: 2, invested: 0 },
   ];
   const orders = planStrategyOrders({
