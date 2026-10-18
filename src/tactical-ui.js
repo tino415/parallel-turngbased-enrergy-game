@@ -594,26 +594,15 @@
         );
       }
       if (targetsHere) {
-        const investments = document.createElement('label');
-        investments.append(textElement('span', 'Invest surplus before sending (%)'));
-        const pct = document.createElement('input');
-        pct.type = 'number';
-        pct.min = '0';
-        pct.max = '100';
-        pct.step = '1';
-        pct.value = String(current.investPct);
-        pct.id = 'tacticalSupportInvestPct';
-        pct.setAttribute('aria-label', 'Invest percentage before automatic transfer');
-        pct.onchange = () => {
-          const val = Number(pct.value);
-          if (!Number.isFinite(val) || val < 0 || val > 100) {
-            pct.value = String(current.investPct);
-            return;
-          }
-          changePolicy(source, 'investPct', val);
-        };
-        investments.append(pct);
-        policyBox.append(investments);
+        policyBox.append(
+          textElement(
+            'p',
+            'Uses Node ' + source + ' policy: reserve ' +
+              numeric(current.reserve) + ' · invest ' + numeric(current.investPct) +
+              '% of surplus. To change either value, edit Node ' + source + '.',
+            'tactical-secondary',
+          ),
+        );
         const nextTransfer = policyOrders(source).find(
           (o) => o.type === 'transfer' && o.dest === destination,
         );
