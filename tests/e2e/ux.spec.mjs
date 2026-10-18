@@ -4,7 +4,9 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/');
 });
 
-test('node selection previews first and edits policy on second selection', async ({ page }, testInfo) => {
+test('node selection previews first and edits policy on second selection', async ({
+  page,
+}, testInfo) => {
   const node = page.locator('#map .node-hit[fill="#3278c8"]').first();
   await node.click();
   const inspector = page.locator('#tacticalInspector');
@@ -69,10 +71,7 @@ test('friendly edge permits both transfer directions without overwriting', async
   await expect(page.locator('#tacticalEdgeAmount')).toHaveValue('0');
   await page.locator('#tacticalEdgeAmount').fill('4');
   await page.locator('#tacticalEdgeAmount').blur();
-  expect(await page.evaluate(() => [
-    orders[0].edges[1],
-    orders[1].edges[0],
-  ])).toEqual([2, 4]);
+  expect(await page.evaluate(() => [orders[0].edges[1], orders[1].edges[0]])).toEqual([2, 4]);
 });
 
 test('closing selection keeps Focus on the last inspected node', async ({ page }) => {
@@ -169,7 +168,9 @@ test('planned arrows and income remain visible across selections and filters', a
 test('mobile touch drag pans naturally without a Pan toggle', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('mobile'), 'Touch-only layout');
   await expect(page.locator('#panMode')).toBeHidden();
-  expect(await page.locator('#mapViewport').evaluate((el) => getComputedStyle(el).touchAction)).toBe('none');
+  expect(
+    await page.locator('#mapViewport').evaluate((el) => getComputedStyle(el).touchAction),
+  ).toBe('none');
   const node = page.locator('#map .node-hit[fill="#3278c8"]').first();
   const box = await node.boundingBox();
   expect(box).not.toBeNull();
