@@ -392,6 +392,62 @@ body > header #resolve {
     border-radius: 13px 13px 0 0;
   }
 }
+#map {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.tactical-group-member {
+  fill: none;
+  stroke: #9fe3c6;
+  stroke-width: 3;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
+}
+#tacticalGroupBar {
+  position: absolute;
+  z-index: 5;
+  top: 9px;
+  left: 9px;
+  right: 120px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: #17273fee;
+  border: 1px solid #5b7190;
+  border-radius: 10px;
+}
+#tacticalGroupBar[hidden] {
+  display: none;
+}
+#tacticalGroupBar button {
+  min-height: 34px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+.tactical-group-hint {
+  color: #ffcab5;
+  font-size: 12px;
+}
+.tactical-group-members {
+  display: grid;
+  gap: 6px;
+  padding: 10px 0;
+}
+.tactical-group-member-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tactical-group-member-row span {
+  flex: 1;
+}
+.tactical-group-member-row button {
+  min-height: 34px;
+  padding: 4px 8px;
+}
 .tactical-edge-selected {
   stroke-dasharray: 14 10;
   animation: tactical-flow 0.9s linear infinite;

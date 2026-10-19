@@ -98,9 +98,15 @@
   };
 
   let { active, editing, advancedOpen, manualOpen, focusedNode } = store.getSnapshot().ui.inspector;
+  let { groupMode, groupEditing, bulkSelection } = store.getSnapshot().ui;
   store.subscribe(({ ui }) => {
     ({ active, editing, advancedOpen, manualOpen, focusedNode } = ui.inspector);
+    ({ groupMode, groupEditing, bulkSelection } = ui);
   });
+  const groupIds = () => (groupMode ? bulkSelection : []);
+  const showingGroup = () => groupEditing && groupIds().length >= 2;
+  const editedMember = () => (groupEditing && groupIds().length === 1 ? groupIds()[0] : null);
+  let groupMessage = '';
   store.focusNode(state.nodes.find((node) => node.owner === 0)?.id ?? 0);
   let previousRound = state.round;
   const svg = byId('map');
@@ -132,6 +138,7 @@
     'pointerdown',
     (event) => {
       if (event.pointerType !== 'touch') return;
+      if (event.isPrimary) forgetFingers();
       fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (fingers.size !== 2) return;
       const [a, b] = [...fingers.values()];
@@ -180,13 +187,190 @@
   const endTouch = (event) => {
     if (event.pointerType !== 'touch') return;
     fingers.delete(event.pointerId);
-    if (fingers.size === 0) {
-      pinchInProgress = false;
-      pinch = null;
+    if (fingers.size === 0) forgetFingers();
+  };
+  function forgetFingers() {
+    fingers.clear();
+    pinchInProgress = false;
+    pinch = null;
+  }
+  window.addEventListener('pointerup', endTouch, true);
+  window.addEventListener('pointercancel', endTouch, true);
+
+  const LONG_PRESS_MS = 450;
+  const LONG_PRESS_SLOP = 8;
+  let press = null;
+  let swallowNextClick = false;
+
+  function nodeIdOf(element) {
+    const hit = element?.closest?.('g')?.querySelector(':scope > .node-hit');
+    return hit ? Number(hit.dataset.node) : null;
+  }
+
+  function stopEvent(event) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+
+  function cancelPress() {
+    clearTimeout(press?.timer);
+    press = null;
+  }
+
+  svg.addEventListener(
+    'pointerdown',
+    (event) => {
+      swallowNextClick = false;
+      cancelPress();
+      const id = nodeIdOf(event.target);
+      if (event.pointerType !== 'touch' || id === null || fingers.size > 1) return;
+      press = {
+        pointerId: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        timer: setTimeout(() => {
+          press = null;
+          swallowNextClick = true;
+          toggleGroupNode(id);
+        }, LONG_PRESS_MS),
+      };
+    },
+    true,
+  );
+  svg.addEventListener(
+    'pointermove',
+    (event) => {
+      if (!press || event.pointerId !== press.pointerId) return;
+      if (Math.hypot(event.clientX - press.x, event.clientY - press.y) > LONG_PRESS_SLOP)
+        cancelPress();
+    },
+    true,
+  );
+  for (const type of ['pointerup', 'pointercancel']) svg.addEventListener(type, cancelPress, true);
+  svg.addEventListener('contextmenu', (event) => {
+    if (nodeIdOf(event.target) !== null) event.preventDefault();
+  });
+
+  svg.addEventListener(
+    'click',
+    (event) => {
+      if (swallowNextClick) {
+        swallowNextClick = false;
+        stopEvent(event);
+        return;
+      }
+      const id = nodeIdOf(event.target);
+      const modified = event.shiftKey || event.ctrlKey || event.metaKey;
+      if (id !== null && (modified || groupMode)) {
+        stopEvent(event);
+        toggleGroupNode(id);
+      } else if (groupMode && event.target.closest('.tactical-edge-hit')) {
+        stopEvent(event);
+        showGroupHint('Only your nodes join a group.');
+      }
+    },
+    true,
+  );
+  svg.addEventListener(
+    'keydown',
+    (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const id = nodeIdOf(event.target);
+      if (id === null || !(event.shiftKey || groupMode)) return;
+      stopEvent(event);
+      toggleGroupNode(id);
+    },
+    true,
+  );
+  document.addEventListener(
+    'keydown',
+    (event) => {
+      if (event.key !== 'Escape' || !groupMode || document.querySelector('dialog[open]')) return;
+      event.stopImmediatePropagation();
+      leaveGroup();
+    },
+    true,
+  );
+
+  function toggleGroupNode(id) {
+    if (state.nodes[id]?.owner !== 0) {
+      showGroupHint('Only your nodes join a group.');
+      return;
+    }
+    store.setGroupMode(true);
+    store.toggleGroupMember(id);
+    if (!bulkSelection.length) store.setGroupEditing(false);
+    groupMessage = '';
+    store.dismissInspector();
+    render();
+  }
+
+  function editGroup() {
+    store.dismissInspector();
+    store.setGroupEditing(true);
+    render();
+  }
+
+  function closeGroupEditor() {
+    store.setGroupEditing(false);
+    render();
+  }
+
+  function editMemberAlone(id) {
+    store.leaveGroupMode();
+    store.inspectNode(id);
+    store.editSelectedNode();
+    render();
+  }
+
+  function leaveGroup() {
+    store.leaveGroupMode();
+    store.dismissInspector();
+    render();
+  }
+
+  function showGroupHint(text) {
+    groupBar.querySelector('.tactical-group-hint').textContent = text;
+  }
+
+  const groupBar = document.createElement('div');
+  groupBar.id = 'tacticalGroupBar';
+  groupBar.hidden = true;
+  groupBar.setAttribute('role', 'toolbar');
+  groupBar.setAttribute('aria-label', 'Node group');
+  viewport.append(groupBar);
+
+  function renderGroupBar() {
+    groupBar.hidden = !groupMode || currentView !== 'map';
+    if (groupBar.hidden) return;
+    const action = (label, onclick) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.onclick = onclick;
+      return button;
+    };
+    const edit = action('Edit', editGroup);
+    edit.disabled = bulkSelection.length === 0;
+    updateChildrenInPlace(groupBar, [
+      textElement('strong', bulkSelection.length + ' selected'),
+      edit,
+      action('Done', leaveGroup),
+      textElement('span', '', 'tactical-group-hint'),
+    ]);
+  }
+
+  const selectButton = document.createElement('button');
+  selectButton.type = 'button';
+  selectButton.id = 'uxDockSelect';
+  selectButton.onclick = () => {
+    if (groupMode) leaveGroup();
+    else {
+      store.setGroupMode(true);
+      render();
     }
   };
-  svg.addEventListener('pointerup', endTouch, true);
-  svg.addEventListener('pointercancel', endTouch, true);
+  byId('uxDockOrders').after(selectButton);
 
   function chooseNode(id) {
     store.inspectNode(id);
@@ -305,6 +489,11 @@
         event.preventDefault();
         chooseEdge(a, b);
       });
+    }
+    for (const id of groupIds()) {
+      const [x, y] = xy[id] || [];
+      if (x !== undefined)
+        svgElement('circle', { cx: x, cy: y, r: 39, class: 'tactical-group-member' }, graph);
     }
     for (const ring of selectionRings()) {
       const [x, y] = xy[ring.id] || [];
@@ -447,8 +636,8 @@
   // Clicking elsewhere (header, toolbar or outside the editor) closes it.
   // Map nodes/edges handle their own selection, and dragging should not close it.
   document.addEventListener('click', (event) => {
-    if (!active || root.hidden || root.contains(event.target)) return;
-    if (event.target.closest('dialog, #tacticalMenu, .ux-dock')) return;
+    if (!active || root.hidden || event.composedPath().includes(root)) return;
+    if (event.target.closest('dialog, #tacticalMenu, .ux-dock, #tacticalGroupBar')) return;
     // render() rebuilds SVG nodes synchronously: the clicked target may already
     // be detached by the time the event bubbles to document. The original
     // composed path still identifies map taps correctly.
@@ -483,7 +672,7 @@
     body.append(details);
   }
 
-  function showNode(body, id) {
+  function showNode(body, id, isEditing = editing) {
     const node = state.nodes[id];
     const prediction = node.owner === 0 ? projection(id) : null;
     body.append(
@@ -522,7 +711,7 @@
         'tactical-secondary',
       ),
     );
-    if (!editing) return;
+    if (!isEditing) return;
     const primary = document.createElement('div');
     primary.className = 'tactical-primary-control';
     const toggle = document.createElement('label');
@@ -841,6 +1030,208 @@
       (roundsToTarget === 1 ? ' round' : ' rounds') +
       ' to target'
     );
+  }
+
+  function showGroup(body, ids) {
+    const forecasts = ids.map((id) => projection(id));
+    const total = (values) => values.reduce((sum, value) => sum + value, 0);
+    body.append(
+      metrics([
+        ['Active', total(ids.map((id) => state.nodes[id].active))],
+        ['Invested', total(ids.map((id) => state.nodes[id].invested))],
+        ['Income', total(forecasts.map((f) => f.income))],
+        ['Defense', total(forecasts.map((f) => f.defense))],
+        ['Next', total(forecasts.map((f) => f.next))],
+        ...(softCapEnabled() ? [['Overflow loss', total(forecasts.map((f) => f.overflow))]] : []),
+      ]),
+      groupPolicyFields(ids),
+      groupNodeChoices(ids),
+      groupOneOffOrders(ids),
+    );
+    if (groupMessage) body.append(textElement('p', groupMessage, 'tactical-warning'));
+    body.append(groupMembers(ids));
+  }
+
+  function groupPolicyFields(ids) {
+    const view = selectors.groupPolicyView(currentMatch(), ids);
+    const block = document.createElement('div');
+    block.className = 'tactical-primary-control';
+    block.append(
+      textElement('strong', 'Policy for every node'),
+      groupCheckbox(ids, view, 'enabled', 'Policy enabled'),
+      groupNumberField(ids, view, 'investPct', 'Invest % of surplus', 100),
+      groupNumberField(ids, view, 'investTarget', 'Until invested reaches'),
+      ...(softCapEnabled()
+        ? [
+            groupNumberField(
+              ids,
+              view,
+              'divestPct',
+              'Above the target, scale down % per round',
+              100,
+            ),
+          ]
+        : []),
+      groupNumberField(ids, view, 'reserve', 'Defense floor'),
+      groupNumberField(ids, view, 'defensePct', 'Grow the floor by % of surplus', 100),
+      groupNumberField(ids, view, 'defenseTarget', 'Floor up to'),
+    );
+    return block;
+  }
+
+  const NULLABLE_GROUP_FIELDS = ['investTarget', 'defenseTarget'];
+  const shownValue = (value) => (value === null ? 'none' : numeric(value));
+
+  function groupNumberField(ids, view, field, label, max = Infinity) {
+    const { value, mixed } = view[field];
+    return policyNumberField({
+      id: 'group-' + field,
+      key: 'group:' + field,
+      label,
+      value: mixed ? null : value,
+      max,
+      placeholder: mixed
+        ? 'mixed (' + shownValue(mixed[0]) + '–' + shownValue(mixed[1]) + ')'
+        : NULLABLE_GROUP_FIELDS.includes(field)
+          ? 'no limit'
+          : undefined,
+      onCommit: (committed) => {
+        if (committed === null && (mixed || !NULLABLE_GROUP_FIELDS.includes(field))) return false;
+        return applyGroupField(ids, field, committed);
+      },
+    });
+  }
+
+  function groupCheckbox(ids, view, field, label) {
+    const row = document.createElement('label');
+    row.append(textElement('span', label));
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = 'group-' + field;
+    checkbox.dataset.key = 'group:' + field + (view[field].mixed ? ':mixed' : '');
+    checkbox.checked = view[field].value === true;
+    checkbox.indeterminate = Boolean(view[field].mixed);
+    checkbox.setAttribute('aria-label', label);
+    checkbox.onchange = () => applyGroupField(ids, field, checkbox.checked);
+    row.append(checkbox);
+    return row;
+  }
+
+  function applyGroupField(ids, field, value) {
+    const rejected = store.applyGroupPolicyField(ids, field, value);
+    groupMessage = rejected.length
+      ? 'Nothing changed: ' +
+        nodeList(rejected) +
+        ' would exceed 100% of surplus or reject this value.'
+      : '';
+    render();
+    return rejected.length === 0;
+  }
+
+  const nodeList = (ids) => (ids.length === 1 ? 'Node ' : 'Nodes ') + ids.join(', ');
+
+  function groupNodeChoices(ids) {
+    const block = document.createElement('div');
+    block.className = 'tactical-primary-control';
+    block.append(
+      textElement(
+        'p',
+        'Transfer destinations and border pressure stay per node and per connection.',
+        'tactical-secondary',
+      ),
+      groupButton('Clear destinations', () => store.clearGroupDestinations(ids)),
+      groupButton('Stop border pressure', () => store.stopGroupPressure(ids)),
+    );
+    return block;
+  }
+
+  function groupOneOffOrders(ids) {
+    const block = document.createElement('div');
+    block.className = 'tactical-primary-control';
+    const amount = policyNumberField({
+      id: 'groupInvestEach',
+      key: 'group:investEach',
+      label: 'Invest this round on each',
+      value: null,
+      placeholder: 'energy',
+      onCommit: (value) => {
+        if (value === null) return false;
+        const skipped = store.investOnEach(ids, value);
+        groupMessage = skipped.length
+          ? 'Applied to ' +
+            (ids.length - skipped.length) +
+            ' of ' +
+            ids.length +
+            '; ' +
+            nodeList(skipped) +
+            ' lacked energy.'
+          : 'Applied to all ' + ids.length + ' nodes.';
+        render();
+      },
+    });
+    block.append(
+      textElement('strong', 'This round'),
+      amount,
+      groupButton('Pause policies this round', () => store.pauseGroup(ids)),
+      groupButton('Clear orders', () => store.clearGroupOrders(ids)),
+      ...(clipboard
+        ? [groupButton('Paste policy to group', () => store.pasteGroupPolicy(ids, clipboard))]
+        : []),
+    );
+    return block;
+  }
+
+  function groupButton(label, act) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    button.onclick = () => {
+      act();
+      groupMessage = '';
+      render();
+    };
+    return button;
+  }
+
+  function groupMembers(ids) {
+    const list = document.createElement('div');
+    list.className = 'tactical-group-members';
+    for (const id of ids) {
+      const node = state.nodes[id];
+      const row = document.createElement('div');
+      row.className = 'tactical-group-member-row';
+      row.dataset.key = 'member:' + id;
+      const open = document.createElement('button');
+      open.type = 'button';
+      open.textContent = 'Node ' + id;
+      open.setAttribute('aria-label', 'Edit node ' + id + ' alone');
+      open.onclick = () => {
+        editMemberAlone(id);
+      };
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.textContent = '×';
+      remove.setAttribute('aria-label', 'Remove node ' + id + ' from group');
+      remove.onclick = () => toggleGroupNode(id);
+      row.append(
+        open,
+        textElement(
+          'span',
+          numeric(node.active) +
+            ' active · ' +
+            numeric(node.invested) +
+            ' invested · next ' +
+            numeric(projection(id).next) +
+            (softCapEnabled()
+              ? ' · ' + numeric(node.active + node.invested) + ' / ' + SOFT_CAP_RULES.capacity
+              : ''),
+          'tactical-secondary',
+        ),
+        remove,
+      );
+      list.append(row);
+    }
+    return list;
   }
 
   function directionRow(source, destination, swappable) {
@@ -1187,7 +1578,13 @@
   }
 
   function positionInspector() {
-    if (!active || root.hidden || mobile()) return;
+    if (root.hidden || mobile()) return;
+    if (showingGroup() || editedMember() !== null) {
+      root.style.left = Math.max(10, innerWidth - 372) + 'px';
+      root.style.top = '70px';
+      return;
+    }
+    if (!active) return;
     const item = selectedItemBox();
     if (!item) return;
     const { left, top } = placementBeside(item);
@@ -1220,31 +1617,43 @@
   function showInspector() {
     // The first tap highlights only. The second tap opens the editor above
     // the unchanged mobile Orders/Resolve dock, or near the edge on desktop.
+    const group = showingGroup();
+    const member = editedMember();
+    const groupEditor = group || member !== null;
     root.hidden =
-      !active ||
+      !(groupEditor || (active && editing)) ||
       currentView !== 'map' ||
-      !editing ||
       Boolean(document.querySelector('dialog[open]'));
     document.body.classList.toggle('tactical-selection-active', !root.hidden);
     if (root.hidden) {
       mountLegacyControls();
       return;
     }
-    root.classList.toggle('is-editing', editing);
-    const subject =
-      active.kind === 'node' ? 'Node ' + active.id : 'Connection ' + active.a + ' — ' + active.b;
+    root.classList.toggle('is-editing', true);
+    const subject = group
+      ? 'Group · ' + groupIds().length + ' nodes'
+      : member !== null
+        ? 'Node ' + member
+        : active.kind === 'node'
+          ? 'Node ' + active.id
+          : 'Connection ' + active.a + ' — ' + active.b;
     const header = document.createElement('div');
     header.className = 'tactical-inspector-head';
     header.append(textElement('strong', subject));
     const close = document.createElement('button');
     close.type = 'button';
     close.textContent = '×';
-    close.setAttribute('aria-label', 'Clear map selection');
-    close.onclick = dismissAndReturnFocus;
+    close.setAttribute(
+      'aria-label',
+      groupEditor ? 'Close the group editor' : 'Clear map selection',
+    );
+    close.onclick = groupEditor ? closeGroupEditor : dismissAndReturnFocus;
     header.append(close);
     const body = document.createElement('div');
     body.className = 'tactical-inspector-body';
-    if (active.kind === 'node') showNode(body, active.id);
+    if (group) showGroup(body, groupIds());
+    else if (member !== null) showNode(body, member, true);
+    else if (active.kind === 'node') showNode(body, active.id);
     else showEdge(body, active.a, active.b);
     // No duplicate Orders/Resolve/Collapse buttons. The original bottom dock
     // remains reachable below this editor; × and outside-click dismiss it.
@@ -1276,6 +1685,8 @@
     // The thumb-reachable control mirrors the authoritative round button.
     byId('uxDockResolve').disabled = byId('resolve').disabled;
     drawSelection();
+    renderGroupBar();
+    selectButton.textContent = groupMode ? 'Done' : 'Select';
     showInspector();
     if (focusedMapItem) svg.querySelector(focusedMapItem)?.focus();
   };

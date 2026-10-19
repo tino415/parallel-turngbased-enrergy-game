@@ -448,14 +448,83 @@
       .reduce((next, id) => enablePolicyWith(next, id, { reserve, investPct }), match);
   }
 
+  const GROUP_FIELDS = [
+    'enabled',
+    'investPct',
+    'investTarget',
+    'divestPct',
+    'reserve',
+    'defensePct',
+    'defenseTarget',
+  ];
+  const GROUP_FIELD_DEFAULTS = {
+    investTarget: null,
+    divestPct: 0,
+    defensePct: 0,
+    defenseTarget: null,
+  };
+  const shownPolicy = (match, id) => ({
+    ...GROUP_FIELD_DEFAULTS,
+    ...defaultPolicy(),
+    enabled: false,
+    ...match.policies[id],
+  });
+  const ascending = (a, b) => (a === null ? -1 : b === null ? 1 : a < b ? -1 : a > b ? 1 : 0);
+
+  function groupPolicyView(match, ids) {
+    return Object.fromEntries(
+      GROUP_FIELDS.map((field) => {
+        const values = [...new Set(ids.map((id) => shownPolicy(match, id)[field] ?? null))].sort(
+          ascending,
+        );
+        return [
+          field,
+          values.length === 1 ? { value: values[0] } : { mixed: [values[0], values.at(-1)] },
+        ];
+      }),
+    );
+  }
+
+  function applyGroupPolicyField(match, ids, key, value) {
+    const rejected = [];
+    const next = ids.reduce((current, id) => {
+      const changed = changePolicy(current, id, key, value);
+      if (changed === current) rejected.push(id);
+      return changed;
+    }, match);
+    return rejected.length ? { match, rejected } : { match: next, rejected };
+  }
+
+  function investOnEach(match, ids, amount) {
+    const fits = (id) => isOwn(match, id) && amount <= investBudget(match, id) + 1e-8;
+    return {
+      match: applyBulkInvestment(match, ids.filter(fits), amount),
+      skipped: ids.filter((id) => !fits(id)),
+    };
+  }
+
+  const ownPolicies = (match, ids, change) =>
+    ids
+      .filter((id) => match.policies[id] && isOwn(match, id))
+      .reduce((next, id) => withPolicy(next, id, change(next.policies[id])), match);
+  const clearGroupDestinations = (match, ids) =>
+    ownPolicies(match, ids, (policy) => ({ ...policy, dest: null }));
+  const stopGroupPressure = (match, ids) =>
+    ownPolicies(match, ids, (policy) => (policy.pressure ? { ...policy, pressure: {} } : policy));
+  const pauseGroup = (match, ids) =>
+    ids.filter((id) => isOwn(match, id)).reduce((next, id) => setHold(next, id, true), match);
+  const clearGroupOrders = (match, ids) => ids.reduce(clearNodeOrders, match);
+  const pasteGroupPolicy = (match, ids, copied) =>
+    ids.filter((id) => isOwn(match, id)).reduce((next, id) => pastePolicy(next, id, copied), match);
+
+  const investBudget = (match, id) =>
+    availableEnergy(match, id) - sum(Object.values(plan(match, id).edges));
+
   function applyBulkInvestment(match, ids, amount) {
     return ids.reduce((next, id) => {
-      const current = plan(next, id),
-        p = { ...current, edges: { ...current.edges } },
-        available = availableEnergy(next, id, p) - sum(Object.values(p.edges));
-      if (amount > available + 1e-8) return next;
-      p.invest = amount;
-      return withOrder(next, id, p);
+      if (amount > investBudget(next, id) + 1e-8) return next;
+      const current = plan(next, id);
+      return withOrder(next, id, { ...current, edges: { ...current.edges }, invest: amount });
     }, match);
   }
 
@@ -525,6 +594,8 @@
     overlay: 'all',
     clipboard: null,
     bulkSelection: [],
+    groupMode: false,
+    groupEditing: false,
     selected: null,
     camera: { x: 0, y: 0, scale: 1 },
     inspector: { ...CLOSED_INSPECTOR, focusedNode: null },
@@ -594,6 +665,7 @@
       (command) =>
       (...args) =>
         updateUi(command(snapshot.ui, ...args));
+    const ownOnly = (ids) => [...new Set(ids)].filter((id) => isOwn(snapshot.match, id));
     const bulkSelectionWith = (id, selected) => {
       const others = snapshot.ui.bulkSelection.filter((other) => other !== id);
       return selected ? [...others, id] : others;
@@ -627,7 +699,33 @@
       applyBulkPolicy: onMatch(applyBulkPolicy),
       applyBulkInvestment: onMatch(applyBulkInvestment),
       setDefaults: onMatch(setDefaults),
-      resolve: onMatch(resolve),
+      resolve(rng) {
+        commit('match', resolve(snapshot.match, rng));
+        setUi('bulkSelection', ownOnly(snapshot.ui.bulkSelection));
+      },
+      applyGroupPolicyField(ids, key, value) {
+        const result = applyGroupPolicyField(snapshot.match, ids, key, value);
+        commit('match', result.match);
+        return result.rejected;
+      },
+      investOnEach(ids, amount) {
+        const result = investOnEach(snapshot.match, ids, amount);
+        commit('match', result.match);
+        return result.skipped;
+      },
+      clearGroupDestinations: onMatch(clearGroupDestinations),
+      stopGroupPressure: onMatch(stopGroupPressure),
+      pauseGroup: onMatch(pauseGroup),
+      clearGroupOrders: onMatch(clearGroupOrders),
+      pasteGroupPolicy: onMatch(pasteGroupPolicy),
+      setGroupMode: (on) => setUi('groupMode', on),
+      leaveGroupMode: () => updateUi({ groupMode: false, groupEditing: false, bulkSelection: [] }),
+      setGroupEditing: (on) => setUi('groupEditing', on),
+      setBulkSelection: (ids) => setUi('bulkSelection', ownOnly(ids)),
+      toggleGroupMember(id) {
+        if (!isOwn(snapshot.match, id)) return;
+        setUi('bulkSelection', bulkSelectionWith(id, !snapshot.ui.bulkSelection.includes(id)));
+      },
       setView: (view) => setUi('view', view),
       copyPolicy: (policy) => setUi('clipboard', { ...policy }),
       setBulkSelected(id, selected) {
@@ -678,12 +776,20 @@
       setEdgePressure,
       applyBulkPolicy,
       applyBulkInvestment,
+      applyGroupPolicyField,
+      investOnEach,
+      clearGroupDestinations,
+      stopGroupPressure,
+      pauseGroup,
+      clearGroupOrders,
+      pasteGroupPolicy,
       setDefaults,
       resolve,
     }),
     selectors: Object.freeze({
       neighbors,
       edgeSource,
+      groupPolicyView,
       softCapEnabled,
       defaultPolicy,
       plan,

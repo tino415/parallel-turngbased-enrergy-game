@@ -20,31 +20,37 @@ earlier ones.
 change goes through a store command, and a slice keeps its identity until a
 command really changes it.
 
-| Value                                                  | Slice              | Saved | Written by                    |
-| ------------------------------------------------------ | ------------------ | ----- | ----------------------------- |
-| `state` (round, nodes, finished, rulesVersion)         | `match.state`      | yes   | `resolve`, `replaceMatch`     |
-| manual orders per node                                 | `match.orders`     | yes   | allocation and order commands |
-| persistent policies per node                           | `match.policies`   | yes   | policy commands, `resolve`    |
-| message history                                        | `match.history`    | yes   | `resolve`, `replaceMatch`     |
-| map: `xy`, `edges`, `N`, `playerCount`, `mapSeed`      | `match.map`        | yes   | `replaceMatch`                |
-| conquest defaults (enabled, reserve, invest)           | `match.defaults`   | yes   | `setDefaults`                 |
-| selected node                                          | `ui.selected`      | yes¹  | `select`, inspector commands  |
-| view tab                                               | `ui.view`          | no    | `setView`                     |
-| flow filter                                            | `ui.overlay`       | no    | `setOverlay`                  |
-| camera (`x`, `y`, `scale`)                             | `ui.camera`        | no    | `setCamera`                   |
-| policy clipboard                                       | `ui.clipboard`     | no    | `copyPolicy`                  |
-| dashboard bulk selection                               | `ui.bulkSelection` | no    | `setBulkSelected`             |
-| inspector target, editing, open sections, focused node | `ui.inspector`     | no    | inspector commands            |
+| Value                                                  | Slice              | Saved | Written by                          |
+| ------------------------------------------------------ | ------------------ | ----- | ----------------------------------- |
+| `state` (round, nodes, finished, rulesVersion)         | `match.state`      | yes   | `resolve`, `replaceMatch`           |
+| manual orders per node                                 | `match.orders`     | yes   | allocation and order commands       |
+| persistent policies per node                           | `match.policies`   | yes   | policy commands, `resolve`          |
+| message history                                        | `match.history`    | yes   | `resolve`, `replaceMatch`           |
+| map: `xy`, `edges`, `N`, `playerCount`, `mapSeed`      | `match.map`        | yes   | `replaceMatch`                      |
+| conquest defaults (enabled, reserve, invest)           | `match.defaults`   | yes   | `setDefaults`                       |
+| selected node                                          | `ui.selected`      | yes¹  | `select`, inspector commands        |
+| view tab                                               | `ui.view`          | no    | `setView`                           |
+| flow filter                                            | `ui.overlay`       | no    | `setOverlay`                        |
+| camera (`x`, `y`, `scale`)                             | `ui.camera`        | no    | `setCamera`                         |
+| policy clipboard                                       | `ui.clipboard`     | no    | `copyPolicy`                        |
+| node group (map multi-select, dashboard checkboxes)    | `ui.bulkSelection` | no    | group commands, `resolve`²          |
+| group mode on the map                                  | `ui.groupMode`     | no    | `setGroupMode`, `leaveGroupMode`    |
+| group editor open                                      | `ui.groupEditing`  | no    | `setGroupEditing`, `leaveGroupMode` |
+| inspector target, editing, open sections, focused node | `ui.inspector`     | no    | inspector commands                  |
 
 ¹ `selected` stays in the save format so that old saves keep loading. ux.js
 clears it on load.
 
+² `resolve` drops the nodes Blue no longer owns, so the group survives rounds
+but never holds a lost node.
+
 Gesture and render bookkeeping stays local to the code that needs it, because
 no other code reads it: drag and click suppression (`game.js`), pinch fingers
-(`tactical-ui.js`), the map key behind mobile auto-focus (`ux.js`) and the
-round counter that closes the inspector after a resolve (`tactical-ui.js`).
-Form drafts stay in their inputs and are read once on submit: the new-game
-dialog and the dashboard bulk reserve, invest and manual amount.
+and the long-press timer (`tactical-ui.js`), the map key behind mobile
+auto-focus (`ux.js`) and the round counter that closes the inspector after a
+resolve (`tactical-ui.js`). Form drafts stay in their inputs and are read once
+on submit: the new-game dialog and the dashboard bulk reserve, invest and
+manual amount.
 
 ## Contract
 
@@ -78,8 +84,9 @@ replaced in load order, and each layer calls the previous one:
    dashboard table, log and tab state.
 2. `ux.js` adds the camera viewBox, side panel, dock counts, editor stats,
    budget bar and dashboard summary and cards.
-3. `tactical-ui.js` adds edge hit areas, selection rings and the inspector,
-   which it updates in place to keep drafts and focus.
+3. `tactical-ui.js` adds edge hit areas, selection and group rings, the group
+   bar and the inspector for one node, one edge or the node group, which it
+   updates in place to keep drafts and focus.
 
 The flow filter (`#overlay`) calls the `ux.js`-level render that `ux.js` captured
 before `tactical-ui.js` loaded, so changing the filter never rebuilds the inspector.
