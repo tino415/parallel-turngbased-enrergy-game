@@ -99,6 +99,8 @@ function openNewGame() {
 
 const plan = (source) => selectors.plan(currentMatch(), source);
 const allocated = (source, p) => selectors.allocated(currentMatch(), source, p);
+const replacedSupport = (source, destination) =>
+  selectors.replacedSupport(currentMatch(), source, destination);
 function setAllocation(source, destination, value) {
   const before = currentMatch(),
     overBudget = store.setAllocation(source, destination, value);
