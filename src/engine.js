@@ -133,23 +133,60 @@
   }) {
     if (!policyApplies(policy, node, manualHold)) return { orders: [], next: policy };
     const floor = shrunkDefenseFloor(policy);
-    const surplus = Math.max(0, node.active - manualSpent - floor);
-    const shares = policyShares(policy);
+    const edges = pressuredEdges(policy, neighbors);
+    const banks = clampedBanks(edges, Math.max(0, node.active - manualSpent - floor));
+    const surplus = Math.max(0, node.active - manualSpent - floor - total(banks));
+    const shares = policyShares(policy, edges);
     const growth = Math.min((surplus * shares.defense) / 100, defenseRoom(policy, floor));
     const invest = Math.min(
       (surplus * shares.invest) / 100,
       investmentRoom(policy, node.invested + manualInvest, manualWithdraw),
     );
+    const pulses = edges.map((edge, i) => {
+      const share = owners[edge.dest] === 0 ? 0 : (surplus * shares.pressure[i]) / 100;
+      const amount = banks[i] + share;
+      const fires = owners[edge.dest] !== 0 && amount >= edge.min - TARGET_EPSILON;
+      return { dest: edge.dest, share, amount: fires ? amount : 0, bank: fires ? 0 : amount };
+    });
     const transfer =
       policy.dest !== null && neighbors.includes(policy.dest) && owners[policy.dest] === 0
-        ? surplus - growth - invest
+        ? surplus - growth - invest - total(pulses.map((pulse) => pulse.share))
         : 0;
-    const orders = policyOrders({ source, policy, invest, transfer });
-    const next = hasDefenseTarget(policy) ? { ...policy, reserve: floor + growth } : policy;
+    const orders = policyOrders({ source, policy, invest, transfer, pulses });
+    let next = policy;
+    if (hasDefenseTarget(policy)) next = { ...next, reserve: floor + growth };
+    if (policy.pressure)
+      next = {
+        ...next,
+        pressure: Object.fromEntries(
+          edges.map((edge, i) => [edge.dest, { ...edge.settings, bank: pulses[i].bank }]),
+        ),
+      };
     return { orders, next };
   }
 
-  function policyOrders({ source, policy, invest, transfer }) {
+  function pressuredEdges(policy, neighbors) {
+    return Object.entries(policy.pressure ?? {})
+      .map(([dest, settings]) => ({
+        dest: Number(dest),
+        settings,
+        pct: Math.min(100, finitePositive(settings?.pct, 0)),
+        min: finitePositive(settings?.min, 10),
+        bank: finitePositive(settings?.bank, 0),
+      }))
+      .filter((edge) => edge.pct > 0 && neighbors.includes(edge.dest));
+  }
+
+  function clampedBanks(edges, available) {
+    let left = available;
+    return edges.map((edge) => {
+      const bank = Math.min(edge.bank, left);
+      left -= bank;
+      return bank;
+    });
+  }
+
+  function policyOrders({ source, policy, invest, transfer, pulses = [] }) {
     const result = [];
     if (invest > 1e-9)
       result.push({ source, type: 'invest', amount: invest, dest: null, automatic: true });
@@ -161,6 +198,15 @@
         dest: policy.dest,
         automatic: true,
       });
+    for (const pulse of pulses)
+      if (pulse.amount > 1e-9)
+        result.push({
+          source,
+          type: 'attack',
+          amount: pulse.amount,
+          dest: pulse.dest,
+          automatic: true,
+        });
     return result;
   }
 
@@ -206,11 +252,25 @@
     return room > TARGET_EPSILON ? room : 0;
   }
 
-  function policyShares(policy) {
-    const shares = { invest: policy.investPct, defense: defensePct(policy) };
-    const total = shares.invest + shares.defense;
-    if (shares.defense === 0 || total <= 100) return shares;
-    return { invest: (shares.invest * 100) / total, defense: (shares.defense * 100) / total };
+  const finitePositive = (value, fallback) =>
+    Number.isFinite(value) && value > 0 ? value : fallback;
+  const total = (values) => values.reduce((sum, value) => sum + value, 0);
+
+  function policyShares(policy, edges) {
+    const shares = {
+      invest: policy.investPct,
+      defense: defensePct(policy),
+      pressure: edges.map((edge) => edge.pct),
+    };
+    const added = shares.defense + total(shares.pressure);
+    const all = shares.invest + added;
+    if (added === 0 || all <= 100) return shares;
+    const scale = (share) => (share * 100) / all;
+    return {
+      invest: scale(shares.invest),
+      defense: scale(shares.defense),
+      pressure: shares.pressure.map(scale),
+    };
   }
 
   function applyOverflow(node, rules = SOFT_CAP_RULES) {
@@ -571,9 +631,13 @@
     const battles = {};
     for (const o of valid.filter((o) => o.type === 'attack')) {
       const key = o.dest + ':' + o.owner;
-      if (!battles[key]) battles[key] = { dest: o.dest, owner: o.owner, amount: 0 };
+      if (!battles[key])
+        battles[key] = { dest: o.dest, owner: o.owner, amount: 0, sources: [], pressure: true };
       battles[key].amount += o.amount;
+      battles[key].sources.push(o.source);
+      battles[key].pressure &&= Boolean(o.automatic);
     }
+    const pressureResults = [];
     const byTarget = {};
     for (const attack of Object.values(battles)) (byTarget[attack.dest] ??= []).push(attack);
     for (const [destination, attacks] of Object.entries(byTarget)) {
@@ -604,6 +668,20 @@
         }
         const attackerLoss = a.amount - attackerSurvived;
         const defenderLoss = defenderBefore - defenderSurvived;
+        if (a.pressure) {
+          pressureResults.push(
+            'Node ' +
+              a.sources.join(', ') +
+              ' → Node ' +
+              node.id +
+              ' (' +
+              fmt(a.amount) +
+              ', ' +
+              (atk > def ? 'captured' : 'defended') +
+              ')',
+          );
+          continue;
+        }
         log(
           'Round ' +
             state.round +
@@ -635,6 +713,8 @@
         }
       }
     }
+    if (pressureResults.length)
+      log('Round ' + state.round + ' · Pressure: ' + pressureResults.join(', ') + '.');
     for (const n of nodes) {
       const income = 1 + n.invested * 0.1;
       n.active = clamp(n.active * 0.9 + income);

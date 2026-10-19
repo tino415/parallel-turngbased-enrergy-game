@@ -116,7 +116,8 @@
       if (n.owner !== 0) continue;
       const p=projection(n.id),[x,y]=xy[n.id];
       const t=element('text',{x,y:y+53,'font-size':12,fill:'#92ebc9',class:'ux-income-label'},graph);
-      t.textContent='+'+compactEnergy(p.income)+' / I '+compactEnergy(p.invest)+(softCapEnabled()&&p.overflow>.05?' / −'+compactEnergy(p.overflow):'');
+      const bank=Object.values(policies[n.id]?.pressure??{}).reduce((sum,edge)=>sum+(edge.bank??0),0);
+      t.textContent='+'+compactEnergy(p.income)+' / I '+compactEnergy(p.invest)+(softCapEnabled()&&p.overflow>.05?' / −'+compactEnergy(p.overflow):'')+(bank>.05?' / ⟂ '+compactEnergy(bank):'');
     }
   };
 

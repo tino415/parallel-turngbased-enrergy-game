@@ -570,7 +570,12 @@
     };
     label.append(percent);
     primary.append(label, slider, ...investmentTargetControls(id, policy));
-    body.append(primary, defenseControls(id, policy), sharesLine(id, policy));
+    body.append(
+      primary,
+      defenseControls(id, policy),
+      ...pressureControls(id, policy),
+      sharesLine(id, policy),
+    );
     body.append(
       textElement(
         'p',
@@ -692,10 +697,51 @@
     return 'Floor ' + numeric(floor) + ' → ' + numeric(next) + ' of ' + numeric(target) + outlook;
   }
 
+  function pressureControls(id, policy) {
+    if (!neighbors(id).some((other) => state.nodes[other].owner !== 0)) return [];
+    const block = document.createElement('div');
+    block.className = 'tactical-primary-control';
+    block.append(textElement('strong', 'Border pressure'));
+    const edges = Object.keys(policy?.pressure ?? {}).map(Number);
+    if (!edges.length)
+      block.append(
+        textElement(
+          'p',
+          'Open a connection to an enemy or neutral neighbour to pressure it each round.',
+          'tactical-secondary',
+        ),
+      );
+    for (const dest of edges)
+      block.append(
+        textElement(
+          'p',
+          'Node ' +
+            dest +
+            ' · ' +
+            numeric(policy.pressure[dest].pct) +
+            '% · ' +
+            pressureStatusText(selectors.edgePressureStatus(currentMatch(), id, dest), dest),
+          'tactical-secondary',
+        ),
+      );
+    return [block];
+  }
+
+  function pressureStatusText({ bank, nextBank, minimum, pulse }, dest) {
+    if (state.nodes[dest].owner === 0) return 'now yours: the share goes to the rest';
+    if (pulse > 0) return 'pulse this round: ' + numeric(pulse) + ' → Node ' + dest;
+    return 'banked ' + numeric(bank) + ' → ' + numeric(nextBank) + ' / ' + numeric(minimum);
+  }
+
   function sharesLine(id, policy) {
     const effective = { ...defaultPolicy(), ...policy };
     const invest = effective.investPct;
     const defense = Number.isFinite(effective.defenseTarget) ? (effective.defensePct ?? 0) : 0;
+    const pressure = Object.values(effective.pressure ?? {}).reduce(
+      (sum, edge) => sum + edge.pct,
+      0,
+    );
+    const total = invest + defense + pressure;
     const destination =
       effective.dest !== null && state.nodes[effective.dest]?.owner === 0
         ? '→ Node ' + effective.dest
@@ -706,10 +752,12 @@
         numeric(invest) +
         '% + defense ' +
         numeric(defense) +
-        '% = ' +
-        numeric(invest + defense) +
+        '%' +
+        (pressure > 0 ? ' + pressure ' + numeric(pressure) + '%' : '') +
+        ' = ' +
+        numeric(total) +
         '% · rest ' +
-        numeric(Math.max(0, 100 - invest - defense)) +
+        numeric(Math.max(0, 100 - total)) +
         '% ' +
         destination,
       'tactical-secondary',
@@ -1014,6 +1062,7 @@
       }
       body.append(policyBox);
     }
+    if (type === 'Attack') body.append(pressureToggle(source, destination));
     if (type === 'Attack') {
       body.append(
         textElement(
@@ -1041,6 +1090,83 @@
         ),
       );
     }
+  }
+
+  function pressureToggle(source, destination) {
+    const settings = policies[source]?.pressure?.[destination];
+    const box = document.createElement('div');
+    box.className = 'tactical-primary-control';
+    const caption = 'Pressure Node ' + destination + ' from Node ' + source + ' each round';
+    const toggle = document.createElement('label');
+    toggle.append(textElement('strong', caption));
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = 'tacticalAutoPressure';
+    checkbox.checked = Boolean(settings);
+    checkbox.setAttribute('aria-label', caption);
+    checkbox.onchange = () => {
+      const accepted = changeEdgePressure(source, destination, checkbox.checked ? {} : null);
+      if (!accepted) checkbox.checked = false;
+    };
+    toggle.append(checkbox);
+    const warning = textElement('p', '', 'tactical-warning');
+    warning.id = 'tacticalEdgePressureWarning';
+    box.append(toggle);
+    if (!settings) {
+      box.append(
+        textElement(
+          'p',
+          'Banks a share of surplus and attacks with it once the bank reaches the minimum.',
+          'tactical-secondary',
+        ),
+        warning,
+      );
+      return box;
+    }
+    const key = source + '-' + destination;
+    box.append(
+      policyNumberField({
+        id: 'tacticalEdgePressurePct',
+        key: key + ':pct',
+        label: 'Send % of surplus',
+        value: settings.pct,
+        max: 100,
+        onCommit: (pct) => pct !== null && changeEdgePressure(source, destination, { pct }),
+      }),
+      policyNumberField({
+        id: 'tacticalEdgePressureMin',
+        key: key + ':min',
+        label: 'Attack when at least this much is banked',
+        value: settings.min ?? 10,
+        onCommit: (min) => min !== null && changeEdgePressure(source, destination, { min }),
+      }),
+    );
+    box.append(
+      textElement(
+        'p',
+        pressureStatusText(
+          selectors.edgePressureStatus(currentMatch(), source, destination),
+          destination,
+        ),
+        'tactical-secondary',
+      ),
+      warning,
+    );
+    return box;
+  }
+
+  function changeEdgePressure(source, destination, fields) {
+    const before = currentMatch();
+    store.setEdgePressure(source, destination, fields);
+    const accepted = currentMatch() !== before;
+    render();
+    if (!accepted)
+      byId('tacticalEdgePressureWarning')?.replaceChildren(
+        'Node ' +
+          source +
+          "'s shares cannot add up to more than 100%, and the percentage must be above 0.",
+      );
+    return accepted;
   }
 
   const SELECTED_ITEM_MARGIN = 72;
