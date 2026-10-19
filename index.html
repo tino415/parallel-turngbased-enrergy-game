@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Parallel Energy Game</title>
     <link rel="stylesheet" href="./src/styles.css" />
+    <link rel="stylesheet" href="./src/ux.css" />
+    <link rel="stylesheet" href="./src/tactical-ui.css" />
   </head>
   <body>
     <header>
@@ -93,7 +95,13 @@
       <div class="mobile-node-header">
         <strong>Node details</strong><button id="closeNodeDialog" type="button">Close ×</button>
       </div>
-      <div id="mobileNodeContent"></div>
+      <div id="mobileNodeContent">
+        <h3 id="selectedTitle">Select a blue node</h3>
+        <p id="details" class="muted"></p>
+        <p id="hint" class="muted"></p>
+        <div id="allocator"></div>
+        <div id="policyEditor"></div>
+      </div>
     </dialog>
     <div class="layout">
       <div class="panel">
@@ -117,18 +125,28 @@
           defense. Optional policies persist across rounds.
         </p>
       </div>
-      <aside class="panel" id="gameSidebar">
-        <div class="mobile-sidebar-heading">
-          <strong>Game settings & orders</strong
-          ><button id="closeMobileSettings" type="button">Close ×</button>
-        </div>
-        <div id="nodeDetailsSlot">
-          <h3 id="selectedTitle">Select a blue node</h3>
-          <p id="details" class="muted"></p>
-          <p id="hint" class="muted"></p>
-          <div id="allocator"></div>
-          <div id="policyEditor"></div>
-        </div>
+    </div>
+    <dialog id="uxOrdersDialog" class="ux-dialog">
+      <div class="ux-dialog-header">
+        <h2>Planned orders</h2>
+        <button class="ux-dialog-close" type="button">Close ×</button>
+      </div>
+      <div class="ux-dialog-body">
+        <p class="muted">
+          Manual allocations are separate from persistent policies. All actions execute together
+          when you resolve the round.
+        </p>
+        <span id="orderCount" class="muted"></span>
+        <div id="orders"></div>
+        <button id="clearAll">Clear all manual orders</button>
+      </div>
+    </dialog>
+    <dialog id="uxSettingsDialog" class="ux-dialog">
+      <div class="ux-dialog-header">
+        <h2>Game settings</h2>
+        <button class="ux-dialog-close" type="button">Close ×</button>
+      </div>
+      <div class="ux-dialog-body">
         <div class="policy-box">
           <h3>New conquest default</h3>
           <label
@@ -140,13 +158,6 @@
             <input id="defaultInvest" type="number" min="0" max="100" value="70"
           /></label>
         </div>
-        <h3>Planned orders <span id="orderCount" class="muted"></span></h3>
-        <p class="muted">
-          Review allocations below. Select any node to edit all of its allocations. Nothing executes
-          until Resolve round.
-        </p>
-        <div id="orders"></div>
-        <button id="clearAll">Clear all orders</button>
         <details>
           <summary>Prototype rules</summary>
           <p class="muted">
@@ -165,12 +176,14 @@
             conquered.
           </p>
         </details>
-      </aside>
-    </div>
+        <button id="settingsNewGame" type="button">New game…</button>
+      </div>
+    </dialog>
     <script src="./src/engine.js" defer></script>
     <script src="./src/store.js" defer></script>
     <script src="./src/format.js" defer></script>
     <script src="./src/game.js" defer></script>
+    <script src="./src/dialogs.js" defer></script>
     <script src="./src/ux.js" defer></script>
     <script src="./src/tactical-ui.js" defer></script>
   </body>
