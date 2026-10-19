@@ -201,8 +201,9 @@ function policyOrders(source) {
   return selectors.policyOrders(currentMatch(), source);
 }
 function changePolicy(source, key, value) {
-  store.changePolicy(source, key, value);
+  const accepted = store.changePolicy(source, key, value);
   render();
+  return accepted;
 }
 function renderPolicyEditor() {
   updateChildrenInPlace($('policyEditor'), policyControls());

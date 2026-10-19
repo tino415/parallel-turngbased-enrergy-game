@@ -1,7 +1,7 @@
 'use strict';
 
 (() => {
-  const { evaluatePolicy, forecast, resolveRound, SOFT_CAP_RULES } = GameEngine;
+  const { planPolicy, forecast, resolveRound, SOFT_CAP_RULES } = GameEngine;
   const HISTORY_LIMIT = 70;
   const TARGET_EPSILON = 1e-6;
   const sum = (values) => values.reduce((total, value) => total + value, 0);
@@ -142,10 +142,12 @@
     match.state.nodes[source].active +
     totalWithdrawal(match, source, p) * (1 - SOFT_CAP_RULES.withdrawalFee);
 
-  function policyOrders(match, source) {
+  const policyOrders = (match, source) => policyPlan(match, source).orders;
+
+  function policyPlan(match, source) {
     const node = match.state.nodes[source],
       p = plan(match, source);
-    return evaluatePolicy({
+    return planPolicy({
       policy: match.policies[source],
       node: {
         ...node,
@@ -160,6 +162,18 @@
       owners: match.state.nodes.map((n) => n.owner),
       source,
     });
+  }
+
+  function defenseStatus(match, source) {
+    const policy = match.policies[source];
+    if (!Number.isFinite(policy?.defenseTarget)) return null;
+    const outlook = projection(match, source);
+    return {
+      floor: policy.reserve,
+      next: policyPlan(match, source).next.reserve,
+      target: policy.defenseTarget,
+      sustainable: 10 * (outlook.income + outlook.incoming),
+    };
   }
 
   function investmentStatus(match, source) {
@@ -292,15 +306,16 @@
   const policyFieldValid = {
     investTarget: (value) => value === null || (Number.isFinite(value) && value >= 0),
     divestPct: (value) => Number.isFinite(value) && value >= 0 && value <= 100,
+    defenseTarget: (value) => value === null || (Number.isFinite(value) && value >= 0),
+    defensePct: (value) => Number.isFinite(value) && value >= 0 && value <= 100,
   };
+  const sharesTotal = (policy) => policy.investPct + (policy.defensePct ?? 0);
 
   function changePolicy(match, source, key, value) {
     if (Object.hasOwn(policyFieldValid, key) && !policyFieldValid[key](value)) return match;
-    return withPolicy(match, source, {
-      ...defaultPolicy(),
-      ...match.policies[source],
-      [key]: value,
-    });
+    const policy = { ...defaultPolicy(), ...match.policies[source], [key]: value };
+    if (policy.defensePct > 0 && sharesTotal(policy) > 100) return match;
+    return withPolicy(match, source, policy);
   }
 
   function enablePolicyWith(match, source, fields) {
@@ -417,7 +432,11 @@
       setHold: onMatch(setHold),
       clearNodeOrders: onMatch(clearNodeOrders),
       clearAllOrders: onMatch(clearAllOrders),
-      changePolicy: onMatch(changePolicy),
+      changePolicy(source, key, value) {
+        const before = snapshot.match;
+        commit('match', changePolicy(before, source, key, value));
+        return snapshot.match !== before;
+      },
       enablePolicyWith: onMatch(enablePolicyWith),
       disablePolicy: onMatch(disablePolicy),
       pastePolicy: onMatch(pastePolicy),
@@ -467,6 +486,7 @@
       availableEnergy,
       policyOrders,
       investmentStatus,
+      defenseStatus,
       previewOrders,
       projection,
     }),

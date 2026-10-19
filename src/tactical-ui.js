@@ -508,18 +508,20 @@
     slider.oninput = () => {
       byId('tacticalPolicyPercent').value = slider.value;
     };
-    slider.onchange = () => changePolicy(id, 'investPct', Number(slider.value));
+    slider.onchange = () => {
+      if (!changeShare(id, 'investPct', Number(slider.value))) slider.value = String(pct);
+    };
     percent.onchange = () => {
       const value = Number(percent.value);
       if (!Number.isFinite(value) || value < 0 || value > 100) {
         percent.value = String(pct);
         return;
       }
-      changePolicy(id, 'investPct', value);
+      if (!changeShare(id, 'investPct', value)) percent.value = String(pct);
     };
     label.append(percent);
     primary.append(label, slider, ...investmentTargetControls(id, policy));
-    body.append(primary);
+    body.append(primary, defenseControls(id, policy), sharesLine(id, policy));
     body.append(
       textElement(
         'p',
@@ -596,6 +598,87 @@
     return controls;
   }
 
+  function defenseControls(id, policy) {
+    const block = document.createElement('div');
+    block.className = 'tactical-primary-control';
+    block.append(
+      textElement('strong', 'Defense floor ' + numeric(policy?.reserve ?? defaultPolicy().reserve)),
+      policyNumberField({
+        id: 'tacticalDefensePct',
+        key: id + ':defensePct',
+        label: 'Grow by % of surplus',
+        value: policy?.defensePct ?? 0,
+        max: 100,
+        onCommit: (value) => changeShare(id, 'defensePct', value ?? 0),
+      }),
+      policyNumberField({
+        id: 'tacticalDefenseTarget',
+        key: id + ':defenseTarget',
+        label: 'Up to',
+        value: policy?.defenseTarget ?? null,
+        placeholder: 'fixed floor',
+        onCommit: (value) => changePolicy(id, 'defenseTarget', value),
+      }),
+    );
+    const status = selectors.defenseStatus(currentMatch(), id);
+    if (status) block.append(textElement('p', defenseStatusText(status), 'tactical-secondary'));
+    if (status && status.target > status.sustainable + 0.05)
+      block.append(
+        textElement(
+          'p',
+          'The target is above what this node sustains: the floor stalls near ' +
+            numeric(status.sustainable) +
+            '.',
+          'tactical-warning',
+        ),
+      );
+    return block;
+  }
+
+  function defenseStatusText({ floor, next, target, sustainable }) {
+    const outlook = ' · sustainable ≈ ' + numeric(sustainable);
+    if (Math.abs(floor - target) < 0.05) return 'Floor ' + numeric(floor) + ' · target reached';
+    if (floor > target)
+      return (
+        'Floor ' + numeric(floor) + ' → ' + numeric(next) + ', shrinking to ' + numeric(target)
+      );
+    return 'Floor ' + numeric(floor) + ' → ' + numeric(next) + ' of ' + numeric(target) + outlook;
+  }
+
+  function sharesLine(id, policy) {
+    const effective = { ...defaultPolicy(), ...policy };
+    const invest = effective.investPct;
+    const defense = Number.isFinite(effective.defenseTarget) ? (effective.defensePct ?? 0) : 0;
+    const destination =
+      effective.dest !== null && state.nodes[effective.dest]?.owner === 0
+        ? '→ Node ' + effective.dest
+        : 'stays on the node';
+    const line = textElement(
+      'p',
+      'Shares: invest ' +
+        numeric(invest) +
+        '% + defense ' +
+        numeric(defense) +
+        '% = ' +
+        numeric(invest + defense) +
+        '% · rest ' +
+        numeric(Math.max(0, 100 - invest - defense)) +
+        '% ' +
+        destination,
+      'tactical-secondary',
+    );
+    line.id = 'tacticalShares';
+    return line;
+  }
+
+  function changeShare(id, key, value) {
+    const accepted = changePolicy(id, key, value);
+    if (!accepted)
+      byId('tacticalShares').textContent =
+        'Shares cannot add up to more than 100%. Lower another share first.';
+    return accepted;
+  }
+
   function policyNumberField({ id, key, label, value, max = Infinity, placeholder, onCommit }) {
     const field = document.createElement('label');
     field.append(textElement('span', label));
@@ -609,13 +692,11 @@
     input.value = value === null ? '' : String(value);
     if (placeholder) input.placeholder = placeholder;
     input.setAttribute('aria-label', label);
+    const revert = () => (input.value = value === null ? '' : String(value));
     input.onchange = () => {
       const committed = input.value.trim() === '' ? null : Number(input.value);
-      if (committed !== null && !(committed >= 0 && committed <= max)) {
-        input.value = value === null ? '' : String(value);
-        return;
-      }
-      onCommit(committed);
+      if (committed !== null && !(committed >= 0 && committed <= max)) revert();
+      else if (onCommit(committed) === false) revert();
     };
     field.append(input);
     return field;
