@@ -5,6 +5,7 @@ import {
   openNodeEditor,
   openEdgeEditor,
   annotateSimulatedKeyboard,
+  chooseSource,
 } from './support/game.mjs';
 
 test('policy draft and focus survive a flow filter change', async ({ page }) => {
@@ -186,7 +187,7 @@ test('the edge editor names the reverse support a new order replaces', async ({ 
     render();
   });
   await openEdgeEditor(page, '0-1');
-  await page.locator('#tacticalInspector select').selectOption('0');
+  await chooseSource(page, 0);
   await expect(inspector(page)).toContainText('Replaces Node 1 → 0: 3 manual');
   await expect(inspector(page)).toContainText('Replaces Node 1 → 0 surplus route');
   await page.locator('#tacticalEdgeAmount').fill('2');

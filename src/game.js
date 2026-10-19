@@ -405,6 +405,8 @@ function renderOrders() {
     choose.onclick = () => {
       store.select(id);
       render();
+      $('uxOrdersDialog').close();
+      showNodeOnMobile();
     };
     const remove = document.createElement('button');
     remove.textContent = 'Clear ×';
@@ -741,19 +743,11 @@ function attachNavigation() {
 }
 
 const mobileNodeQuery = window.matchMedia('(max-width:760px)');
-function positionNodeDetails() {
-  const target = mobileNodeQuery.matches ? $('mobileNodeContent') : $('nodeDetailsSlot');
-  if (!target) return;
-  for (const id of ['selectedTitle', 'details', 'hint', 'allocator', 'policyEditor'])
-    target.append($(id));
-  if (!mobileNodeQuery.matches && $('nodeDialog').open) $('nodeDialog').close();
-}
 function showNodeOnMobile() {
   if (mobileNodeQuery.matches && selected !== null && !$('nodeDialog').open)
     $('nodeDialog').showModal();
 }
 $('closeNodeDialog').onclick = () => $('nodeDialog').close();
-window.addEventListener('resize', () => positionNodeDetails());
 
 const SAVE_KEY = 'parallel-energy-game-v1';
 function switchView(view) {
@@ -951,17 +945,6 @@ $('overlay').onchange = () => {
   store.setOverlay($('overlay').value);
   render();
 };
-$('mobileSettings').onclick = () => {
-  $('gameSidebar').classList.add('settings-open');
-  document.body.classList.add('settings-active');
-};
-$('closeMobileSettings').onclick = () => {
-  $('gameSidebar').classList.remove('settings-open');
-  document.body.classList.remove('settings-active');
-};
-window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') $('closeMobileSettings')?.click();
-});
 $('zoomIn').onclick = () => {
   store.setCamera({ ...camera, scale: Math.min(5, camera.scale * 1.25) });
   render();
@@ -974,6 +957,5 @@ $('fit').onclick = () => {
   store.setCamera({ x: 0, y: 0, scale: 1 });
   render();
 };
-positionNodeDetails();
 if (!restoreGame()) fresh();
 attachNavigation();
