@@ -1,5 +1,5 @@
 'use strict';
-const { buildMap, playerColor, SOFT_CAP_RULES } = GameEngine;
+const { buildMap, playerColor, playerName, playerOwners, SOFT_CAP_RULES } = GameEngine;
 const { selectors } = GameStore;
 const store = GameStore.createStore();
 let state, orders, policies, history, xy, edges, N, playerCount, mapSeed;
@@ -792,13 +792,23 @@ function render() {
   renderOrders();
   renderFlows(svg, graph, element);
   renderViews();
-  $('log').replaceChildren();
-  for (const line of history) {
-    const entry = document.createElement('div');
-    entry.textContent = line;
-    $('log').append(entry);
-  }
+  $('log').replaceChildren(...history.map(messageEntry));
   setActiveTab();
+}
+const ownerByPlayerName = new Map(playerOwners.map((owner) => [playerName(owner), owner]));
+const playerNamePattern = new RegExp('\\b(' + [...ownerByPlayerName.keys()].join('|') + ')\\b');
+function messageEntry(line) {
+  const entry = document.createElement('div');
+  const parts = line.split(playerNamePattern);
+  entry.append(...parts.map((part, index) => (index % 2 === 1 ? playerBadge(part) : part)));
+  return entry;
+}
+function playerBadge(name) {
+  const badge = document.createElement('span');
+  badge.className = 'player-badge';
+  badge.style.background = playerColor(ownerByPlayerName.get(name));
+  badge.textContent = name;
+  return badge;
 }
 function nodeTooltip(n) {
   const lines = ['Node ' + n.id, 'Active ' + fmt(n.active), 'Invested ' + fmt(n.invested)];

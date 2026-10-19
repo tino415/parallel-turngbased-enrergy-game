@@ -187,6 +187,12 @@ button:disabled {
   font-size: 12px;
   line-height: 1.7;
 }
+.player-badge {
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: #0e1625;
+  font-weight: 600;
+}
 input {
   width: 90px;
 }
