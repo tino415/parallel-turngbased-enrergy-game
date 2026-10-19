@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync } from 'node:fs';
-import { test, expect, inspector, isMobileLayout } from './support/game.mjs';
+import { test, expect, inspector, isMobileLayout, chooseSource } from './support/game.mjs';
 
 const fixture = (name) => new URL('./fixtures/' + name, import.meta.url);
 
@@ -114,7 +114,7 @@ test('a fixed command sequence produces the recorded orders, policies and rounds
   await page.locator('#policyEditor').getByRole('button', { name: 'Paste' }).click();
   await closeInspector(page);
   await openEdge(page, '0-2');
-  await page.locator('#tacticalInspector select').selectOption('2');
+  await chooseSource(page, 2);
   await page.locator('#tacticalAutoTransfer').check();
   await commit(page.locator('#tacticalEdgeAmount'), 1.5);
   await closeInspector(page);

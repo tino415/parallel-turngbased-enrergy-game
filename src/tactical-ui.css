@@ -11,7 +11,6 @@ body > header > div:first-child,
 #reset,
 #mobileSettings,
 #uxReviewHead,
-#gameSidebar,
 .ux-map-heading > div:first-child,
 .map-explanation {
   display: none !important;
@@ -392,4 +391,92 @@ body > header #resolve {
     background: #101d30;
     border-radius: 13px 13px 0 0;
   }
+}
+.tactical-edge-selected {
+  stroke-dasharray: 14 10;
+  animation: tactical-flow 0.9s linear infinite;
+}
+@keyframes tactical-flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tactical-edge-selected {
+    animation: none;
+  }
+}
+.tactical-edge-arrow {
+  fill: #ffc56d;
+  pointer-events: none;
+}
+.tactical-node-to {
+  stroke-dasharray: 7 5;
+}
+#map .tactical-node-tag {
+  fill: #ffc56d;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.tactical-direction {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+}
+.tactical-node-chip {
+  display: inline-flex;
+  white-space: nowrap;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: #0f1c2f;
+  border: 1px solid #5b7190;
+  border-radius: 999px;
+}
+.tactical-node-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.tactical-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+#tacticalSwapDirection {
+  min-width: 40px;
+  min-height: 40px;
+  margin-left: auto;
+  padding: 0;
+  font-size: 19px;
+}
+.tactical-map-swap {
+  cursor: pointer;
+}
+.tactical-map-swap-hit {
+  fill: transparent;
+}
+.tactical-map-swap-face {
+  fill: #203956;
+  stroke: #ffc56d;
+  stroke-width: 2;
+}
+#map .tactical-map-swap-label {
+  fill: #ffc56d;
+  font-size: 17px;
+  font-weight: 700;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.tactical-map-swap:focus-visible .tactical-map-swap-face {
+  stroke: #fff;
+  stroke-width: 3;
 }
