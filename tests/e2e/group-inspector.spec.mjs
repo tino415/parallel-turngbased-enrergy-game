@@ -104,7 +104,7 @@ test('investing on each node reports the nodes that lacked energy', async ({ pag
   await commit(page.locator('#groupInvestEach'), 5);
   await expect(inspector(page)).toContainText('Applied to 1 of 2; Node 2 lacked energy.');
   expect(await page.evaluate(() => orders)).toEqual({
-    0: { invest: 5, withdraw: 0, edges: {}, hold: false },
+    0: { invest: 5, withdraw: 0, edges: {} },
   });
 });
 

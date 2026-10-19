@@ -67,7 +67,7 @@ test('investing on each node reports the nodes that lacked energy', () => {
   const match = blueMatch();
   const { match: next, skipped } = commands.investOnEach(match, [0, 1, 4], 5);
   assert.deepEqual(plain(skipped), [4]);
-  assert.equal(next.orders[0].invest, 5);
+  assert.deepEqual(plain(next.orders[0]), { invest: 5, withdraw: 0, edges: {} });
   assert.equal(next.orders[1].invest, 5);
   assert.equal(next.orders[4], undefined);
 });

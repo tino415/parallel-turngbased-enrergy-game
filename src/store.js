@@ -462,13 +462,11 @@
   }
 
   function investOnEach(match, ids, amount) {
-    const skipped = [];
-    const next = ids.reduce((current, id) => {
-      const result = setAllocation(current, id, null, amount);
-      if (result.overBudget !== undefined || !isOwn(current, id)) skipped.push(id);
-      return result.match;
-    }, match);
-    return { match: next, skipped };
+    const fits = (id) => isOwn(match, id) && amount <= investBudget(match, id) + 1e-8;
+    return {
+      match: applyBulkInvestment(match, ids.filter(fits), amount),
+      skipped: ids.filter((id) => !fits(id)),
+    };
   }
 
   const ownPolicies = (match, ids, change) =>
@@ -485,14 +483,14 @@
   const pasteGroupPolicy = (match, ids, copied) =>
     ids.filter((id) => isOwn(match, id)).reduce((next, id) => pastePolicy(next, id, copied), match);
 
+  const investBudget = (match, id) =>
+    availableEnergy(match, id) - sum(Object.values(plan(match, id).edges));
+
   function applyBulkInvestment(match, ids, amount) {
     return ids.reduce((next, id) => {
-      const current = plan(next, id),
-        p = { ...current, edges: { ...current.edges } },
-        available = availableEnergy(next, id, p) - sum(Object.values(p.edges));
-      if (amount > available + 1e-8) return next;
-      p.invest = amount;
-      return withOrder(next, id, p);
+      if (amount > investBudget(next, id) + 1e-8) return next;
+      const current = plan(next, id);
+      return withOrder(next, id, { ...current, edges: { ...current.edges }, invest: amount });
     }, match);
   }
 
