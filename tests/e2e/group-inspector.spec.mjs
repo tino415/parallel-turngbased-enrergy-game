@@ -119,6 +119,34 @@ test('a touch long-press starts a group and a tap then adds to it', async ({ pag
   await expect(inspector(page)).toContainText('Group · 2 nodes');
 });
 
+test('a finger lifted off the map after a long-press does not turn the next drag into a pinch', async ({
+  page,
+}) => {
+  await giveBlue(page, { 1: {} });
+  await touch(page, 1, 'pointerdown');
+  await page.waitForTimeout(600);
+  await page.evaluate(() =>
+    document.body.dispatchEvent(
+      new PointerEvent('pointerup', { pointerId: 7, pointerType: 'touch', bubbles: true }),
+    ),
+  );
+  const scale = await page.evaluate(() => camera.scale);
+  const box = await page.locator('#map').boundingBox();
+  const drag = (type, dx) =>
+    page.locator('#map').dispatchEvent(type, {
+      pointerType: 'touch',
+      pointerId: 8,
+      isPrimary: true,
+      button: 0,
+      clientX: box.x + 40 + dx,
+      clientY: box.y + box.height - 40,
+    });
+  await drag('pointerdown', 0);
+  await drag('pointermove', 60);
+  await drag('pointerup', 60);
+  expect(await page.evaluate(() => camera.scale)).toBe(scale);
+});
+
 test('a pan that starts on a node does not become a long-press', async ({ page }) => {
   await giveBlue(page, { 1: {} });
   await touch(page, 1, 'pointerdown');

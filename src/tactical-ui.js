@@ -137,6 +137,7 @@
     'pointerdown',
     (event) => {
       if (event.pointerType !== 'touch') return;
+      if (event.isPrimary) forgetFingers();
       fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (fingers.size !== 2) return;
       const [a, b] = [...fingers.values()];
@@ -185,13 +186,15 @@
   const endTouch = (event) => {
     if (event.pointerType !== 'touch') return;
     fingers.delete(event.pointerId);
-    if (fingers.size === 0) {
-      pinchInProgress = false;
-      pinch = null;
-    }
+    if (fingers.size === 0) forgetFingers();
   };
-  svg.addEventListener('pointerup', endTouch, true);
-  svg.addEventListener('pointercancel', endTouch, true);
+  function forgetFingers() {
+    fingers.clear();
+    pinchInProgress = false;
+    pinch = null;
+  }
+  window.addEventListener('pointerup', endTouch, true);
+  window.addEventListener('pointercancel', endTouch, true);
 
   const LONG_PRESS_MS = 450;
   const LONG_PRESS_SLOP = 8;
