@@ -20,22 +20,23 @@ earlier ones.
 change goes through a store command, and a slice keeps its identity until a
 command really changes it.
 
-| Value                                                  | Slice              | Saved | Written by                       |
-| ------------------------------------------------------ | ------------------ | ----- | -------------------------------- |
-| `state` (round, nodes, finished, rulesVersion)         | `match.state`      | yes   | `resolve`, `replaceMatch`        |
-| manual orders per node                                 | `match.orders`     | yes   | allocation and order commands    |
-| persistent policies per node                           | `match.policies`   | yes   | policy commands, `resolve`       |
-| message history                                        | `match.history`    | yes   | `resolve`, `replaceMatch`        |
-| map: `xy`, `edges`, `N`, `playerCount`, `mapSeed`      | `match.map`        | yes   | `replaceMatch`                   |
-| conquest defaults (enabled, reserve, invest)           | `match.defaults`   | yes   | `setDefaults`                    |
-| selected node                                          | `ui.selected`      | yes¹  | `select`, inspector commands     |
-| view tab                                               | `ui.view`          | no    | `setView`                        |
-| flow filter                                            | `ui.overlay`       | no    | `setOverlay`                     |
-| camera (`x`, `y`, `scale`)                             | `ui.camera`        | no    | `setCamera`                      |
-| policy clipboard                                       | `ui.clipboard`     | no    | `copyPolicy`                     |
-| node group (map multi-select, dashboard checkboxes)    | `ui.bulkSelection` | no    | group commands, `resolve`²       |
-| group mode on the map                                  | `ui.groupMode`     | no    | `setGroupMode`, `leaveGroupMode` |
-| inspector target, editing, open sections, focused node | `ui.inspector`     | no    | inspector commands               |
+| Value                                                  | Slice              | Saved | Written by                          |
+| ------------------------------------------------------ | ------------------ | ----- | ----------------------------------- |
+| `state` (round, nodes, finished, rulesVersion)         | `match.state`      | yes   | `resolve`, `replaceMatch`           |
+| manual orders per node                                 | `match.orders`     | yes   | allocation and order commands       |
+| persistent policies per node                           | `match.policies`   | yes   | policy commands, `resolve`          |
+| message history                                        | `match.history`    | yes   | `resolve`, `replaceMatch`           |
+| map: `xy`, `edges`, `N`, `playerCount`, `mapSeed`      | `match.map`        | yes   | `replaceMatch`                      |
+| conquest defaults (enabled, reserve, invest)           | `match.defaults`   | yes   | `setDefaults`                       |
+| selected node                                          | `ui.selected`      | yes¹  | `select`, inspector commands        |
+| view tab                                               | `ui.view`          | no    | `setView`                           |
+| flow filter                                            | `ui.overlay`       | no    | `setOverlay`                        |
+| camera (`x`, `y`, `scale`)                             | `ui.camera`        | no    | `setCamera`                         |
+| policy clipboard                                       | `ui.clipboard`     | no    | `copyPolicy`                        |
+| node group (map multi-select, dashboard checkboxes)    | `ui.bulkSelection` | no    | group commands, `resolve`²          |
+| group mode on the map                                  | `ui.groupMode`     | no    | `setGroupMode`, `leaveGroupMode`    |
+| group editor open                                      | `ui.groupEditing`  | no    | `setGroupEditing`, `leaveGroupMode` |
+| inspector target, editing, open sections, focused node | `ui.inspector`     | no    | inspector commands                  |
 
 ¹ `selected` stays in the save format so that old saves keep loading. ux.js
 clears it on load.

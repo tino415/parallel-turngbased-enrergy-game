@@ -448,11 +448,6 @@
       .reduce((next, id) => enablePolicyWith(next, id, { reserve, investPct }), match);
   }
 
-  const ownNodes = (match) => match.state.nodes.filter((n) => n.owner === 0).map((n) => n.id);
-  const isBorder = (match, id) => neighbors(match, id).some((other) => !isOwn(match, other));
-  const borderNodes = (match) => ownNodes(match).filter((id) => isBorder(match, id));
-  const interiorNodes = (match) => ownNodes(match).filter((id) => !isBorder(match, id));
-
   const GROUP_FIELDS = [
     'enabled',
     'investPct',
@@ -461,18 +456,12 @@
     'reserve',
     'defensePct',
     'defenseTarget',
-    'pressurePct',
-    'pressureMin',
-    'pressureNeutral',
   ];
   const GROUP_FIELD_DEFAULTS = {
     investTarget: null,
     divestPct: 0,
     defensePct: 0,
     defenseTarget: null,
-    pressurePct: 0,
-    pressureMin: 10,
-    pressureNeutral: false,
   };
   const shownPolicy = (match, id) => ({
     ...GROUP_FIELD_DEFAULTS,
@@ -520,8 +509,8 @@
       .reduce((next, id) => withPolicy(next, id, change(next.policies[id])), match);
   const clearGroupDestinations = (match, ids) =>
     ownPolicies(match, ids, (policy) => ({ ...policy, dest: null }));
-  const weakestPressureForGroup = (match, ids) =>
-    ownPolicies(match, ids, (policy) => ({ ...policy, pressureTarget: null }));
+  const stopGroupPressure = (match, ids) =>
+    ownPolicies(match, ids, (policy) => (policy.pressure ? { ...policy, pressure: {} } : policy));
   const pauseGroup = (match, ids) =>
     ids.filter((id) => isOwn(match, id)).reduce((next, id) => setHold(next, id, true), match);
   const clearGroupOrders = (match, ids) => ids.reduce(clearNodeOrders, match);
@@ -606,6 +595,7 @@
     clipboard: null,
     bulkSelection: [],
     groupMode: false,
+    groupEditing: false,
     selected: null,
     camera: { x: 0, y: 0, scale: 1 },
     inspector: { ...CLOSED_INSPECTOR, focusedNode: null },
@@ -724,12 +714,13 @@
         return result.skipped;
       },
       clearGroupDestinations: onMatch(clearGroupDestinations),
-      weakestPressureForGroup: onMatch(weakestPressureForGroup),
+      stopGroupPressure: onMatch(stopGroupPressure),
       pauseGroup: onMatch(pauseGroup),
       clearGroupOrders: onMatch(clearGroupOrders),
       pasteGroupPolicy: onMatch(pasteGroupPolicy),
       setGroupMode: (on) => setUi('groupMode', on),
-      leaveGroupMode: () => updateUi({ groupMode: false, bulkSelection: [] }),
+      leaveGroupMode: () => updateUi({ groupMode: false, groupEditing: false, bulkSelection: [] }),
+      setGroupEditing: (on) => setUi('groupEditing', on),
       setBulkSelection: (ids) => setUi('bulkSelection', ownOnly(ids)),
       toggleGroupMember(id) {
         if (!isOwn(snapshot.match, id)) return;
@@ -788,7 +779,7 @@
       applyGroupPolicyField,
       investOnEach,
       clearGroupDestinations,
-      weakestPressureForGroup,
+      stopGroupPressure,
       pauseGroup,
       clearGroupOrders,
       pasteGroupPolicy,
@@ -798,9 +789,6 @@
     selectors: Object.freeze({
       neighbors,
       edgeSource,
-      ownNodes,
-      borderNodes,
-      interiorNodes,
       groupPolicyView,
       softCapEnabled,
       defaultPolicy,

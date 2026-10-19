@@ -24,13 +24,6 @@ function blueMatch(policies = {}) {
 
 const policy = (fields) => ({ enabled: true, reserve: 5, investPct: 50, dest: null, ...fields });
 
-test('border and interior split the own nodes by their neighbours', () => {
-  const match = blueMatch();
-  assert.deepEqual(plain(selectors.ownNodes(match)), [0, 1, 2, 4]);
-  assert.deepEqual(plain(selectors.interiorNodes(match)), [0]);
-  assert.deepEqual(plain(selectors.borderNodes(match)), [1, 2, 4]);
-});
-
 test('the group policy view shows common values and mixed ranges', () => {
   const match = blueMatch({
     0: policy({ investPct: 40, investTarget: 150 }),
@@ -72,15 +65,17 @@ test('investing on each node reports the nodes that lacked energy', () => {
   assert.equal(next.orders[4], undefined);
 });
 
-test('group actions clear destinations, reset pressure targets, pause and paste', () => {
+test('group actions clear destinations, stop pressure, pause and paste', () => {
   const match = blueMatch({
-    0: policy({ dest: 1, pressureTarget: 3 }),
-    1: policy({ dest: 0 }),
+    0: policy({ dest: 1, pressure: { 3: { pct: 10, min: 10, bank: 4 } } }),
+    1: policy({ dest: 4 }),
   });
   const cleared = commands.clearGroupDestinations(match, [0, 1]);
   assert.equal(cleared.policies[0].dest, null);
   assert.equal(cleared.policies[1].dest, null);
-  assert.equal(commands.weakestPressureForGroup(match, [0, 1]).policies[0].pressureTarget, null);
+  const stopped = commands.stopGroupPressure(match, [0, 1]);
+  assert.deepEqual(plain(stopped.policies[0].pressure), {});
+  assert.equal(stopped.policies[1].pressure, undefined);
   const paused = commands.pauseGroup(match, [0, 1]);
   assert.equal(paused.orders[0].hold, true);
   assert.equal(paused.orders[1].hold, true);
@@ -107,7 +102,19 @@ test('group selection commands keep only own nodes and survive a round', () => {
   store.resolve(() => 0.5);
   assert.deepEqual(plain(store.getSnapshot().ui.bulkSelection), [0]);
   assert.equal(store.getSnapshot().ui.groupMode, true);
+  store.setGroupEditing(true);
+  store.toggleGroupMember(2);
+  assert.equal(store.getSnapshot().ui.groupEditing, true);
   store.leaveGroupMode();
   assert.deepEqual(plain(store.getSnapshot().ui.bulkSelection), []);
   assert.equal(store.getSnapshot().ui.groupMode, false);
+  assert.equal(store.getSnapshot().ui.groupEditing, false);
+});
+
+test('the group policy view and edits leave per-edge pressure out', () => {
+  const match = blueMatch({ 0: policy({ pressure: { 3: { pct: 10, min: 10 } } }) });
+  const view = plain(selectors.groupPolicyView(match, [0, 1]));
+  assert.equal(view.pressurePct, undefined);
+  assert.equal(view.pressureMin, undefined);
+  assert.equal(view.pressureNeutral, undefined);
 });

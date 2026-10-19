@@ -98,13 +98,14 @@
   };
 
   let { active, editing, advancedOpen, manualOpen, focusedNode } = store.getSnapshot().ui.inspector;
-  let { groupMode, bulkSelection } = store.getSnapshot().ui;
+  let { groupMode, groupEditing, bulkSelection } = store.getSnapshot().ui;
   store.subscribe(({ ui }) => {
     ({ active, editing, advancedOpen, manualOpen, focusedNode } = ui.inspector);
-    ({ groupMode, bulkSelection } = ui);
+    ({ groupMode, groupEditing, bulkSelection } = ui);
   });
   const groupIds = () => (groupMode ? bulkSelection : []);
-  const showingGroup = () => groupIds().length >= 2;
+  const showingGroup = () => groupEditing && groupIds().length >= 2;
+  const editedMember = () => (groupEditing && groupIds().length === 1 ? groupIds()[0] : null);
   let groupMessage = '';
   store.focusNode(state.nodes.find((node) => node.owner === 0)?.id ?? 0);
   let previousRound = state.round;
@@ -298,23 +299,25 @@
     }
     store.setGroupMode(true);
     store.toggleGroupMember(id);
+    if (!bulkSelection.length) store.setGroupEditing(false);
     groupMessage = '';
-    showSingleMemberOrGroup();
-  }
-
-  function setGroup(ids) {
-    store.setGroupMode(true);
-    store.setBulkSelection(ids);
-    groupMessage = '';
-    showSingleMemberOrGroup();
-  }
-
-  function showSingleMemberOrGroup() {
     store.dismissInspector();
     render();
   }
 
+  function editGroup() {
+    store.dismissInspector();
+    store.setGroupEditing(true);
+    render();
+  }
+
+  function closeGroupEditor() {
+    store.setGroupEditing(false);
+    render();
+  }
+
   function editMemberAlone(id) {
+    store.leaveGroupMode();
     store.inspectNode(id);
     store.editSelectedNode();
     render();
@@ -340,7 +343,6 @@
   function renderGroupBar() {
     groupBar.hidden = !groupMode || currentView !== 'map';
     if (groupBar.hidden) return;
-    const match = currentMatch();
     const action = (label, onclick) => {
       const button = document.createElement('button');
       button.type = 'button';
@@ -348,15 +350,11 @@
       button.onclick = onclick;
       return button;
     };
+    const edit = action('Edit', editGroup);
+    edit.disabled = bulkSelection.length === 0;
     updateChildrenInPlace(groupBar, [
       textElement('strong', bulkSelection.length + ' selected'),
-      ...(bulkSelection.length === 1
-        ? [action('Edit Node ' + bulkSelection[0], () => editMemberAlone(bulkSelection[0]))]
-        : []),
-      action('All', () => setGroup(selectors.ownNodes(match))),
-      action('Border', () => setGroup(selectors.borderNodes(match))),
-      action('Interior', () => setGroup(selectors.interiorNodes(match))),
-      action('Clear', () => setGroup([])),
+      edit,
       action('Done', leaveGroup),
       textElement('span', '', 'tactical-group-hint'),
     ]);
@@ -576,7 +574,7 @@
     body.append(details);
   }
 
-  function showNode(body, id) {
+  function showNode(body, id, isEditing = editing) {
     const node = state.nodes[id];
     const prediction = node.owner === 0 ? projection(id) : null;
     body.append(
@@ -615,7 +613,7 @@
         'tactical-secondary',
       ),
     );
-    if (!editing) return;
+    if (!isEditing) return;
     const primary = document.createElement('div');
     primary.className = 'tactical-primary-control';
     const toggle = document.createElement('label');
@@ -979,9 +977,6 @@
       groupNumberField(ids, view, 'reserve', 'Defense floor'),
       groupNumberField(ids, view, 'defensePct', 'Grow the floor by % of surplus', 100),
       groupNumberField(ids, view, 'defenseTarget', 'Floor up to'),
-      groupNumberField(ids, view, 'pressurePct', 'Pressure % of surplus', 100),
-      groupNumberField(ids, view, 'pressureMin', 'Attack when at least this much is banked'),
-      groupCheckbox(ids, view, 'pressureNeutral', 'Pressure includes neutral nodes'),
     );
     return block;
   }
@@ -1043,11 +1038,11 @@
     block.append(
       textElement(
         'p',
-        'Transfer destinations and pinned pressure targets stay per node.',
+        'Transfer destinations and border pressure stay per node and per connection.',
         'tactical-secondary',
       ),
       groupButton('Clear destinations', () => store.clearGroupDestinations(ids)),
-      groupButton('Pressure: weakest enemy for all', () => store.weakestPressureForGroup(ids)),
+      groupButton('Stop border pressure', () => store.stopGroupPressure(ids)),
     );
     return block;
   }
@@ -1113,7 +1108,6 @@
       open.textContent = 'Node ' + id;
       open.setAttribute('aria-label', 'Edit node ' + id + ' alone');
       open.onclick = () => {
-        store.leaveGroupMode();
         editMemberAlone(id);
       };
       const remove = document.createElement('button');
@@ -1475,7 +1469,7 @@
 
   function positionInspector() {
     if (mobile()) return;
-    if (showingGroup()) {
+    if (showingGroup() || editedMember() !== null) {
       root.style.left = Math.max(10, innerWidth - 372) + 'px';
       root.style.top = '70px';
       return;
@@ -1497,8 +1491,10 @@
     // The first tap highlights only. The second tap opens the editor above
     // the unchanged mobile Orders/Resolve dock, or near the edge on desktop.
     const group = showingGroup();
+    const member = editedMember();
+    const groupEditor = group || member !== null;
     root.hidden =
-      !(group || (active && editing)) ||
+      !(groupEditor || (active && editing)) ||
       currentView !== 'map' ||
       Boolean(document.querySelector('dialog[open]'));
     document.body.classList.toggle('tactical-selection-active', !root.hidden);
@@ -1509,21 +1505,27 @@
     root.classList.toggle('is-editing', true);
     const subject = group
       ? 'Group · ' + groupIds().length + ' nodes'
-      : active.kind === 'node'
-        ? 'Node ' + active.id
-        : 'Connection ' + active.a + ' — ' + active.b;
+      : member !== null
+        ? 'Node ' + member
+        : active.kind === 'node'
+          ? 'Node ' + active.id
+          : 'Connection ' + active.a + ' — ' + active.b;
     const header = document.createElement('div');
     header.className = 'tactical-inspector-head';
     header.append(textElement('strong', subject));
     const close = document.createElement('button');
     close.type = 'button';
     close.textContent = '×';
-    close.setAttribute('aria-label', group ? 'Leave group' : 'Clear map selection');
-    close.onclick = group ? leaveGroup : dismissAndReturnFocus;
+    close.setAttribute(
+      'aria-label',
+      groupEditor ? 'Close the group editor' : 'Clear map selection',
+    );
+    close.onclick = groupEditor ? closeGroupEditor : dismissAndReturnFocus;
     header.append(close);
     const body = document.createElement('div');
     body.className = 'tactical-inspector-body';
     if (group) showGroup(body, groupIds());
+    else if (member !== null) showNode(body, member, true);
     else if (active.kind === 'node') showNode(body, active.id);
     else showEdge(body, active.a, active.b);
     // No duplicate Orders/Resolve/Collapse buttons. The original bottom dock
