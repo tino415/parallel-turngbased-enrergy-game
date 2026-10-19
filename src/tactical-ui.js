@@ -518,7 +518,7 @@
       changePolicy(id, 'investPct', value);
     };
     label.append(percent);
-    primary.append(label, slider);
+    primary.append(label, slider, ...investmentTargetControls(id, policy));
     body.append(primary);
     body.append(
       textElement(
@@ -554,6 +554,116 @@
       (open) => {
         manualOpen = open;
       },
+    );
+  }
+
+  function investmentTargetControls(id, policy) {
+    const target = policy?.investTarget ?? null;
+    const controls = [
+      policyNumberField({
+        id: 'tacticalInvestTarget',
+        key: id + ':investTarget',
+        label: 'Until invested reaches',
+        value: target,
+        placeholder: 'no limit',
+        onCommit: (value) => changePolicy(id, 'investTarget', value),
+      }),
+    ];
+    if (softCapEnabled())
+      controls.push(
+        policyNumberField({
+          id: 'tacticalDivestPct',
+          key: id + ':divestPct',
+          label: 'Above the target, scale down % per round',
+          value: policy?.divestPct ?? 0,
+          max: 100,
+          onCommit: (value) => changePolicy(id, 'divestPct', value ?? 0),
+        }),
+      );
+    const status = investmentStatusText(id);
+    if (status) controls.push(textElement('p', status, 'tactical-secondary'));
+    const reserve = policy?.reserve ?? defaultPolicy().reserve;
+    if (softCapEnabled() && target !== null && target + reserve > SOFT_CAP_RULES.capacity)
+      controls.push(
+        textElement(
+          'p',
+          'Target plus defense reserve is above the ' +
+            SOFT_CAP_RULES.capacity +
+            ' capacity: overflow decay trims invested every round and the policy refills it.',
+          'tactical-warning',
+        ),
+      );
+    return controls;
+  }
+
+  function policyNumberField({ id, key, label, value, max = Infinity, placeholder, onCommit }) {
+    const field = document.createElement('label');
+    field.append(textElement('span', label));
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = '0';
+    if (max !== Infinity) input.max = String(max);
+    input.step = '1';
+    input.id = id;
+    input.dataset.key = key;
+    input.value = value === null ? '' : String(value);
+    if (placeholder) input.placeholder = placeholder;
+    input.setAttribute('aria-label', label);
+    input.onchange = () => {
+      const committed = input.value.trim() === '' ? null : Number(input.value);
+      if (committed !== null && !(committed >= 0 && committed <= max)) {
+        input.value = value === null ? '' : String(value);
+        return;
+      }
+      onCommit(committed);
+    };
+    field.append(input);
+    return field;
+  }
+
+  function investmentStatusText(id) {
+    const status = selectors.investmentStatus(currentMatch(), id);
+    if (!status) return null;
+    const { invested, target, invest, withdraw, fee, roundsToTarget } = status;
+    const progress = 'Invested ' + numeric(invested);
+    if (roundsToTarget === 0) return progress + ' · target reached';
+    if (status.blockedByManualWithdrawal)
+      return (
+        progress +
+        ' of ' +
+        numeric(target) +
+        ' · no reinvestment this round after a manual withdrawal. Lower the target to keep it withdrawn.'
+      );
+    if (invested < target)
+      return (
+        progress +
+        ' of ' +
+        numeric(target) +
+        ' · +' +
+        numeric(invest) +
+        ' this round · ' +
+        numeric(Math.max(0, target - invested - plan(id).invest - invest)) +
+        ' to go'
+      );
+    if (roundsToTarget === null)
+      return (
+        progress +
+        ', above the target ' +
+        numeric(target) +
+        (softCapEnabled() ? ' · scale-down is off' : '')
+      );
+    return (
+      progress +
+      ' → ' +
+      numeric(target) +
+      ' · policy withdraws ' +
+      numeric(withdraw) +
+      ' this round, ' +
+      numeric(fee) +
+      ' fee · ' +
+      roundsToTarget +
+      (roundsToTarget === 1 ? ' round' : ' rounds') +
+      ' to target'
     );
   }
 

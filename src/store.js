@@ -3,6 +3,7 @@
 (() => {
   const { evaluatePolicy, forecast, resolveRound, SOFT_CAP_RULES } = GameEngine;
   const HISTORY_LIMIT = 70;
+  const TARGET_EPSILON = 1e-6;
   const sum = (values) => values.reduce((total, value) => total + value, 0);
 
   const CLASSIC_EDGES = [
@@ -127,20 +128,77 @@
     p.invest + sum(Object.values(p.edges));
   const withdrawal = (match, source, p = plan(match, source)) =>
     softCapEnabled(match) ? p.withdraw || 0 : 0;
+  const policyWithdrawal = (match, source, p = plan(match, source)) =>
+    GameEngine.policyWithdrawal({
+      policy: match.policies[source],
+      node: match.state.nodes[source],
+      manualWithdraw: withdrawal(match, source, p),
+      manualHold: Boolean(p.hold),
+      softCap: softCapEnabled(match),
+    });
+  const totalWithdrawal = (match, source, p = plan(match, source)) =>
+    withdrawal(match, source, p) + policyWithdrawal(match, source, p);
   const availableEnergy = (match, source, p = plan(match, source)) =>
     match.state.nodes[source].active +
-    withdrawal(match, source, p) * (1 - SOFT_CAP_RULES.withdrawalFee);
+    totalWithdrawal(match, source, p) * (1 - SOFT_CAP_RULES.withdrawalFee);
 
   function policyOrders(match, source) {
+    const node = match.state.nodes[source],
+      p = plan(match, source);
     return evaluatePolicy({
       policy: match.policies[source],
-      node: { ...match.state.nodes[source], active: availableEnergy(match, source) },
+      node: {
+        ...node,
+        active: availableEnergy(match, source),
+        invested: node.invested - totalWithdrawal(match, source),
+      },
       manualSpent: allocated(match, source),
-      manualHold: Boolean(plan(match, source).hold),
+      manualInvest: p.invest,
+      manualWithdraw: withdrawal(match, source),
+      manualHold: Boolean(p.hold),
       neighbors: neighbors(match, source),
       owners: match.state.nodes.map((n) => n.owner),
       source,
     });
+  }
+
+  function investmentStatus(match, source) {
+    const policy = match.policies[source];
+    if (!Number.isFinite(policy?.investTarget)) return null;
+    const invested = match.state.nodes[source].invested,
+      target = policy.investTarget,
+      withdraw = policyWithdrawal(match, source),
+      invest = sum(
+        policyOrders(match, source)
+          .filter((o) => o.type === 'invest')
+          .map((o) => o.amount),
+      ),
+      after = invested - totalWithdrawal(match, source) + plan(match, source).invest + invest;
+    return {
+      invested,
+      target,
+      invest,
+      withdraw,
+      fee: withdraw * SOFT_CAP_RULES.withdrawalFee,
+      roundsToTarget: roundsToTarget(
+        invested,
+        after,
+        target,
+        softCapEnabled(match) ? policy.divestPct : 0,
+      ),
+      blockedByManualWithdrawal:
+        withdrawal(match, source) > 0 && invested < target - TARGET_EPSILON,
+    };
+  }
+
+  function roundsToTarget(invested, after, target, divestPct) {
+    if (Math.abs(invested - target) <= TARGET_EPSILON) return 0;
+    if (Math.abs(after - target) <= TARGET_EPSILON) return 1;
+    if (invested < target || !(divestPct > 0)) return null;
+    let rounds = 0;
+    for (; invested > target + TARGET_EPSILON; rounds++)
+      invested -= Math.min((invested * divestPct) / 100, invested - target);
+    return rounds;
   }
 
   function previewOrders(match) {
@@ -171,7 +229,7 @@
       match.state.nodes[id],
       incoming,
       scheduled.filter((o) => o.source === id),
-      { softCap: softCapEnabled(match), withdraw: withdrawal(match, id) },
+      { softCap: softCapEnabled(match), withdraw: totalWithdrawal(match, id) },
     );
   }
 
@@ -231,7 +289,13 @@
     return Object.keys(match.orders).length ? { ...match, orders: {} } : match;
   }
 
+  const policyFieldValid = {
+    investTarget: (value) => value === null || (Number.isFinite(value) && value >= 0),
+    divestPct: (value) => Number.isFinite(value) && value >= 0 && value <= 100,
+  };
+
   function changePolicy(match, source, key, value) {
+    if (Object.hasOwn(policyFieldValid, key) && !policyFieldValid[key](value)) return match;
     return withPolicy(match, source, {
       ...defaultPolicy(),
       ...match.policies[source],
@@ -399,8 +463,10 @@
       plan,
       allocated,
       withdrawal,
+      policyWithdrawal,
       availableEnergy,
       policyOrders,
+      investmentStatus,
       previewOrders,
       projection,
     }),
