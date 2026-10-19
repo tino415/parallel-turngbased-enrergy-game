@@ -1,9 +1,14 @@
 # Parallel Energy Game
 
-A static browser game: `index.html` plus plain ES modules in `src/`, no bundler and
-no runtime dependency. `src/engine.js` holds the rules and round resolution,
-`src/game.js` and `src/ux.js` the interface. Node is used only for the
-development commands.
+A static browser game: `index.html` plus plain scripts in `src/`, loaded with `defer`
+in one global scope, no bundler and no runtime dependency. `src/engine.js` holds
+the rules and round resolution. `src/store.js` owns the match (state, orders,
+policies, history, map, conquest defaults) and the interface state in its `ui` slice, behind
+commands, selectors and a subscription; it never touches the DOM. `src/game.js`,
+`src/ux.js` and `src/tactical-ui.js` are the interface: they change the match
+only through store commands and read the `state`, `orders`, `policies`, ... globals,
+which game.js mirrors from the store and nothing else assigns. Node is used only
+for the development commands.
 
 ## Where commands run
 
