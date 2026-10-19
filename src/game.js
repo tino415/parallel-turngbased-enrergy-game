@@ -3,9 +3,9 @@ const { buildMap, playerColor, SOFT_CAP_RULES } = GameEngine;
 const { selectors } = GameStore;
 const store = GameStore.createStore();
 let state, orders, policies, history, xy, edges, N, playerCount, mapSeed;
-let { view: currentView, clipboard } = store.getSnapshot().ui;
+let { view: currentView, overlay, clipboard, selected, camera } = store.getSnapshot().ui;
 store.subscribe(({ match, ui }, previous) => {
-  ({ view: currentView, clipboard } = ui);
+  ({ view: currentView, overlay, clipboard, selected, camera } = ui);
   if (match === previous.match) return;
   ({ state, orders, policies, history } = match);
   ({ xy, edges, N, playerCount, mapSeed } = match.map);
@@ -16,8 +16,6 @@ const neighbors = (i) => selectors.neighbors(currentMatch(), i);
 const $ = (id) => document.getElementById(id),
   { compactEnergy, exactEnergy } = EnergyFormat,
   fmt = exactEnergy;
-let selected = null,
-  camera = { x: 0, y: 0, scale: 1 };
 const softCapEnabled = () => selectors.softCapEnabled(currentMatch());
 const withdrawal = (source, p) => selectors.withdrawal(currentMatch(), source, p);
 const availableEnergy = (source, p) => selectors.availableEnergy(currentMatch(), source, p);
@@ -29,9 +27,9 @@ function domDefaults() {
   };
 }
 function fresh() {
-  selected = null;
+  store.select(null);
   store.replaceMatch(GameStore.classicMatch(Math.random, domDefaults()));
-  camera = { x: 0, y: 0, scale: 1 };
+  store.setCamera({ x: 0, y: 0, scale: 1 });
   render();
 }
 function mapOptions() {
@@ -85,9 +83,9 @@ function previewMap() {
     options.seed;
 }
 function generate() {
-  selected = null;
+  store.select(null);
   store.replaceMatch(GameStore.generatedMatch(buildMap(mapOptions()), domDefaults()));
-  camera = { x: 0, y: 0, scale: 1 };
+  store.setCamera({ x: 0, y: 0, scale: 1 });
   store.setView('map');
   $('newGameDialog').close();
   render();
@@ -403,7 +401,7 @@ function renderOrders() {
     const choose = document.createElement('button');
     choose.textContent = 'Edit node ' + id;
     choose.onclick = () => {
-      selected = id;
+      store.select(id);
       render();
     };
     const remove = document.createElement('button');
@@ -447,7 +445,7 @@ function renderOrders() {
 }
 function clickNode(id) {
   if (state.nodes[id].owner === 0) {
-    selected = id;
+    store.select(id);
     render();
     showNodeOnMobile();
   } else if (selected !== null && neighbors(selected).includes(id)) {
@@ -469,7 +467,7 @@ function projection(id) {
   return selectors.projection(currentMatch(), id);
 }
 function renderFlows(svg, graph, element) {
-  const filter = $('overlay').value;
+  const filter = overlay;
   if (filter === 'none') return;
   for (const o of previewOrders()) {
     if (
@@ -595,7 +593,7 @@ function renderDashboard() {
     const select = document.createElement('button');
     select.textContent = n.id;
     select.onclick = () => {
-      selected = n.id;
+      store.select(n.id);
       switchView('map');
       showNodeOnMobile();
     };
@@ -666,7 +664,10 @@ function attachNavigation() {
       // Normal page scrolling must not zoom the map.
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
-      camera.scale = Math.max(0.3, Math.min(5, camera.scale * (e.deltaY < 0 ? 1.12 : 0.89)));
+      store.setCamera({
+        ...camera,
+        scale: Math.max(0.3, Math.min(5, camera.scale * (e.deltaY < 0 ? 1.12 : 0.89))),
+      });
       render();
     },
     { passive: false },
@@ -702,8 +703,7 @@ function attachNavigation() {
     }
     const rect = svg.getBoundingClientRect();
     const factor = svg.viewBox.baseVal.width / rect.width;
-    camera.x = drag.ox + dx * factor;
-    camera.y = drag.oy + dy * factor;
+    store.setCamera({ ...camera, x: drag.ox + dx * factor, y: drag.oy + dy * factor });
     const g = svg.querySelector('g');
     if (g)
       g.setAttribute(
@@ -772,7 +772,7 @@ function saveGame() {
   try {
     localStorage.setItem(
       SAVE_KEY,
-      JSON.stringify(GameStore.saveFromMatch(currentMatch(), selected)),
+      JSON.stringify(GameStore.saveFromMatch(currentMatch(), store.getSnapshot().ui.selected)),
     );
   } catch (e) {
     console.warn('Autosave unavailable', e);
@@ -789,7 +789,7 @@ function restoreGame() {
     $('autoConquer').checked = match.defaults.enabled;
     $('defaultReserve').value = match.defaults.reserve;
     $('defaultInvest').value = match.defaults.invest;
-    selected = save.selected ?? null;
+    store.select(save.selected ?? null);
     store.replaceMatch({ ...match, defaults: domDefaults() });
     render();
     return true;
@@ -940,7 +940,11 @@ $('cancelNewGame').onclick = () => $('newGameDialog').close();
 $('tableView').onclick = () => switchView('dashboard');
 $('mapTab').onclick = () => switchView('map');
 $('messagesTab').onclick = () => switchView('messages');
-$('overlay').onchange = render;
+$('overlay').value = overlay;
+$('overlay').onchange = () => {
+  store.setOverlay($('overlay').value);
+  render();
+};
 $('mobileSettings').onclick = () => {
   $('gameSidebar').classList.add('settings-open');
   document.body.classList.add('settings-active');
@@ -953,15 +957,15 @@ window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') $('closeMobileSettings')?.click();
 });
 $('zoomIn').onclick = () => {
-  camera.scale = Math.min(5, camera.scale * 1.25);
+  store.setCamera({ ...camera, scale: Math.min(5, camera.scale * 1.25) });
   render();
 };
 $('zoomOut').onclick = () => {
-  camera.scale = Math.max(0.3, camera.scale / 1.25);
+  store.setCamera({ ...camera, scale: Math.max(0.3, camera.scale / 1.25) });
   render();
 };
 $('fit').onclick = () => {
-  camera = { x: 0, y: 0, scale: 1 };
+  store.setCamera({ x: 0, y: 0, scale: 1 });
   render();
 };
 positionNodeDetails();

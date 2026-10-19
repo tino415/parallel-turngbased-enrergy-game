@@ -146,10 +146,8 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   document.head.append(style);
 
   const nodeDialog = byId('nodeDialog');
-  // Selection exists only while inspecting/editing a node; Focus remembers
-  // the latest inspected node independently of the active editor.
-  let lastInspectedNodeId = state.nodes[selected] ? selected : null;
-  selected = null;
+  // Selection exists only while inspecting/editing a node.
+  store.select(null);
   const oldHeader = nodeDialog.querySelector('.mobile-node-header');
   const oldClose = byId('closeNodeDialog');
   const slot = byId('nodeDetailsSlot');
@@ -195,13 +193,6 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   oldHeader.append(selectedTitle, oldClose);
   oldClose.textContent = '← Back to map';
   oldClose.onclick = () => nodeDialog.close();
-  nodeDialog.addEventListener('close', () => {
-    if (selected === null) return;
-    lastInspectedNodeId = selected;
-    selected = null;
-    // A closed editor must not leave a persistent node highlight or sidebar selection.
-    render();
-  });
   const scroll = document.createElement('div');
   scroll.className = 'ux-editor-scroll';
   const stats = document.createElement('div');
@@ -272,9 +263,6 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   const toolbar = document.querySelector('.toolbar');
   const hintZoom = toolbar.querySelector('.desktop-zoom-hint');
   if (hintZoom) hintZoom.remove();
-  // Show every planned attack and support transfer by default.
-  // Players can explicitly filter flow types without losing economy labels.
-  byId('overlay').value = 'all';
   const focusButton = document.createElement('button');
   focusButton.id = 'focusMap';
   focusButton.type = 'button';
@@ -285,7 +273,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   // Keep the game's normal renderer and engine; only change graphical overlays.
   const originalRenderFlows = renderFlows;
   renderFlows = function(svg, graph, element) {
-    const filter = byId('overlay').value;
+    const filter = overlay;
     const paths = filter === 'none' ? [] : previewOrders();
     for (const o of paths) {
       if (o.dest === null || o.dest === undefined || o.amount <= .01) continue;
@@ -313,16 +301,6 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
 
   // Existing DOM allocators and policy evaluation remain authoritative.
   positionNodeDetails = function() {};
-  showNodeOnMobile = function() {
-    if (selected !== null && !nodeDialog.open) nodeDialog.showModal();
-  };
-  clickNode = function(id) {
-    if (!state.nodes[id]) return;
-    lastInspectedNodeId = id;
-    selected = id;
-    render();
-    showNodeOnMobile();
-  };
   const originalOrders = renderOrders;
   renderOrders = function() {
     originalOrders();
@@ -377,7 +355,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
       check.onchange=()=>{ store.setBulkSelected(n.id,check.checked);syncBulk(); };
       label.append(check,document.createTextNode('Node '+n.id));
       const edit=document.createElement('button');edit.textContent='Edit →';
-      edit.onclick=()=>{selected=n.id;switchView('map');showNodeOnMobile();};
+      edit.onclick=()=>{store.select(n.id);switchView('map');showNodeOnMobile();};
       head.append(label,edit);
       const desc=document.createElement('div');desc.className='muted';
       desc.textContent='Active '+fmtUX(n.active)+' · Invested '+fmtUX(n.invested)+' · Defense '+fmtUX(p.defense)+' · Next '+fmtUX(p.next)+(softCapEnabled()?' · Capacity '+fmtUX(n.active+n.invested)+'/'+SOFT_CAP_RULES.capacity+' · Overflow loss '+fmtUX(p.overflow):'');
@@ -411,10 +389,10 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
     if (g) g.setAttribute('transform','translate('+camera.x+' '+camera.y+') scale('+camera.scale+')');
   }
   function fitCameraUX() {
-    if (!mobile()) { camera={x:0,y:0,scale:1}; render(); return; }
+    if (!mobile()) { store.setCamera({x:0,y:0,scale:1}); render(); return; }
     const [vw,vh,bw,bh]=viewBounds();
     const scale=Math.min((vw-100)/bw,(vh-120)/bh);
-    camera={x:(vw-bw*scale)/2,y:(vh-bh*scale)/2,scale:scale};
+    store.setCamera({x:(vw-bw*scale)/2,y:(vh-bh*scale)/2,scale:scale});
     render();
   }
   function focusCameraUX(id) {
@@ -422,14 +400,14 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
     if (!n || !xy[id]) return;
     const [vw,vh]=viewBounds();
     const scale=mobile()?2.35:1.75;
-    camera={x:vw/2-xy[id][0]*scale,y:vh/2-xy[id][1]*scale,scale};
+    store.setCamera({x:vw/2-xy[id][0]*scale,y:vh/2-xy[id][1]*scale,scale});
     render();
   }
   function zoomUX(factor) {
     const [vw,vh]=viewBounds();
     const next=Math.min(6,Math.max(.25,camera.scale*factor));
     factor=next/camera.scale;
-    camera={x:vw/2-(vw/2-camera.x)*factor,y:vh/2-(vh/2-camera.y)*factor,scale:next};
+    store.setCamera({x:vw/2-(vw/2-camera.x)*factor,y:vh/2-(vh/2-camera.y)*factor,scale:next});
     render();
   }
   render = function() {
@@ -442,7 +420,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
       lastMap=key;
       if(mobile() && (isFirst || state.round===1)) {
         const mine=state.nodes.find(n=>n.owner===0);
-        if(mine){const [vw,vh]=viewBounds(),scale=2.35;camera={x:vw/2-xy[mine.id][0]*scale,y:vh/2-xy[mine.id][1]*scale,scale};}
+        if(mine){const [vw,vh]=viewBounds(),scale=2.35;store.setCamera({x:vw/2-xy[mine.id][0]*scale,y:vh/2-xy[mine.id][1]*scale,scale});}
       }
     }
     redrawCamera();
@@ -514,17 +492,12 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   byId('zoomIn').onclick=()=>zoomUX(1.25);
   byId('zoomOut').onclick=()=>zoomUX(.8);
   byId('fit').onclick=fitCameraUX;
-  focusButton.onclick=()=>{
-    const id=state.nodes[lastInspectedNodeId]
-      ? lastInspectedNodeId
-      : state.nodes.find(n=>n.owner===0)?.id;
-    if(id!==undefined && id!==null)focusCameraUX(id);
-  };
   // Opening the on-screen keyboard resizes the mobile viewport. Moving
   // focused input elements between parents here blurs them and immediately
   // dismisses the keyboard; the editor is already in its final layout.
   window.addEventListener('resize', redrawCamera);
-  byId('overlay').onchange=render;
+  const renderBeforeInspector=render;
+  byId('overlay').onchange=()=>{store.setOverlay(byId('overlay').value);renderBeforeInspector();};
   byId('clearAll').onclick=()=>{store.clearAllOrders();render();};
   // The original HTML has inline-mobile navigation; the native dialogs supersede it.
   render();

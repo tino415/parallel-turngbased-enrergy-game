@@ -202,11 +202,103 @@ test('ui commands change only the ui slice and ignore repeated values', () => {
   const after = store.getSnapshot();
   assert.equal(calls.length, 4);
   assert.equal(after.match, before.match);
-  assertSameData(after.ui, {
-    view: 'dashboard',
-    clipboard: { enabled: true, reserve: 1, investPct: 9, dest: null },
-    bulkSelection: [2, 0],
-  });
+  const { view, clipboard, bulkSelection } = after.ui;
+  assertSameData(
+    { view, clipboard, bulkSelection },
+    {
+      view: 'dashboard',
+      clipboard: { enabled: true, reserve: 1, investPct: 9, dest: null },
+      bulkSelection: [2, 0],
+    },
+  );
   store.setBulkSelected(2, false);
   assertSameData(store.getSnapshot().ui.bulkSelection, [0]);
+});
+
+test('inspecting a node highlights first and edits on the second selection', () => {
+  const store = newStore();
+  store.inspectNode(0);
+  let { selected, inspector } = store.getSnapshot().ui;
+  assert.equal(selected, 0);
+  assertSameData(inspector, {
+    active: { kind: 'node', id: 0 },
+    editing: false,
+    advancedOpen: false,
+    manualOpen: false,
+    focusedNode: 0,
+  });
+  store.setInspectorSection('advancedOpen', true);
+  store.inspectNode(0);
+  ({ inspector } = store.getSnapshot().ui);
+  assert.equal(inspector.editing, true);
+  assert.equal(inspector.advancedOpen, true);
+
+  store.inspectNode(13);
+  ({ selected, inspector } = store.getSnapshot().ui);
+  assert.equal(selected, 13);
+  assertSameData(inspector, {
+    active: { kind: 'node', id: 13 },
+    editing: false,
+    advancedOpen: false,
+    manualOpen: false,
+    focusedNode: 13,
+  });
+});
+
+test('inspecting an edge selects its friendly source, which a direction change replaces', () => {
+  const store = newStore();
+  store.inspectEdge(0, 1);
+  assert.equal(store.getSnapshot().ui.selected, 0);
+  assertSameData(store.getSnapshot().ui.inspector.active, { kind: 'edge', a: 0, b: 1, source: 0 });
+  store.inspectEdge(0, 1);
+  assert.equal(store.getSnapshot().ui.inspector.editing, true);
+  store.setEdgeSource(1);
+  assert.equal(store.getSnapshot().ui.selected, 1);
+  assert.equal(store.getSnapshot().ui.inspector.active.source, 1);
+
+  store.inspectEdge(3, 6);
+  assert.equal(store.getSnapshot().ui.selected, null);
+  assert.equal(store.getSnapshot().ui.inspector.active.source, null);
+});
+
+test('an edge between friendly nodes opens in the direction of its surplus route', () => {
+  const { selectors } = loadStore(),
+    owned = (match, ids) => ({
+      ...match,
+      state: {
+        ...match.state,
+        nodes: match.state.nodes.map((n) => (ids.includes(n.id) ? { ...n, owner: 0 } : n)),
+      },
+    });
+  const store = newStore();
+  store.replaceMatch(owned(store.getSnapshot().match, [1]));
+  const match = store.getSnapshot().match;
+  assert.equal(selectors.edgeSource(match, 0, 1), 0);
+  store.routeSurplus(1, 0, true);
+  assert.equal(selectors.edgeSource(store.getSnapshot().match, 0, 1), 1);
+  store.disablePolicy(1);
+  assert.equal(selectors.edgeSource(store.getSnapshot().match, 0, 1), 1);
+});
+
+test('dismissing clears selection and editing but keeps focus and section state', () => {
+  const store = newStore();
+  store.inspectNode(0);
+  store.inspectNode(0);
+  store.setInspectorSection('manualOpen', true);
+  store.dismissInspector();
+  const { selected, inspector } = store.getSnapshot().ui;
+  assert.equal(selected, null);
+  assertSameData(inspector, {
+    active: null,
+    editing: false,
+    advancedOpen: false,
+    manualOpen: true,
+    focusedNode: 0,
+  });
+  const before = store.getSnapshot();
+  store.dismissInspector();
+  store.editSelectedNode();
+  store.setCamera({ x: 0, y: 0, scale: 1 });
+  store.setOverlay('all');
+  assert.equal(store.getSnapshot(), before);
 });
