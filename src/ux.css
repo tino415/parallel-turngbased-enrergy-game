@@ -50,8 +50,7 @@ header > div:last-child {
   white-space: nowrap;
   font-size: 12px;
 }
-header .primary,
-.ux-primary {
+header .primary {
   background: #387dcc;
   border-color: #579eec;
   color: white;
