@@ -129,50 +129,64 @@
     manualHold,
     neighbors,
     owners,
-    actives,
     source,
   }) {
     if (!policyApplies(policy, node, manualHold)) return { orders: [], next: policy };
     const floor = shrunkDefenseFloor(policy);
-    const banked = pressureActive(policy)
-      ? Math.min(pressureBank(policy), Math.max(0, node.active - manualSpent - floor))
-      : 0;
-    const surplus = Math.max(0, node.active - manualSpent - floor - banked);
-    const shares = policyShares(policy);
+    const edges = pressuredEdges(policy, neighbors);
+    const banks = clampedBanks(edges, Math.max(0, node.active - manualSpent - floor));
+    const surplus = Math.max(0, node.active - manualSpent - floor - total(banks));
+    const shares = policyShares(policy, edges);
     const growth = Math.min((surplus * shares.defense) / 100, defenseRoom(policy, floor));
     const invest = Math.min(
       (surplus * shares.invest) / 100,
       investmentRoom(policy, node.invested + manualInvest, manualWithdraw),
     );
-    const target = pressureActive(policy)
-      ? pressureTargetFor({ policy, neighbors, owners, actives })
-      : null;
-    const share = target === null ? 0 : (surplus * shares.pressure) / 100;
-    const pulse =
-      target !== null && banked + share >= pressureMinimum(policy) - TARGET_EPSILON
-        ? banked + share
-        : 0;
+    const pulses = edges.map((edge, i) => {
+      const share = owners[edge.dest] === 0 ? 0 : (surplus * shares.pressure[i]) / 100;
+      const amount = banks[i] + share;
+      const fires = owners[edge.dest] !== 0 && amount >= edge.min - TARGET_EPSILON;
+      return { dest: edge.dest, share, amount: fires ? amount : 0, bank: fires ? 0 : amount };
+    });
     const transfer =
       policy.dest !== null && neighbors.includes(policy.dest) && owners[policy.dest] === 0
-        ? surplus - growth - invest - share
+        ? surplus - growth - invest - total(pulses.map((pulse) => pulse.share))
         : 0;
-    const orders = policyOrders({ source, policy, invest, transfer, pulse, target });
+    const orders = policyOrders({ source, policy, invest, transfer, pulses });
     let next = policy;
     if (hasDefenseTarget(policy)) next = { ...next, reserve: floor + growth };
-    if (pressureActive(policy) || pressureBank(policy) > 0)
-      next = { ...next, pressureBank: pulse > 0 ? 0 : banked + share };
+    if (policy.pressure)
+      next = {
+        ...next,
+        pressure: Object.fromEntries(
+          edges.map((edge, i) => [edge.dest, { ...edge.settings, bank: pulses[i].bank }]),
+        ),
+      };
     return { orders, next };
   }
 
-  function pressureTargetFor({ policy, neighbors, owners, actives }) {
-    const eligible = neighbors.filter(
-      (id) => owners[id] !== 0 && (owners[id] !== null || policy.pressureNeutral === true),
-    );
-    if (eligible.includes(policy.pressureTarget)) return policy.pressureTarget;
-    return eligible.sort((a, b) => actives[a] - actives[b] || a - b)[0] ?? null;
+  function pressuredEdges(policy, neighbors) {
+    return Object.entries(policy.pressure ?? {})
+      .map(([dest, settings]) => ({
+        dest: Number(dest),
+        settings,
+        pct: Math.min(100, finitePositive(settings?.pct, 0)),
+        min: finitePositive(settings?.min, 10),
+        bank: finitePositive(settings?.bank, 0),
+      }))
+      .filter((edge) => edge.pct > 0 && neighbors.includes(edge.dest));
   }
 
-  function policyOrders({ source, policy, invest, transfer, pulse = 0, target = null }) {
+  function clampedBanks(edges, available) {
+    let left = available;
+    return edges.map((edge) => {
+      const bank = Math.min(edge.bank, left);
+      left -= bank;
+      return bank;
+    });
+  }
+
+  function policyOrders({ source, policy, invest, transfer, pulses = [] }) {
     const result = [];
     if (invest > 1e-9)
       result.push({ source, type: 'invest', amount: invest, dest: null, automatic: true });
@@ -184,8 +198,15 @@
         dest: policy.dest,
         automatic: true,
       });
-    if (pulse > 1e-9)
-      result.push({ source, type: 'attack', amount: pulse, dest: target, automatic: true });
+    for (const pulse of pulses)
+      if (pulse.amount > 1e-9)
+        result.push({
+          source,
+          type: 'attack',
+          amount: pulse.amount,
+          dest: pulse.dest,
+          automatic: true,
+        });
     return result;
   }
 
@@ -233,24 +254,22 @@
 
   const finitePositive = (value, fallback) =>
     Number.isFinite(value) && value > 0 ? value : fallback;
-  const pressurePct = (policy) => Math.min(100, finitePositive(policy.pressurePct, 0));
-  const pressureActive = (policy) => pressurePct(policy) > 0;
-  const pressureBank = (policy) => finitePositive(policy.pressureBank, 0);
-  const pressureMinimum = (policy) => finitePositive(policy.pressureMin, 10);
+  const total = (values) => values.reduce((sum, value) => sum + value, 0);
 
-  function policyShares(policy) {
+  function policyShares(policy, edges) {
     const shares = {
       invest: policy.investPct,
       defense: defensePct(policy),
-      pressure: pressurePct(policy),
+      pressure: edges.map((edge) => edge.pct),
     };
-    const added = shares.defense + shares.pressure;
-    const total = shares.invest + added;
-    if (added === 0 || total <= 100) return shares;
+    const added = shares.defense + total(shares.pressure);
+    const all = shares.invest + added;
+    if (added === 0 || all <= 100) return shares;
+    const scale = (share) => (share * 100) / all;
     return {
-      invest: (shares.invest * 100) / total,
-      defense: (shares.defense * 100) / total,
-      pressure: (shares.pressure * 100) / total,
+      invest: scale(shares.invest),
+      defense: scale(shares.defense),
+      pressure: shares.pressure.map(scale),
     };
   }
 
@@ -571,7 +590,6 @@
           manualHold: Boolean(orders[source]?.hold),
           neighbors: neighbors(source),
           owners: nodes.map((n) => n.owner),
-          actives: state.nodes.map((n) => n.active),
         }),
       }));
     const automatic = policyPlans.flatMap((plan) => plan.orders);
@@ -741,7 +759,6 @@
     buildMap,
     evaluatePolicy,
     planPolicy,
-    pressureTargetFor,
     policyWithdrawal,
     forecast,
     aiOrders,

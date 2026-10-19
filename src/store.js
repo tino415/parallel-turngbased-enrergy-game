@@ -195,7 +195,6 @@
       manualHold: Boolean(p.hold),
       neighbors: neighbors(match, source),
       owners: match.state.nodes.map((n) => n.owner),
-      actives: match.state.nodes.map((n) => n.active),
       source,
     });
   }
@@ -212,21 +211,16 @@
     };
   }
 
-  function pressureStatus(match, source) {
-    const policy = match.policies[source];
-    if (!(policy?.pressurePct > 0)) return null;
+  function edgePressureStatus(match, source, dest) {
+    const settings = match.policies[source]?.pressure?.[dest];
+    if (!settings) return null;
     const { orders, next } = policyPlan(match, source);
     return {
-      bank: policy.pressureBank ?? 0,
-      nextBank: next.pressureBank,
-      minimum: policy.pressureMin ?? 10,
-      target: GameEngine.pressureTargetFor({
-        policy,
-        neighbors: neighbors(match, source),
-        owners: match.state.nodes.map((n) => n.owner),
-        actives: match.state.nodes.map((n) => n.active),
-      }),
-      pulse: orders.find((o) => o.type === 'attack')?.amount ?? 0,
+      pct: settings.pct,
+      bank: settings.bank ?? 0,
+      nextBank: next.pressure?.[dest]?.bank ?? settings.bank ?? 0,
+      minimum: settings.min ?? 10,
+      pulse: orders.find((o) => o.type === 'attack' && o.dest === dest)?.amount ?? 0,
     };
   }
 
@@ -381,15 +375,14 @@
     divestPct: (value) => Number.isFinite(value) && value >= 0 && value <= 100,
     defenseTarget: (value) => value === null || (Number.isFinite(value) && value >= 0),
     defensePct: (value) => Number.isFinite(value) && value >= 0 && value <= 100,
-    pressurePct: (value) => Number.isFinite(value) && value >= 0 && value <= 100,
-    pressureMin: (value) => Number.isFinite(value) && value > 0,
-    pressureNeutral: (value) => typeof value === 'boolean',
-    pressureTarget: (value, match, source) =>
-      value === null || (neighbors(match, source).includes(value) && !isOwn(match, value)),
   };
-  const addedShares = (policy) => (policy.defensePct ?? 0) + (policy.pressurePct ?? 0);
+  const pressureShares = (policy) =>
+    sum(Object.values(policy.pressure ?? {}).map((edge) => edge.pct));
+  const addedShares = (policy) => (policy.defensePct ?? 0) + pressureShares(policy);
   const sharesFit = (policy) =>
     addedShares(policy) === 0 || policy.investPct + addedShares(policy) <= 100;
+  const isPressurable = (match, source, dest) =>
+    neighbors(match, source).includes(dest) && !isOwn(match, dest);
 
   function changePolicy(match, source, key, value) {
     if (Object.hasOwn(policyFieldValid, key) && !policyFieldValid[key](value, match, source))
@@ -398,22 +391,19 @@
     return sharesFit(policy) ? withPolicy(match, source, policy) : match;
   }
 
-  function pressureFrom(match, source, target, enabled) {
+  function setEdgePressure(match, source, dest, fields) {
+    if (!isOwn(match, source) || !isPressurable(match, source, dest)) return match;
     const current = { ...defaultPolicy(), ...match.policies[source] };
-    if (!enabled) {
-      if (match.policies[source]?.pressureTarget !== target) return match;
-      return withPolicy(match, source, { ...current, pressurePct: 0, pressureTarget: null });
+    const pressure = { ...current.pressure };
+    if (fields === null) {
+      if (!pressure[dest]) return match;
+      delete pressure[dest];
+      return withPolicy(match, source, { ...current, pressure });
     }
-    const enemy = match.state.nodes[target]?.owner;
-    if (!isOwn(match, source) || !neighbors(match, source).includes(target)) return match;
-    if (enemy === 0 || enemy === null || enemy === undefined) return match;
-    const policy = {
-      ...current,
-      enabled: true,
-      pressureTarget: target,
-      pressurePct: current.pressurePct > 0 ? current.pressurePct : 10,
-      pressureMin: current.pressureMin ?? 10,
-    };
+    const edge = { pct: 10, min: 10, ...pressure[dest], ...fields };
+    const pctValid = Number.isFinite(edge.pct) && edge.pct > 0 && edge.pct <= 100;
+    if (!pctValid || !(Number.isFinite(edge.min) && edge.min > 0)) return match;
+    const policy = { ...current, enabled: true, pressure: { ...pressure, [dest]: edge } };
     return sharesFit(policy) ? withPolicy(match, source, policy) : match;
   }
 
@@ -437,11 +427,12 @@
         ? copied.dest
         : null;
     const pasted = { ...copied, dest };
-    if ('pressureBank' in copied) pasted.pressureBank = 0;
-    if ('pressureTarget' in copied && copied.pressureTarget !== null)
-      pasted.pressureTarget = policyFieldValid.pressureTarget(copied.pressureTarget, match, source)
-        ? copied.pressureTarget
-        : null;
+    if (copied.pressure)
+      pasted.pressure = Object.fromEntries(
+        Object.entries(copied.pressure)
+          .filter(([target]) => isPressurable(match, source, Number(target)))
+          .map(([target, edge]) => [target, { ...edge, bank: 0 }]),
+      );
     return withPolicy(match, source, pasted);
   }
 
@@ -714,7 +705,7 @@
       disablePolicy: onMatch(disablePolicy),
       pastePolicy: onMatch(pastePolicy),
       routeSurplus: onMatch(routeSurplus),
-      pressureFrom: onMatch(pressureFrom),
+      setEdgePressure: onMatch(setEdgePressure),
       applyBulkPolicy: onMatch(applyBulkPolicy),
       applyBulkInvestment: onMatch(applyBulkInvestment),
       setDefaults: onMatch(setDefaults),
@@ -791,7 +782,7 @@
       disablePolicy,
       pastePolicy,
       routeSurplus,
-      pressureFrom,
+      setEdgePressure,
       applyBulkPolicy,
       applyBulkInvestment,
       applyGroupPolicyField,
@@ -821,7 +812,7 @@
       policyOrders,
       investmentStatus,
       defenseStatus,
-      pressureStatus,
+      edgePressureStatus,
       previewOrders,
       projection,
       replacedSupport,
