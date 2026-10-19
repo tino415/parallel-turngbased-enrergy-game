@@ -3,6 +3,7 @@
 // detached simulation-only economy adapter.
 import assert from 'node:assert/strict';
 import { engine } from '../tests/support/simulation.mjs';
+import { roundOrdersFromPlan } from '../tests/support/live-economy.mjs';
 
 const args = Object.fromEntries(
   process.argv.slice(2).map((item) => {
@@ -46,33 +47,10 @@ function play(version, index) {
       version === 2
         ? engine.economicAI(before.nodes, map.links, true)
         : { orders: engine.aiOrders(before.nodes, map.links, true), withdrawals: {} };
-    const orders = {};
-    const aiOrdersOverride = [];
-    const aiWithdrawalsOverride = {};
-    for (const [rawId, choice] of Object.entries(plan.orders)) {
-      const source = Number(rawId);
-      const options = Array.isArray(choice) ? choice : [choice];
-      if (before.nodes[source].owner === 0) {
-        const manual = {
-          withdraw: plan.withdrawals[source] ?? 0,
-          invest: 0,
-          edges: {},
-        };
-        for (const action of options) {
-          if (action.type === 'invest') manual.invest += action.amount;
-          else manual.edges[action.dest] = (manual.edges[action.dest] ?? 0) + action.amount;
-        }
-        orders[source] = manual;
-      } else {
-        aiOrdersOverride.push(...options);
-        if (plan.withdrawals[source]) aiWithdrawalsOverride[source] = plan.withdrawals[source];
-      }
-    }
-    for (const [source, amount] of Object.entries(plan.withdrawals)) {
-      if (before.nodes[Number(source)].owner === 0 && !orders[source]) {
-        orders[source] = { withdraw: amount, invest: 0, edges: {} };
-      }
-    }
+    const { orders, aiOrdersOverride, aiWithdrawalsOverride } = roundOrdersFromPlan(
+      plan,
+      before.nodes,
+    );
     const result = engine.resolveRound({
       state: before,
       playerCount: players,

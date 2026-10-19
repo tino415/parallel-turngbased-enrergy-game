@@ -14,7 +14,8 @@ store.subscribe(({ match, ui }, previous) => {
 const currentMatch = () => store.getSnapshot().match;
 const neighbors = (i) => selectors.neighbors(currentMatch(), i);
 const $ = (id) => document.getElementById(id),
-  fmt = (v) => v.toFixed(1);
+  { compactEnergy, exactEnergy } = EnergyFormat,
+  fmt = exactEnergy;
 let selected = null,
   camera = { x: 0, y: 0, scale: 1 };
 const softCapEnabled = () => selectors.softCapEnabled(currentMatch());
@@ -440,14 +441,14 @@ function renderFlows(svg, graph, element) {
       },
       graph,
     );
-    label.textContent = fmt(o.amount);
+    label.textContent = compactEnergy(o.amount);
   }
   for (const n of state.nodes) {
     if (n.owner !== 0) continue;
     const p = projection(n.id),
       [x, y] = xy[n.id];
     const t = element('text', { x, y: y + 53, 'font-size': 12, fill: '#92ebc9' }, graph);
-    t.textContent = '+' + fmt(p.income) + ' / I ' + fmt(p.invest);
+    t.textContent = '+' + compactEnergy(p.income) + ' / I ' + compactEnergy(p.invest);
   }
 }
 function renderDashboard() {
@@ -754,6 +755,7 @@ function render() {
   for (const n of nodes) {
     const [x, y] = xy[n.id],
       group = element('g', {}, graph);
+    element('title', {}, group).textContent = nodeTooltip(n);
     const cir = element(
       'circle',
       {
@@ -764,17 +766,26 @@ function render() {
         // The modal identifies the node under inspection; a map selection
         // ring would be hidden behind that modal and adds no useful feedback.
         class: 'node node-hit' + (orders[n.id] ? ' node-ordered' : ''),
+        'data-node': n.id,
+        tabindex: 0,
+        role: 'button',
+        'aria-label': 'Select node ' + n.id,
       },
       group,
     );
     const t = element('text', { x, y: y + 2, 'font-size': 17 }, group);
-    t.textContent = fmt(n.active);
+    t.textContent = compactEnergy(n.active);
     const t2 = element('text', { x, y: y + 18, 'font-size': 10 }, group);
-    t2.textContent = 'I ' + fmt(n.invested);
+    t2.textContent = 'I ' + compactEnergy(n.invested);
     const t3 = element('text', { x, y: y - 40, 'font-size': 12 }, group);
     t3.textContent = n.id;
     group.style.cursor = 'pointer';
     group.addEventListener('click', () => clickNode(n.id));
+    cir.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      clickNode(n.id);
+    });
   }
   let selectedNode = selected === null ? null : nodes[selected];
   $('selectedTitle').textContent = selectedNode ? 'Node ' + selected : 'Select a blue node';
@@ -806,6 +817,14 @@ function render() {
     $('log').append(entry);
   }
   setActiveTab();
+}
+function nodeTooltip(n) {
+  const lines = ['Node ' + n.id, 'Active ' + fmt(n.active), 'Invested ' + fmt(n.invested)];
+  if (n.owner === 0) {
+    const p = projection(n.id);
+    lines.push('Next round income +' + fmt(p.income), 'Next round investment ' + fmt(p.invest));
+  }
+  return lines.join('\n');
 }
 $('clearAll').onclick = () => {
   store.clearAllOrders();
