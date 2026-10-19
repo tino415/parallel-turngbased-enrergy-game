@@ -11,7 +11,6 @@ body > header > div:first-child,
 #reset,
 #mobileSettings,
 #uxReviewHead,
-#gameSidebar,
 .ux-map-heading > div:first-child,
 .map-explanation {
   display: none !important;
