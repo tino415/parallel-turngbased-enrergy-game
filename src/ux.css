@@ -452,66 +452,6 @@ header .primary {
 .ux-dock {
   display: none;
 }
-#dashboard {
-  max-height: unset;
-  overflow: visible;
-}
-#dashboard h3 {
-  margin-top: 5px;
-}
-#dashboard > .policy-box {
-  display: flex;
-  align-items: end;
-  flex-wrap: wrap;
-  gap: 9px;
-}
-#dashboard > .policy-box label {
-  margin: 0;
-  flex: 1 1 130px;
-}
-#dashboard > .policy-box button {
-  min-height: 39px;
-}
-#dashboard > .policy-box hr {
-  display: none;
-}
-#dashboard > table {
-  display: table;
-  width: 100%;
-  font-size: 12px;
-}
-#dashboard th {
-  position: sticky;
-  top: 0;
-  background: #243a55;
-  white-space: nowrap;
-}
-#dashboard td {
-  white-space: nowrap;
-}
-#dashboard .ux-summary {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 9px;
-  margin: 12px 0;
-}
-#dashboard .ux-summary > div {
-  padding: 13px;
-  border: 1px solid #3c5672;
-  background: #1a3049;
-  border-radius: 10px;
-}
-#dashboard .ux-summary strong {
-  display: block;
-  font-size: 22px;
-}
-#dashboard .ux-summary span {
-  font-size: 11px;
-  color: #a8bed8;
-}
-#dashboard .ux-node-cards {
-  display: none;
-}
 #messagesView .log {
   max-height: 65vh;
 }
@@ -696,41 +636,6 @@ header .primary {
     max-width: none;
     border: 0;
     border-radius: 0;
-  }
-  #dashboard > .policy-box {
-    display: block;
-  }
-  #dashboard > .policy-box label,
-  #dashboard > .policy-box button {
-    margin: 8px 0;
-    width: 100%;
-  }
-  #dashboard > table {
-    display: none;
-  }
-  #dashboard .ux-node-cards {
-    display: grid;
-    gap: 9px;
-  }
-  #dashboard .ux-node-card {
-    background: #1a304a;
-    border: 1px solid #3b5572;
-    padding: 12px;
-    border-radius: 10px;
-  }
-  #dashboard .ux-node-card header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: transparent;
-    border: 0;
-    padding: 0;
-  }
-  #dashboard .ux-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  #dashboard .ux-node-card button {
-    font-size: 12px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

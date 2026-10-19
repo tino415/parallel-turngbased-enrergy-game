@@ -181,6 +181,27 @@ test('Shift+Enter toggles a focused node and Escape leaves the group', async ({ 
   expect((await ui(page)).bulkSelection).toEqual([]);
 });
 
+test('a keyboard-only player selects several nodes and edits one of them', async ({ page }) => {
+  await giveBlue(page, { 1: {}, 2: {} });
+  await node(page, 0).focus();
+  await page.keyboard.press('Shift+Enter');
+  for (const id of [1, 2]) {
+    await node(page, id).focus();
+    await page.keyboard.press('Enter');
+  }
+  await groupBar(page).getByRole('button', { name: 'Edit' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(inspector(page)).toContainText('Group · 3 nodes');
+  for (const id of [0, 1, 2])
+    await expect(
+      inspector(page).getByRole('button', { name: `Edit node ${id} alone` }),
+    ).toBeVisible();
+  await inspector(page).getByRole('button', { name: 'Edit node 2 alone' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(inspector(page)).toContainText('Node 2');
+  await expect(page.locator('#tacticalPolicyPercent')).toBeVisible();
+});
+
 test('an empty-map tap keeps the group and Done leaves it', async ({ page }) => {
   await giveBlue(page, { 1: {} });
   await openGroup(page, [0, 1]);

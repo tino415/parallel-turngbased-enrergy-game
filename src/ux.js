@@ -121,62 +121,6 @@
     }
   };
 
-  const bulkSelected = (id) => store.getSnapshot().ui.bulkSelection.includes(id);
-  const originalDashboard = renderDashboard;
-  renderDashboard = function() {
-    originalDashboard();
-    if (currentView !== 'dashboard') return;
-    // Bulk policy edits should not erase existing transfer destinations.
-    byId('bulkApply').onclick=()=>{
-      const reserve=Math.max(0,Number(byId('bulkReserve').value)||0);
-      const investPct=Math.max(0,Math.min(100,Number(byId('bulkInvest').value)||0));
-      const chosen=store.getSnapshot().ui.bulkSelection.filter(id=>state.nodes[id]?.owner===0);
-      if(!chosen.length) {byId('bulkApply').title='Select nodes first';return;}
-      store.applyBulkPolicy(chosen,reserve,investPct);
-      render();
-    };
-    const dash = byId('dashboard');
-    const mine = state.nodes.filter(n => n.owner === 0);
-    const energy = mine.reduce((a,n) => a+n.active,0);
-    const invested = mine.reduce((a,n) => a+n.invested,0);
-    const defense = mine.reduce((a,n) => a+projection(n.id).defense,0);
-    const summary = document.createElement('div');
-    summary.className = 'ux-summary';
-    [[ 'Your nodes', mine.length ],[ 'Active energy', fmtUX(energy) ],[ 'Invested',fmtUX(invested) ],[ 'Defense preview',fmtUX(defense) ]].forEach(([label,v])=>{
-      const item=document.createElement('div');
-      const title=document.createElement('span');title.textContent=label;
-      const value=document.createElement('strong');value.textContent=v;
-      item.append(title,value);summary.append(item);
-    });
-    dash.querySelector('h3').after(summary);
-    const cards = document.createElement('div');
-    cards.className = 'ux-node-cards';
-    for (const n of mine) {
-      const p=projection(n.id), card=document.createElement('article');
-      card.className='ux-node-card';
-      const head=document.createElement('div');
-      head.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px';
-      const label=document.createElement('label');
-      label.style.cssText='display:flex;align-items:center;gap:8px';
-      const check=document.createElement('input');check.type='checkbox';check.checked=bulkSelected(n.id);
-      check.onchange=()=>{ store.setBulkSelected(n.id,check.checked);syncBulk(); };
-      label.append(check,document.createTextNode('Node '+n.id));
-      const edit=document.createElement('button');edit.textContent='Edit →';
-      edit.onclick=()=>{store.select(n.id);switchView('map');showNodeOnMobile();};
-      head.append(label,edit);
-      const desc=document.createElement('div');desc.className='muted';
-      desc.textContent='Active '+fmtUX(n.active)+' · Invested '+fmtUX(n.invested)+' · Defense '+fmtUX(p.defense)+' · Next '+fmtUX(p.next)+(softCapEnabled()?' · Capacity '+fmtUX(n.active+n.invested)+'/'+SOFT_CAP_RULES.capacity+' · Overflow loss '+fmtUX(p.overflow):'');
-      desc.style.cssText='font-size:12px;line-height:1.7;margin-top:8px';
-      card.append(head,desc);cards.append(card);
-    }
-    dash.append(cards);
-    dash.querySelectorAll('.bulk-node').forEach(c => {c.checked=bulkSelected(Number(c.dataset.node));c.addEventListener('change',()=>{store.setBulkSelected(Number(c.dataset.node),c.checked);syncBulk();});});
-    function syncBulk() {
-      dash.querySelectorAll('.bulk-node').forEach(c=>{c.checked=bulkSelected(Number(c.dataset.node));});
-      cards.querySelectorAll('input[type=checkbox]').forEach((c,i)=>{c.checked=bulkSelected(mine[i].id);});
-    }
-  };
-
   let lastMap = '';
   const originalRender = render;
   function worldBounds() {

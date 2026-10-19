@@ -20,7 +20,6 @@ test('camera, view, flow filter and inspector changes do not write the save', as
   await page.locator('#fit').click();
   await page.locator('#focusMap').click();
   await page.locator('#overlay').selectOption('manual');
-  await page.locator('#tableView').click();
   await page.locator('#messagesTab').click();
   await page.locator('#mapTab').click();
   expect(await saveWrites(page)).toBe(0);

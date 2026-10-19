@@ -245,7 +245,7 @@ test('two-finger pinch zooms the map without switching modes', async ({ page }, 
   await expect.poll(() => page.evaluate(() => camera.scale)).toBeGreaterThan(previousScale);
 });
 
-test('compact map layout retains Settings, Orders and Dashboard', async ({ page }, testInfo) => {
+test('compact map layout retains Settings, Orders and node groups', async ({ page }, testInfo) => {
   await expect(page.locator('#gameSidebar')).toBeHidden();
   await expect(page.locator('#score')).toBeVisible();
   if (testInfo.project.name.startsWith('mobile')) {
@@ -258,13 +258,13 @@ test('compact map layout retains Settings, Orders and Dashboard', async ({ page 
   await page.locator('#tacticalMenu button').filter({ hasText: 'Settings' }).click();
   await expect(page.locator('#uxSettingsDialog #autoConquer')).toBeVisible();
   await page.locator('#uxSettingsDialog .ux-dialog-close').click();
-  await page.locator('#tableView').click();
-  await expect(page.locator('#dashboard')).toBeVisible();
-  if (testInfo.project.name.startsWith('mobile')) {
-    await expect(page.locator('#dashboard .ux-node-cards .ux-node-card').first()).toBeVisible();
-  } else {
-    await expect(page.locator('#dashboard table')).toBeVisible();
-  }
+  if (testInfo.project.name.startsWith('mobile')) await page.locator('#uxDockSelect').click();
+  else
+    await page
+      .locator('#map .node-hit[fill="#3278c8"]')
+      .first()
+      .click({ modifiers: ['Shift'] });
+  await expect(page.locator('#tacticalGroupBar')).toBeVisible();
 });
 
 test('mobile bottom actions stay reachable and the page itself never scrolls', async ({
@@ -326,9 +326,6 @@ test('mobile bottom actions stay reachable and the page itself never scrolls', a
   await expect(inspector.getByRole('button', { name: 'Resolve →' })).toHaveCount(0);
   await expectLockedViewport();
 
-  await page.locator('#tableView').click();
-  await expect(page.locator('#dashboard')).toBeVisible();
-  await expectLockedViewport();
   await page.locator('#messagesTab').click();
   await expect(page.locator('#messagesView')).toBeVisible();
   await expectLockedViewport();

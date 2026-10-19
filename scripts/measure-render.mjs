@@ -99,7 +99,6 @@ async function measureInteractions(page, prepareMap, touch) {
       await page.keyboard.up('Control');
     });
   await step('camera: fit button', () => page.locator('#fit').click());
-  await step('view: dashboard tab', () => page.locator('#tableView').click());
   await step('view: messages tab', () => page.locator('#messagesTab').click());
   await step('view: map tab', () => page.locator('#mapTab').click());
   await step('view: flow filter', () => page.locator('#overlay').selectOption('manual'));
@@ -173,7 +172,7 @@ function installRenderCounters() {
     'renderPolicyEditor',
     'renderOrders',
     'renderFlows',
-    'renderDashboard',
+    'renderViews',
     'saveGame',
     'previewOrders',
     'policyOrders',

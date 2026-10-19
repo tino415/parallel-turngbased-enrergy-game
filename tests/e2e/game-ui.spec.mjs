@@ -7,8 +7,6 @@ test.beforeEach(async ({ page }) => {
 test('main views can be opened without losing state', async ({ page }, testInfo) => {
   await expect(page.locator('#score')).toContainText('Round');
   const before = await page.locator('#score').innerText();
-  await page.locator('#tableView').click();
-  await expect(page.locator('#dashboard')).toBeVisible();
   await page.locator('#messagesTab').click();
   await expect(page.locator('#messagesView')).toBeVisible();
   await page.locator('#mapTab').click();

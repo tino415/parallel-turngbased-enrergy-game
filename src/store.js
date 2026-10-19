@@ -442,12 +442,6 @@
     return withPolicy(match, source, { ...match.policies[source], dest: null });
   }
 
-  function applyBulkPolicy(match, ids, reserve, investPct) {
-    return ids
-      .filter((id) => isOwn(match, id))
-      .reduce((next, id) => enablePolicyWith(next, id, { reserve, investPct }), match);
-  }
-
   const GROUP_FIELDS = [
     'enabled',
     'investPct',
@@ -487,21 +481,27 @@
 
   function applyGroupPolicyField(match, ids, key, value) {
     const rejected = [];
-    const next = ids.reduce((current, id) => {
-      const changed = changePolicy(current, id, key, value);
-      if (changed === current) rejected.push(id);
-      return changed;
-    }, match);
+    const next = ids
+      .filter((id) => isOwn(match, id))
+      .reduce((current, id) => {
+        const changed = changePolicy(current, id, key, value);
+        if (changed === current) rejected.push(id);
+        return changed;
+      }, match);
     return rejected.length ? { match, rejected } : { match: next, rejected };
   }
 
   function investOnEach(match, ids, amount) {
     const fits = (id) => isOwn(match, id) && amount <= investBudget(match, id) + 1e-8;
-    return {
-      match: applyBulkInvestment(match, ids.filter(fits), amount),
-      skipped: ids.filter((id) => !fits(id)),
-    };
+    const next = ids.filter(fits).reduce((current, id) => {
+      const p = plan(current, id);
+      return withOrder(current, id, { ...p, edges: { ...p.edges }, invest: amount });
+    }, match);
+    return { match: next, skipped: ids.filter((id) => !fits(id)) };
   }
+
+  const investBudget = (match, id) =>
+    availableEnergy(match, id) - sum(Object.values(plan(match, id).edges));
 
   const ownPolicies = (match, ids, change) =>
     ids
@@ -516,17 +516,6 @@
   const clearGroupOrders = (match, ids) => ids.reduce(clearNodeOrders, match);
   const pasteGroupPolicy = (match, ids, copied) =>
     ids.filter((id) => isOwn(match, id)).reduce((next, id) => pastePolicy(next, id, copied), match);
-
-  const investBudget = (match, id) =>
-    availableEnergy(match, id) - sum(Object.values(plan(match, id).edges));
-
-  function applyBulkInvestment(match, ids, amount) {
-    return ids.reduce((next, id) => {
-      if (amount > investBudget(next, id) + 1e-8) return next;
-      const current = plan(next, id);
-      return withOrder(next, id, { ...current, edges: { ...current.edges }, invest: amount });
-    }, match);
-  }
 
   function setDefaults(match, defaults) {
     return { ...match, defaults: { ...match.defaults, ...defaults } };
@@ -696,8 +685,6 @@
       pastePolicy: onMatch(pastePolicy),
       routeSurplus: onMatch(routeSurplus),
       setEdgePressure: onMatch(setEdgePressure),
-      applyBulkPolicy: onMatch(applyBulkPolicy),
-      applyBulkInvestment: onMatch(applyBulkInvestment),
       setDefaults: onMatch(setDefaults),
       resolve(rng) {
         commit('match', resolve(snapshot.match, rng));
@@ -728,10 +715,6 @@
       },
       setView: (view) => setUi('view', view),
       copyPolicy: (policy) => setUi('clipboard', { ...policy }),
-      setBulkSelected(id, selected) {
-        if (snapshot.ui.bulkSelection.includes(id) !== selected)
-          setUi('bulkSelection', bulkSelectionWith(id, selected));
-      },
       setOverlay: (overlay) => setUi('overlay', overlay),
       select: (id) => setUi('selected', id),
       setCamera: (camera) => setUi('camera', camera),
@@ -774,8 +757,6 @@
       pastePolicy,
       routeSurplus,
       setEdgePressure,
-      applyBulkPolicy,
-      applyBulkInvestment,
       applyGroupPolicyField,
       investOnEach,
       clearGroupDestinations,

@@ -67,7 +67,6 @@ test('UI-only interactions leave game state and RNG untouched', async ({ page },
     await page.locator('#overlay').selectOption(filter);
   }
 
-  await page.locator('#tableView').click();
   await page.locator('#messagesTab').click();
   await page.locator('#mapTab').click();
 

@@ -11,8 +11,8 @@ earlier ones.
 | `store.js`       | All match and interface state, commands, selectors, subscriptions       | no              |
 | `format.js`      | Energy number formatting                                                | no              |
 | `game.js`        | The base renderer, map navigation, save and restore, the global mirrors | yes             |
-| `ux.js`          | Layout, dialogs, side panel, dock, dashboard cards, camera fitting      | yes             |
-| `tactical-ui.js` | Map selection, the contextual inspector, pinch zoom, the ☰ menu        | yes             |
+| `ux.js`          | Layout, dialogs, side panel, dock, camera fitting                       | yes             |
+| `tactical-ui.js` | Map selection and node groups, the inspector, pinch zoom, the ☰ menu   | yes             |
 
 ## State ownership
 
@@ -33,7 +33,7 @@ command really changes it.
 | flow filter                                            | `ui.overlay`       | no    | `setOverlay`                        |
 | camera (`x`, `y`, `scale`)                             | `ui.camera`        | no    | `setCamera`                         |
 | policy clipboard                                       | `ui.clipboard`     | no    | `copyPolicy`                        |
-| node group (map multi-select, dashboard checkboxes)    | `ui.bulkSelection` | no    | group commands, `resolve`²          |
+| node group selected on the map                         | `ui.bulkSelection` | no    | group commands, `resolve`²          |
 | group mode on the map                                  | `ui.groupMode`     | no    | `setGroupMode`, `leaveGroupMode`    |
 | group editor open                                      | `ui.groupEditing`  | no    | `setGroupEditing`, `leaveGroupMode` |
 | inspector target, editing, open sections, focused node | `ui.inspector`     | no    | inspector commands                  |
@@ -49,8 +49,7 @@ no other code reads it: drag and click suppression (`game.js`), pinch fingers
 and the long-press timer (`tactical-ui.js`), the map key behind mobile
 auto-focus (`ux.js`) and the round counter that closes the inspector after a
 resolve (`tactical-ui.js`). Form drafts stay in their inputs and are read once
-on submit: the new-game dialog and the dashboard bulk reserve, invest and
-manual amount.
+on submit: the new-game dialog and the group's invest-on-each amount.
 
 ## Contract
 
@@ -81,9 +80,9 @@ the store existed, so no render runs that did not run before. `render` is
 replaced in load order, and each layer calls the previous one:
 
 1. `game.js` draws the SVG map, score, allocator, policy editor, order list,
-   dashboard table, log and tab state.
+   log and tab state.
 2. `ux.js` adds the camera viewBox, side panel, dock counts, editor stats,
-   budget bar and dashboard summary and cards.
+   budget bar and income labels.
 3. `tactical-ui.js` adds edge hit areas, selection and group rings, the group
    bar and the inspector for one node, one edge or the node group, which it
    updates in place to keep drafts and focus.
@@ -91,15 +90,15 @@ replaced in load order, and each layer calls the previous one:
 The flow filter (`#overlay`) calls the `ux.js`-level render that `ux.js` captured
 before `tactical-ui.js` loaded, so changing the filter never rebuilds the inspector.
 
-`renderFlows`, `renderOrders`, `renderDashboard`, `clickNode`,
+`renderFlows`, `renderOrders`, `clickNode`,
 `showNodeOnMobile` and `positionNodeDetails` are also replaced in load order.
 The last definition wins and is the one in use.
 
-| DOM subtree                                                                                                  | Rendered by      |
-| ------------------------------------------------------------------------------------------------------------ | ---------------- |
-| `#map` content, `#score`, `#resolve`, `#log`, `#orders`, `#dashboard` table, `#allocator`, `#policyEditor`   | `game.js`        |
-| `#map` viewBox and camera transform, `#uxSide*`, `#uxDock*`, `#uxEditorStats`, `#uxBalance`, dashboard cards | `ux.js`          |
-| `#tacticalInspector`, `#tacticalMenu`, `.tactical-edge-hit`, selection rings, flow edge colors               | `tactical-ui.js` |
+| DOM subtree                                                                                               | Rendered by      |
+| --------------------------------------------------------------------------------------------------------- | ---------------- |
+| `#map` content, `#score`, `#resolve`, `#log`, `#orders`, `#allocator`, `#policyEditor`                    | `game.js`        |
+| `#map` viewBox and camera transform, `#uxSide*`, `#uxDock*`, `#uxEditorStats`, `#uxBalance`               | `ux.js`          |
+| `#tacticalInspector`, `#tacticalGroupBar`, `#tacticalMenu`, `.tactical-edge-hit`, rings, flow edge colors | `tactical-ui.js` |
 
 `#allocator` and `#policyEditor` are built by `game.js`. `tactical-ui.js` moves
 their sections into the inspector while it edits a node and parks them in the

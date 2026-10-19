@@ -407,7 +407,7 @@
     return null;
   }
 
-  // These entry points are also used by Dashboard and the Orders review dialog.
+  // These entry points are also used by the Orders review dialog.
   clickNode = chooseNode;
   showNodeOnMobile = () => {
     if (selected === null) return;
