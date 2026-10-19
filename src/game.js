@@ -960,6 +960,10 @@ function render() {
         // The modal identifies the node under inspection; a map selection
         // ring would be hidden behind that modal and adds no useful feedback.
         class: 'node node-hit' + (orders[n.id] ? ' node-ordered' : ''),
+        'data-node': n.id,
+        tabindex: 0,
+        role: 'button',
+        'aria-label': 'Select node ' + n.id,
       },
       group,
     );
@@ -971,6 +975,11 @@ function render() {
     t3.textContent = n.id;
     group.style.cursor = 'pointer';
     group.addEventListener('click', () => clickNode(n.id));
+    cir.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      clickNode(n.id);
+    });
   }
   let selectedNode = selected === null ? null : nodes[selected];
   $('selectedTitle').textContent = selectedNode ? 'Node ' + selected : 'Select a blue node';
