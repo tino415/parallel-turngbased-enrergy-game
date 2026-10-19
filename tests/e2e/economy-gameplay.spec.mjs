@@ -38,6 +38,7 @@ test('new matches expose capacity in the group member rows', async ({ page }) =>
     store.replaceMatch({ ...match, state: { ...match.state, nodes } });
     store.setGroupMode(true);
     store.setBulkSelection([0, 1]);
+    store.setGroupEditing(true);
     render();
   });
   await expect(page.locator('.tactical-group-member-row').first()).toContainText('38 / 250');

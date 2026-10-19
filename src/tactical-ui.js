@@ -98,13 +98,14 @@
   };
 
   let { active, editing, advancedOpen, manualOpen, focusedNode } = store.getSnapshot().ui.inspector;
-  let { groupMode, bulkSelection } = store.getSnapshot().ui;
+  let { groupMode, groupEditing, bulkSelection } = store.getSnapshot().ui;
   store.subscribe(({ ui }) => {
     ({ active, editing, advancedOpen, manualOpen, focusedNode } = ui.inspector);
-    ({ groupMode, bulkSelection } = ui);
+    ({ groupMode, groupEditing, bulkSelection } = ui);
   });
   const groupIds = () => (groupMode ? bulkSelection : []);
-  const showingGroup = () => groupIds().length >= 2;
+  const showingGroup = () => groupEditing && groupIds().length >= 2;
+  const editedMember = () => (groupEditing && groupIds().length === 1 ? groupIds()[0] : null);
   let groupMessage = '';
   store.focusNode(state.nodes.find((node) => node.owner === 0)?.id ?? 0);
   let previousRound = state.round;
@@ -137,6 +138,7 @@
     'pointerdown',
     (event) => {
       if (event.pointerType !== 'touch') return;
+      if (event.isPrimary) forgetFingers();
       fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (fingers.size !== 2) return;
       const [a, b] = [...fingers.values()];
@@ -185,13 +187,15 @@
   const endTouch = (event) => {
     if (event.pointerType !== 'touch') return;
     fingers.delete(event.pointerId);
-    if (fingers.size === 0) {
-      pinchInProgress = false;
-      pinch = null;
-    }
+    if (fingers.size === 0) forgetFingers();
   };
-  svg.addEventListener('pointerup', endTouch, true);
-  svg.addEventListener('pointercancel', endTouch, true);
+  function forgetFingers() {
+    fingers.clear();
+    pinchInProgress = false;
+    pinch = null;
+  }
+  window.addEventListener('pointerup', endTouch, true);
+  window.addEventListener('pointercancel', endTouch, true);
 
   const LONG_PRESS_MS = 450;
   const LONG_PRESS_SLOP = 8;
@@ -295,23 +299,25 @@
     }
     store.setGroupMode(true);
     store.toggleGroupMember(id);
+    if (!bulkSelection.length) store.setGroupEditing(false);
     groupMessage = '';
-    showSingleMemberOrGroup();
-  }
-
-  function setGroup(ids) {
-    store.setGroupMode(true);
-    store.setBulkSelection(ids);
-    groupMessage = '';
-    showSingleMemberOrGroup();
-  }
-
-  function showSingleMemberOrGroup() {
     store.dismissInspector();
     render();
   }
 
+  function editGroup() {
+    store.dismissInspector();
+    store.setGroupEditing(true);
+    render();
+  }
+
+  function closeGroupEditor() {
+    store.setGroupEditing(false);
+    render();
+  }
+
   function editMemberAlone(id) {
+    store.leaveGroupMode();
     store.inspectNode(id);
     store.editSelectedNode();
     render();
@@ -337,7 +343,6 @@
   function renderGroupBar() {
     groupBar.hidden = !groupMode || currentView !== 'map';
     if (groupBar.hidden) return;
-    const match = currentMatch();
     const action = (label, onclick) => {
       const button = document.createElement('button');
       button.type = 'button';
@@ -345,15 +350,11 @@
       button.onclick = onclick;
       return button;
     };
+    const edit = action('Edit', editGroup);
+    edit.disabled = bulkSelection.length === 0;
     updateChildrenInPlace(groupBar, [
       textElement('strong', bulkSelection.length + ' selected'),
-      ...(bulkSelection.length === 1
-        ? [action('Edit Node ' + bulkSelection[0], () => editMemberAlone(bulkSelection[0]))]
-        : []),
-      action('All', () => setGroup(selectors.ownNodes(match))),
-      action('Border', () => setGroup(selectors.borderNodes(match))),
-      action('Interior', () => setGroup(selectors.interiorNodes(match))),
-      action('Clear', () => setGroup([])),
+      edit,
       action('Done', leaveGroup),
       textElement('span', '', 'tactical-group-hint'),
     ]);
@@ -573,7 +574,7 @@
     body.append(details);
   }
 
-  function showNode(body, id) {
+  function showNode(body, id, isEditing = editing) {
     const node = state.nodes[id];
     const prediction = node.owner === 0 ? projection(id) : null;
     body.append(
@@ -612,7 +613,7 @@
         'tactical-secondary',
       ),
     );
-    if (!editing) return;
+    if (!isEditing) return;
     const primary = document.createElement('div');
     primary.className = 'tactical-primary-control';
     const toggle = document.createElement('label');
@@ -788,87 +789,49 @@
   }
 
   function pressureControls(id, policy) {
-    const border = neighbors(id).filter((other) => state.nodes[other].owner !== 0);
-    if (!border.length) return [];
+    if (!neighbors(id).some((other) => state.nodes[other].owner !== 0)) return [];
     const block = document.createElement('div');
     block.className = 'tactical-primary-control';
-    const against = document.createElement('label');
-    against.append(textElement('span', 'Against'));
-    const select = document.createElement('select');
-    select.id = 'tacticalPressureTarget';
-    select.dataset.key = id + ':pressureTarget';
-    select.setAttribute('aria-label', 'Pressure target');
-    for (const [value, title] of [
-      ['', 'Weakest enemy'],
-      ...border.map((other) => [String(other), 'Node ' + other]),
-    ]) {
-      const option = document.createElement('option');
-      option.value = value;
-      option.textContent = title;
-      option.selected = (value === '' ? null : Number(value)) === (policy?.pressureTarget ?? null);
-      select.append(option);
-    }
-    select.onchange = () =>
-      changePolicy(id, 'pressureTarget', select.value === '' ? null : Number(select.value));
-    against.append(select);
-    const neutral = document.createElement('label');
-    neutral.append(textElement('span', 'Include neutral nodes'));
-    const includeNeutral = document.createElement('input');
-    includeNeutral.type = 'checkbox';
-    includeNeutral.id = 'tacticalPressureNeutral';
-    includeNeutral.checked = policy?.pressureNeutral === true;
-    includeNeutral.setAttribute('aria-label', 'Include neutral nodes');
-    includeNeutral.onchange = () => changePolicy(id, 'pressureNeutral', includeNeutral.checked);
-    neutral.append(includeNeutral);
-    block.append(
-      textElement('strong', 'Border pressure'),
-      policyNumberField({
-        id: 'tacticalPressurePct',
-        key: id + ':pressurePct',
-        label: 'Send % of surplus',
-        value: policy?.pressurePct ?? 0,
-        max: 100,
-        onCommit: (value) => changeShare(id, 'pressurePct', value ?? 0),
-      }),
-      against,
-      policyNumberField({
-        id: 'tacticalPressureMin',
-        key: id + ':pressureMin',
-        label: 'Attack when at least this much is banked',
-        value: policy?.pressureMin ?? 10,
-        onCommit: (value) => value !== null && changePolicy(id, 'pressureMin', value),
-      }),
-      neutral,
-    );
-    const status = selectors.pressureStatus(currentMatch(), id);
-    if (status) block.append(textElement('p', pressureStatusText(status), 'tactical-secondary'));
+    block.append(textElement('strong', 'Border pressure'));
+    const edges = Object.keys(policy?.pressure ?? {}).map(Number);
+    if (!edges.length)
+      block.append(
+        textElement(
+          'p',
+          'Open a connection to an enemy or neutral neighbour to pressure it each round.',
+          'tactical-secondary',
+        ),
+      );
+    for (const dest of edges)
+      block.append(
+        textElement(
+          'p',
+          'Node ' +
+            dest +
+            ' · ' +
+            numeric(policy.pressure[dest].pct) +
+            '% · ' +
+            pressureStatusText(selectors.edgePressureStatus(currentMatch(), id, dest), dest),
+          'tactical-secondary',
+        ),
+      );
     return [block];
   }
 
-  function pressureStatusText({ bank, nextBank, minimum, target, pulse }) {
-    if (target === null)
-      return 'No eligible neighbour: the share goes to the rest and the bank waits.';
-    if (pulse > 0) return 'Pulse this round: ' + numeric(pulse) + ' → Node ' + target;
-    return (
-      'Banked ' +
-      numeric(bank) +
-      ' → ' +
-      numeric(nextBank) +
-      ' / ' +
-      numeric(minimum) +
-      ' · next pulse → Node ' +
-      target +
-      ' (active ' +
-      numeric(state.nodes[target].active) +
-      ')'
-    );
+  function pressureStatusText({ bank, nextBank, minimum, pulse }, dest) {
+    if (state.nodes[dest].owner === 0) return 'now yours: the share goes to the rest';
+    if (pulse > 0) return 'pulse this round: ' + numeric(pulse) + ' → Node ' + dest;
+    return 'banked ' + numeric(bank) + ' → ' + numeric(nextBank) + ' / ' + numeric(minimum);
   }
 
   function sharesLine(id, policy) {
     const effective = { ...defaultPolicy(), ...policy };
     const invest = effective.investPct;
     const defense = Number.isFinite(effective.defenseTarget) ? (effective.defensePct ?? 0) : 0;
-    const pressure = effective.pressurePct ?? 0;
+    const pressure = Object.values(effective.pressure ?? {}).reduce(
+      (sum, edge) => sum + edge.pct,
+      0,
+    );
     const total = invest + defense + pressure;
     const destination =
       effective.dest !== null && state.nodes[effective.dest]?.owner === 0
@@ -1014,9 +977,6 @@
       groupNumberField(ids, view, 'reserve', 'Defense floor'),
       groupNumberField(ids, view, 'defensePct', 'Grow the floor by % of surplus', 100),
       groupNumberField(ids, view, 'defenseTarget', 'Floor up to'),
-      groupNumberField(ids, view, 'pressurePct', 'Pressure % of surplus', 100),
-      groupNumberField(ids, view, 'pressureMin', 'Attack when at least this much is banked'),
-      groupCheckbox(ids, view, 'pressureNeutral', 'Pressure includes neutral nodes'),
     );
     return block;
   }
@@ -1078,11 +1038,11 @@
     block.append(
       textElement(
         'p',
-        'Transfer destinations and pinned pressure targets stay per node.',
+        'Transfer destinations and border pressure stay per node and per connection.',
         'tactical-secondary',
       ),
       groupButton('Clear destinations', () => store.clearGroupDestinations(ids)),
-      groupButton('Pressure: weakest enemy for all', () => store.weakestPressureForGroup(ids)),
+      groupButton('Stop border pressure', () => store.stopGroupPressure(ids)),
     );
     return block;
   }
@@ -1148,7 +1108,6 @@
       open.textContent = 'Node ' + id;
       open.setAttribute('aria-label', 'Edit node ' + id + ' alone');
       open.onclick = () => {
-        store.leaveGroupMode();
         editMemberAlone(id);
       };
       const remove = document.createElement('button');
@@ -1386,8 +1345,7 @@
       }
       body.append(policyBox);
     }
-    if (type === 'Attack' && state.nodes[destination].owner !== null)
-      body.append(pressureToggle(source, destination));
+    if (type === 'Attack') body.append(pressureToggle(source, destination));
     if (type === 'Attack') {
       body.append(
         textElement(
@@ -1418,47 +1376,80 @@
   }
 
   function pressureToggle(source, destination) {
-    const current = policies[source];
+    const settings = policies[source]?.pressure?.[destination];
     const box = document.createElement('div');
     box.className = 'tactical-primary-control';
+    const caption = 'Pressure Node ' + destination + ' from Node ' + source + ' each round';
     const toggle = document.createElement('label');
-    toggle.append(
-      textElement(
-        'strong',
-        'Pressure Node ' + destination + ' from Node ' + source + ' each round',
-      ),
-    );
+    toggle.append(textElement('strong', caption));
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.id = 'tacticalAutoPressure';
-    checkbox.checked = current?.pressurePct > 0 && current.pressureTarget === destination;
-    checkbox.setAttribute(
-      'aria-label',
-      'Pressure Node ' + destination + ' from Node ' + source + ' each round',
-    );
+    checkbox.checked = Boolean(settings);
+    checkbox.setAttribute('aria-label', caption);
     checkbox.onchange = () => {
-      store.pressureFrom(source, destination, checkbox.checked);
-      render();
+      const accepted = changeEdgePressure(source, destination, checkbox.checked ? {} : null);
+      if (!accepted) checkbox.checked = false;
     };
     toggle.append(checkbox);
+    const warning = textElement('p', '', 'tactical-warning');
+    warning.id = 'tacticalEdgePressureWarning';
     box.append(toggle);
-    const status = checkbox.checked ? selectors.pressureStatus(currentMatch(), source) : null;
+    if (!settings) {
+      box.append(
+        textElement(
+          'p',
+          'Banks a share of surplus and attacks with it once the bank reaches the minimum.',
+          'tactical-secondary',
+        ),
+        warning,
+      );
+      return box;
+    }
+    const key = source + '-' + destination;
+    box.append(
+      policyNumberField({
+        id: 'tacticalEdgePressurePct',
+        key: key + ':pct',
+        label: 'Send % of surplus',
+        value: settings.pct,
+        max: 100,
+        onCommit: (pct) => pct !== null && changeEdgePressure(source, destination, { pct }),
+      }),
+      policyNumberField({
+        id: 'tacticalEdgePressureMin',
+        key: key + ':min',
+        label: 'Attack when at least this much is banked',
+        value: settings.min ?? 10,
+        onCommit: (min) => min !== null && changeEdgePressure(source, destination, { min }),
+      }),
+    );
     box.append(
       textElement(
         'p',
-        status
-          ? pressureStatusText(status)
-          : 'Sends ' +
-              (current?.pressurePct > 0 ? numeric(current.pressurePct) : '10') +
-              '% of surplus in pulses of at least ' +
-              numeric(current?.pressureMin ?? 10) +
-              '. Edit Node ' +
-              source +
-              ' to change either value.',
+        pressureStatusText(
+          selectors.edgePressureStatus(currentMatch(), source, destination),
+          destination,
+        ),
         'tactical-secondary',
       ),
+      warning,
     );
     return box;
+  }
+
+  function changeEdgePressure(source, destination, fields) {
+    const before = currentMatch();
+    store.setEdgePressure(source, destination, fields);
+    const accepted = currentMatch() !== before;
+    render();
+    if (!accepted)
+      byId('tacticalEdgePressureWarning')?.replaceChildren(
+        'Node ' +
+          source +
+          "'s shares cannot add up to more than 100%, and the percentage must be above 0.",
+      );
+    return accepted;
   }
 
   function screenAnchor() {
@@ -1478,7 +1469,7 @@
 
   function positionInspector() {
     if (mobile()) return;
-    if (showingGroup()) {
+    if (showingGroup() || editedMember() !== null) {
       root.style.left = Math.max(10, innerWidth - 372) + 'px';
       root.style.top = '70px';
       return;
@@ -1500,8 +1491,10 @@
     // The first tap highlights only. The second tap opens the editor above
     // the unchanged mobile Orders/Resolve dock, or near the edge on desktop.
     const group = showingGroup();
+    const member = editedMember();
+    const groupEditor = group || member !== null;
     root.hidden =
-      !(group || (active && editing)) ||
+      !(groupEditor || (active && editing)) ||
       currentView !== 'map' ||
       Boolean(document.querySelector('dialog[open]'));
     document.body.classList.toggle('tactical-selection-active', !root.hidden);
@@ -1512,21 +1505,27 @@
     root.classList.toggle('is-editing', true);
     const subject = group
       ? 'Group · ' + groupIds().length + ' nodes'
-      : active.kind === 'node'
-        ? 'Node ' + active.id
-        : 'Connection ' + active.a + ' — ' + active.b;
+      : member !== null
+        ? 'Node ' + member
+        : active.kind === 'node'
+          ? 'Node ' + active.id
+          : 'Connection ' + active.a + ' — ' + active.b;
     const header = document.createElement('div');
     header.className = 'tactical-inspector-head';
     header.append(textElement('strong', subject));
     const close = document.createElement('button');
     close.type = 'button';
     close.textContent = '×';
-    close.setAttribute('aria-label', group ? 'Leave group' : 'Clear map selection');
-    close.onclick = group ? leaveGroup : dismissAndReturnFocus;
+    close.setAttribute(
+      'aria-label',
+      groupEditor ? 'Close the group editor' : 'Clear map selection',
+    );
+    close.onclick = groupEditor ? closeGroupEditor : dismissAndReturnFocus;
     header.append(close);
     const body = document.createElement('div');
     body.className = 'tactical-inspector-body';
     if (group) showGroup(body, groupIds());
+    else if (member !== null) showNode(body, member, true);
     else if (active.kind === 'node') showNode(body, active.id);
     else showEdge(body, active.a, active.b);
     // No duplicate Orders/Resolve/Collapse buttons. The original bottom dock

@@ -68,6 +68,7 @@ async function selectGroup(page, ids) {
       .locator('#map .node-hit')
       .nth(id)
       .click({ modifiers: ['Shift'] });
+  await page.locator('#tacticalGroupBar').getByRole('button', { name: 'Edit' }).click();
   await expect(inspector(page)).toContainText('Group · ' + ids.length + ' nodes');
 }
 

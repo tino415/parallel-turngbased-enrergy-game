@@ -22,6 +22,7 @@ async function openGroup(page, ids) {
   await page.evaluate((ids) => {
     store.setGroupMode(true);
     store.setBulkSelection(ids);
+    store.setGroupEditing(true);
     render();
   }, ids);
   await expect(inspector(page)).toContainText('Group · ' + ids.length + ' nodes');
@@ -47,31 +48,34 @@ async function touch(page, id, type, offset = 0) {
   });
 }
 
-test('Shift+click builds a group from own nodes only', async ({ page }) => {
+test('Shift+click builds a group from own nodes only, without opening the editor', async ({
+  page,
+}) => {
   await giveBlue(page, { 1: {} });
   await node(page, 0).click({ modifiers: ['Shift'] });
   await expect(groupBar(page)).toContainText('1 selected');
-  await expect(inspector(page)).toBeHidden();
   await node(page, 1).click({ modifiers: ['Shift'] });
-  await expect(inspector(page)).toContainText('Group · 2 nodes');
+  await expect(groupBar(page)).toContainText('2 selected');
+  await expect(inspector(page)).toBeHidden();
   await node(page, 3).focus();
   await page.keyboard.press('Shift+Enter');
   await expect(groupBar(page)).toContainText('Only your nodes join a group.');
   expect((await ui(page)).bulkSelection).toEqual([0, 1]);
 });
 
-test('a one-node group edits that node alone from the bar or a member row', async ({ page }) => {
+test('Edit opens one node or the group, and the map keeps selecting while it is open', async ({
+  page,
+}) => {
   await giveBlue(page, { 1: {} });
-  await openGroup(page, [0, 1]);
-  await inspector(page).getByRole('button', { name: 'Remove node 1 from group' }).click();
-  await groupBar(page).getByRole('button', { name: 'Edit Node 0' }).click();
+  await node(page, 1).focus();
+  await page.keyboard.press('Shift+Enter');
+  await groupBar(page).getByRole('button', { name: 'Edit' }).click();
+  await expect(inspector(page)).toContainText('Node 1');
   await expect(page.locator('#tacticalPolicyPercent')).toBeVisible();
-  await expect(groupBar(page)).toContainText('1 selected');
-  await page.evaluate(() => {
-    store.setBulkSelection([0, 1]);
-    store.dismissInspector();
-    render();
-  });
+  await node(page, 0).focus();
+  await page.keyboard.press('Enter');
+  await expect(inspector(page)).toContainText('Group · 2 nodes');
+  await expect(groupBar(page)).toContainText('2 selected');
   await inspector(page).getByRole('button', { name: 'Edit node 1 alone' }).click();
   await expect(inspector(page)).toContainText('Node 1');
   await expect(page.locator('#tacticalPolicyPercent')).toBeVisible();
@@ -109,14 +113,47 @@ test('investing on each node reports the nodes that lacked energy', async ({ pag
   });
 });
 
-test('a touch long-press starts a group and a tap then adds to it', async ({ page }) => {
+test('a touch long-press starts selecting, taps add nodes and Edit opens the group', async ({
+  page,
+}) => {
   await giveBlue(page, { 1: {} });
   await touch(page, 1, 'pointerdown');
   await page.waitForTimeout(600);
   await touch(page, 1, 'pointerup');
   await expect(groupBar(page)).toContainText('1 selected');
   await node(page, 0).click();
+  await expect(groupBar(page)).toContainText('2 selected');
+  await expect(inspector(page)).toBeHidden();
+  await groupBar(page).getByRole('button', { name: 'Edit' }).click();
   await expect(inspector(page)).toContainText('Group · 2 nodes');
+});
+
+test('a finger lifted off the map after a long-press does not turn the next drag into a pinch', async ({
+  page,
+}) => {
+  await giveBlue(page, { 1: {} });
+  await touch(page, 1, 'pointerdown');
+  await page.waitForTimeout(600);
+  await page.evaluate(() =>
+    document.body.dispatchEvent(
+      new PointerEvent('pointerup', { pointerId: 7, pointerType: 'touch', bubbles: true }),
+    ),
+  );
+  const scale = await page.evaluate(() => camera.scale);
+  const box = await page.locator('#map').boundingBox();
+  const drag = (type, dx) =>
+    page.locator('#map').dispatchEvent(type, {
+      pointerType: 'touch',
+      pointerId: 8,
+      isPrimary: true,
+      button: 0,
+      clientX: box.x + 40 + dx,
+      clientY: box.y + box.height - 40,
+    });
+  await drag('pointerdown', 0);
+  await drag('pointermove', 60);
+  await drag('pointerup', 60);
+  expect(await page.evaluate(() => camera.scale)).toBe(scale);
 });
 
 test('a pan that starts on a node does not become a long-press', async ({ page }) => {
@@ -136,6 +173,7 @@ test('Shift+Enter toggles a focused node and Escape leaves the group', async ({ 
   await expect(groupBar(page)).toContainText('1 selected');
   await node(page, 0).focus();
   await page.keyboard.press('Shift+Enter');
+  await groupBar(page).getByRole('button', { name: 'Edit' }).click();
   await expect(inspector(page)).toContainText('Group · 2 nodes');
   await page.keyboard.press('Escape');
   await expect(groupBar(page)).toBeHidden();
@@ -143,11 +181,15 @@ test('Shift+Enter toggles a focused node and Escape leaves the group', async ({ 
   expect((await ui(page)).bulkSelection).toEqual([]);
 });
 
-test('a keyboard-only player lists every own node and edits one of them', async ({ page }) => {
+test('a keyboard-only player selects several nodes and edits one of them', async ({ page }) => {
   await giveBlue(page, { 1: {}, 2: {} });
   await node(page, 0).focus();
   await page.keyboard.press('Shift+Enter');
-  await groupBar(page).getByRole('button', { name: 'All' }).focus();
+  for (const id of [1, 2]) {
+    await node(page, id).focus();
+    await page.keyboard.press('Enter');
+  }
+  await groupBar(page).getByRole('button', { name: 'Edit' }).focus();
   await page.keyboard.press('Enter');
   await expect(inspector(page)).toContainText('Group · 3 nodes');
   for (const id of [0, 1, 2])
@@ -160,17 +202,13 @@ test('a keyboard-only player lists every own node and edits one of them', async 
   await expect(page.locator('#tacticalPolicyPercent')).toBeVisible();
 });
 
-test('an empty-map tap keeps the group and the bar helpers pick nodes', async ({ page }) => {
-  await giveBlue(page, { 1: {}, 2: {}, 4: {} });
+test('an empty-map tap keeps the group and Done leaves it', async ({ page }) => {
+  await giveBlue(page, { 1: {} });
   await openGroup(page, [0, 1]);
   await page.locator('#map').dispatchEvent('click');
   await expect(inspector(page)).toContainText('Group · 2 nodes');
-  await groupBar(page).getByRole('button', { name: 'All' }).click();
-  await expect(groupBar(page)).toContainText('4 selected');
-  await groupBar(page).getByRole('button', { name: 'Border' }).click();
-  expect((await ui(page)).bulkSelection).toEqual([1, 2, 4]);
-  await groupBar(page).getByRole('button', { name: 'Interior' }).click();
-  expect((await ui(page)).bulkSelection).toEqual([0]);
+  await expect(groupBar(page).getByRole('button')).toHaveText(['Edit', 'Done']);
   await groupBar(page).getByRole('button', { name: 'Done' }).click();
   await expect(groupBar(page)).toBeHidden();
+  await expect(inspector(page)).toBeHidden();
 });
