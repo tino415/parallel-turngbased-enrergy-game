@@ -343,8 +343,7 @@ dialog#newGameDialog::backdrop {
   font-size: 14px;
 }
 
-#mobileSettings,
-.mobile-sidebar-heading {
+#mobileSettings {
   display: none;
 }
 @media (max-width: 760px) {
@@ -439,34 +438,6 @@ dialog#newGameDialog::backdrop {
   }
   .map-explanation {
     display: none;
-  }
-  #gameSidebar {
-    display: none;
-  }
-  #gameSidebar.settings-open {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 60;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    background: #182538;
-    border: 0;
-    border-radius: 0;
-    padding: 12px 14px 36px;
-  }
-  .mobile-sidebar-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    background: #182538;
-    z-index: 1;
-    padding: 5px 0 10px;
-  }
-  body.settings-active {
-    overflow: hidden;
   }
   .map-zoom-controls {
     right: 10px;

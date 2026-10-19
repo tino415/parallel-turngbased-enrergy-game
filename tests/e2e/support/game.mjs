@@ -70,3 +70,10 @@ export function annotateSimulatedKeyboard() {
       'A viewport height change stands in for the on-screen keyboard. Real Android Chrome stays a manual check.',
   });
 }
+
+export async function chooseSource(page, id) {
+  const swap = page.locator('#tacticalSwapDirection');
+  if (!(await swap.getAttribute('aria-label')).startsWith('From Node ' + id + ' '))
+    await swap.click();
+  await expect(swap).toHaveAttribute('aria-label', new RegExp('^From Node ' + id + ' '));
+}
