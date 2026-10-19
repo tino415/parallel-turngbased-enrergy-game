@@ -95,7 +95,7 @@ test('a manual allocation draft survives map, flow and camera updates', async ({
   await track(invest);
   await page.evaluate(() => render());
   await page.evaluate(() => {
-    camera = { ...camera, scale: camera.scale * 1.25 };
+    store.setCamera({ ...camera, scale: camera.scale * 1.25 });
     render();
   });
   await page.locator('#overlay').evaluate((select) => {

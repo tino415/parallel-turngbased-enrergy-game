@@ -50,7 +50,7 @@ test('round state survives refresh using local save', async ({ page }) => {
 
 test('a save with a selected node still resolves after refresh', async ({ page }) => {
   await page.evaluate(() => {
-    selected = state.nodes.find((node) => node.owner === 0).id;
+    store.select(state.nodes.find((node) => node.owner === 0).id);
     saveGame();
   });
   page.on('dialog', (dialog) => dialog.accept());
