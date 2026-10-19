@@ -12,44 +12,14 @@
   selected = null;
   const oldHeader = nodeDialog.querySelector('.mobile-node-header');
   const oldClose = byId('closeNodeDialog');
-  const slot = byId('nodeDetailsSlot');
-  const originalAside = byId('gameSidebar');
-  const settingsBox = byId('autoConquer').closest('.policy-box');
-  const rules = originalAside.querySelector('details');
-  const ordersContainer = byId('orders');
-  const count = byId('orderCount');
-  const clear = byId('clearAll');
   const selectedTitle = byId('selectedTitle');
   const details = byId('details');
   const hint = byId('hint');
   const allocator = byId('allocator');
   const policyEditor = byId('policyEditor');
 
-  function makeDialog(id, title) {
-    const d = document.createElement('dialog');
-    d.id = id;
-    d.className = 'ux-dialog';
-    d.innerHTML = '<div class="ux-dialog-header"><h2>' + title + '</h2><button class="ux-dialog-close" type="button">Close ×</button></div><div class="ux-dialog-body"></div>';
-    d.querySelector('.ux-dialog-close').onclick = () => d.close();
-    document.body.append(d);
-    return d;
-  }
-  const ordersDialog = makeDialog('uxOrdersDialog', 'Planned orders');
-  const settingsDialog = makeDialog('uxSettingsDialog', 'Game settings');
-  const ordersBody = ordersDialog.querySelector('.ux-dialog-body');
-  const settingsBody = settingsDialog.querySelector('.ux-dialog-body');
-  const orderHelp = document.createElement('p');
-  orderHelp.className = 'muted';
-  orderHelp.textContent = 'Manual allocations are separate from persistent policies. All actions execute together when you resolve the round.';
-  ordersBody.append(orderHelp, count, ordersContainer, clear);
-  clear.textContent = 'Clear all manual orders';
-  settingsBody.append(settingsBox, rules);
-  const newGameButton = document.createElement('button');
-  newGameButton.type = 'button';
-  newGameButton.textContent = 'New game…';
-  newGameButton.style.marginTop = '16px';
-  newGameButton.onclick = () => { settingsDialog.close(); byId('reset').click(); };
-  settingsBody.append(newGameButton);
+  const ordersDialog = byId('uxOrdersDialog');
+  const settingsDialog = byId('uxSettingsDialog');
 
   oldHeader.replaceChildren();
   oldHeader.append(selectedTitle, oldClose);
@@ -95,12 +65,6 @@
   byId('uxDone').onclick = () => nodeDialog.close();
   byId('uxJumpOrders').onclick = () => manualSection.scrollIntoView({block:'start',behavior:'smooth'});
   byId('uxJumpPolicy').onclick = () => policySection.scrollIntoView({block:'start',behavior:'smooth'});
-  slot.remove();
-
-  const side = document.createElement('div');
-  side.innerHTML = '<div class="ux-side-section"><div class="ux-side-head"><h3>Selection</h3></div><div id="uxSideSelection"></div></div><div class="ux-side-section"><div class="ux-side-head"><h3>Next round</h3><span id="uxSideCount" class="muted"></span></div><div id="uxSideOrders" class="ux-side-list"></div><button type="button" class="ux-side-action" id="uxReviewSide">Review all orders →</button></div><div class="ux-side-section muted" style="line-height:1.6;font-size:12px">Manual orders spend the energy available at the start of the round. Unspent energy defends; policies use remaining surplus.</div>';
-  originalAside.replaceChildren(...side.children);
-  byId('uxReviewSide').onclick = () => ordersDialog.showModal();
 
   const reviewHead = document.createElement('button');
   reviewHead.id = 'uxReviewHead';
@@ -110,8 +74,6 @@
   const headerActions = document.querySelector('body > header > div:last-child');
   headerActions.insertBefore(reviewHead, byId('resolve'));
   byId('mobileSettings').onclick = () => settingsDialog.showModal();
-  const settingsClose = byId('closeMobileSettings');
-  if (settingsClose) settingsClose.remove();
 
   const dock = document.createElement('div');
   dock.className = 'ux-dock';
@@ -171,7 +133,6 @@
   };
 
   // Existing DOM allocators and policy evaluation remain authoritative.
-  positionNodeDetails = function() {};
   showNodeOnMobile = function() {
     if (selected !== null && !nodeDialog.open) nodeDialog.showModal();
   };
@@ -181,18 +142,6 @@
     selected = id;
     render();
     showNodeOnMobile();
-  };
-  const originalOrders = renderOrders;
-  renderOrders = function() {
-    originalOrders();
-    ordersContainer.querySelectorAll('.order-top button:first-child').forEach((button) => {
-      const original = button.onclick;
-      button.onclick = (event) => {
-        original(event);
-        if (ordersDialog.open) ordersDialog.close();
-        showNodeOnMobile();
-      };
-    });
   };
 
   const bulkSelected = (id) => store.getSnapshot().ui.bulkSelection.includes(id);
@@ -308,27 +257,7 @@
     const own=state.nodes.filter(n=>n.owner===0);
     const present=own.filter(n=>orders[n.id]||policies[n.id]).length;
     byId('uxDockCount').textContent='('+present+')';
-    byId('uxSideCount').textContent=present+' nodes';
     const selectedNode=selected===null?null:state.nodes[selected];
-    const sideSelection=byId('uxSideSelection');sideSelection.replaceChildren();
-    if(selectedNode) {
-      const card=document.createElement('div');card.className='ux-node-card';
-      const title=document.createElement('strong');title.textContent='Node '+selected;
-      const subtitle=document.createElement('p');subtitle.className='muted';
-      subtitle.textContent=fmtUX(selectedNode.active)+' active · '+fmtUX(selectedNode.invested)+' invested'+(softCapEnabled()?' · '+fmtUX(selectedNode.active+selectedNode.invested)+'/'+SOFT_CAP_RULES.capacity+' capacity':'');
-      const edit=document.createElement('button');edit.textContent=selectedNode.owner===0?'Edit orders →':'Inspect node →';edit.onclick=()=>showNodeOnMobile();
-      card.append(title,subtitle,edit);sideSelection.append(card);
-    } else {
-      const p=document.createElement('p');p.className='muted';p.textContent='Select a node on the map to inspect it.';sideSelection.append(p);
-    }
-    const mini=byId('uxSideOrders');mini.replaceChildren();
-    const plans=own.filter(n=>orders[n.id]||policies[n.id]);
-    if(!plans.length)mini.textContent='No orders planned.';
-    for(const n of plans.slice(0,5)) {
-      const row=document.createElement('div'),a=allocated(n.id),pol=policyOrders(n.id).reduce((s,o)=>s+o.amount,0);
-      row.textContent='Node '+n.id+' · Manual '+fmtUX(a)+' · Policy '+fmtUX(pol);
-      mini.append(row);
-    }
     const statsEl=byId('uxEditorStats'),budget=byId('uxBalance'),note=byId('uxCombatNote'),foot=byId('uxFooterSummary');
     if(!selectedNode) {statsEl.replaceChildren();budget.hidden=true;note.textContent='';foot.textContent='';}
     else {
@@ -384,8 +313,6 @@
   // dismisses the keyboard; the editor is already in its final layout.
   window.addEventListener('resize', redrawCamera);
   byId('overlay').onchange=render;
-  byId('clearAll').onclick=()=>{store.clearAllOrders();render();};
-  // The original HTML has inline-mobile navigation; the native dialogs supersede it.
   render();
   if(mobile()) {
     const mine=state.nodes.find(n=>n.owner===0);
