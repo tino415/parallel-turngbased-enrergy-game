@@ -47,12 +47,12 @@ test('the group policy view shows common values and mixed ranges', () => {
 test('a group edit changes only that field on every node and keeps destinations', () => {
   const match = blueMatch({
     0: policy({ investPct: 40, dest: 1 }),
-    1: policy({ reserve: 9, dest: 0 }),
+    1: policy({ reserve: 9, dest: 4 }),
   });
   const { match: next, rejected } = commands.applyGroupPolicyField(match, [0, 1, 2], 'reserve', 3);
   assert.deepEqual(plain(rejected), []);
   assert.deepEqual(plain(next.policies[0]), plain(policy({ investPct: 40, dest: 1, reserve: 3 })));
-  assert.deepEqual(plain(next.policies[1]), plain(policy({ reserve: 3, dest: 0 })));
+  assert.deepEqual(plain(next.policies[1]), plain(policy({ reserve: 3, dest: 4 })));
   assert.deepEqual(plain(next.policies[2]), plain(policy({ reserve: 3 })));
 });
 

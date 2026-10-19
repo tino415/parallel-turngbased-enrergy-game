@@ -64,23 +64,12 @@ button:disabled {
 .primary {
   background: #285e99;
 }
-.actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 7px;
-}
 .order-row {
   border: 1px solid #435570;
   background: #203149;
   border-radius: 9px;
   padding: 9px;
   margin: 8px 0;
-}
-.order-row .order-fields {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 7px;
-  margin-top: 8px;
 }
 .order-row label {
   display: flex;
@@ -206,23 +195,11 @@ input {
   stroke: #d2daea;
   stroke-width: 2;
 }
-.selected {
-  stroke: #fff;
-  stroke-width: 5;
-}
 svg text {
   fill: #fff;
   pointer-events: none;
   text-anchor: middle;
   font-weight: 700;
-}
-@media (max-width: 760px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
-  svg {
-    min-height: 260px;
-  }
 }
 
 dialog#newGameDialog {
@@ -343,19 +320,6 @@ dialog#newGameDialog::backdrop {
   gap: 12px;
   margin-bottom: 10px;
 }
-@media (max-width: 760px) {
-  #mapViewport {
-    touch-action: pan-y;
-    min-height: 260px;
-    height: 55vh;
-  }
-  #mapViewport svg {
-    touch-action: pan-y pinch-zoom;
-  }
-  #nodeDialog {
-    width: 96vw;
-  }
-}
 
 .map-zoom-controls {
   position: absolute;
@@ -378,29 +342,26 @@ dialog#newGameDialog::backdrop {
 .map-zoom-controls #fit {
   font-size: 14px;
 }
-@media (max-width: 760px) {
-  .desktop-zoom-hint {
-    display: none;
-  }
-  .map-zoom-controls {
-    right: 10px;
-    bottom: 10px;
-  }
-}
-
-@media (max-width: 760px) {
-  #mapViewport,
-  #mapViewport svg {
-    touch-action: none;
-    cursor: grab;
-  }
-}
 
 #mobileSettings,
 .mobile-sidebar-heading {
   display: none;
 }
 @media (max-width: 760px) {
+  svg {
+    min-height: 260px;
+  }
+  #nodeDialog {
+    width: 96vw;
+  }
+  .desktop-zoom-hint {
+    display: none;
+  }
+  #mapViewport,
+  #mapViewport svg {
+    touch-action: none;
+    cursor: grab;
+  }
   body {
     min-height: 100dvh;
   }
@@ -448,6 +409,7 @@ dialog#newGameDialog::backdrop {
     gap: 4px;
   }
   .view-tabs button {
+    flex: 1;
     font-size: 12px;
     padding: 7px 4px;
   }
@@ -455,6 +417,7 @@ dialog#newGameDialog::backdrop {
     display: none;
   }
   .layout {
+    grid-template-columns: 1fr;
     display: block;
     padding: 5px;
   }
@@ -506,6 +469,8 @@ dialog#newGameDialog::backdrop {
     overflow: hidden;
   }
   .map-zoom-controls {
+    right: 10px;
+    bottom: 10px;
     gap: 4px;
   }
   .map-zoom-controls button {
