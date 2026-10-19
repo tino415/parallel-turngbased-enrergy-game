@@ -96,7 +96,7 @@
     )
       return null;
     const { state, xy, edges, N, playerCount, mapSeed } = save;
-    return {
+    return withOneWaySupport({
       state,
       orders: save.orders ?? {},
       policies: save.policies ?? {},
@@ -109,7 +109,42 @@
             invest: save.defaults.invest,
           }
         : defaults,
-    };
+    });
+  }
+
+  function withOneWaySupport(match) {
+    return withOneWayRoutes(withOneWayManualSupport(match));
+  }
+
+  function withOneWayManualSupport(match) {
+    return match.map.edges.reduce((next, [a, b]) => {
+      const forward = plan(next, a).edges[b] || 0,
+        backward = plan(next, b).edges[a] || 0;
+      if (!forward || !backward) return next;
+      const [source, destination] = forward >= backward ? [a, b] : [b, a],
+        p = plan(next, source),
+        edges = { ...p.edges, [destination]: Math.abs(forward - backward) };
+      if (forward === backward) delete edges[destination];
+      return withoutManualSupport(withOrder(next, source, { ...p, edges }), destination, source);
+    }, match);
+  }
+
+  function withOneWayRoutes(match) {
+    return match.map.edges.reduce((next, [a, b]) => {
+      if (next.policies[a]?.dest !== b || next.policies[b]?.dest !== a) return next;
+      return {
+        ...next,
+        policies: {
+          ...next.policies,
+          [a]: { ...next.policies[a], dest: null },
+          [b]: { ...next.policies[b], dest: null },
+        },
+        history: [
+          'Node ' + a + ' and Node ' + b + ' sent surplus to each other; both routes were cleared.',
+          ...next.history,
+        ],
+      };
+    }, match);
   }
 
   function saveFromMatch(match, selected) {
@@ -182,9 +217,25 @@
     return { ...match, orders };
   }
 
-  function withPolicy(match, source, policy) {
-    return { ...match, policies: { ...match.policies, [source]: policy } };
+  function withoutManualSupport(match, source, destination) {
+    const p = plan(match, source);
+    if (!p.edges[destination]) return match;
+    const edges = { ...p.edges };
+    delete edges[destination];
+    return withOrder(match, source, { ...p, edges });
   }
+
+  function withPolicy(match, source, policy) {
+    const policies = { ...match.policies, [source]: policy };
+    if (policies[policy.dest]?.dest === source)
+      policies[policy.dest] = { ...policies[policy.dest], dest: null };
+    return { ...match, policies };
+  }
+
+  const replacedSupport = (match, source, destination) => ({
+    manual: plan(match, destination).edges[source] || 0,
+    route: match.policies[destination]?.dest === source,
+  });
 
   function setAllocation(match, source, destination, value) {
     if (match.state.finished || !isOwn(match, source)) return { match };
@@ -208,7 +259,10 @@
     } else return { match };
     if (allocated(match, source, p) > availableEnergy(match, source, p) + 1e-8)
       return { match, overBudget: availableEnergy(match, source, p) };
-    return { match: withOrder(match, source, p) };
+    const next = withOrder(match, source, p);
+    if (amount > 0 && isOwn(match, destination))
+      return { match: withoutManualSupport(next, destination, source) };
+    return { match: next };
   }
 
   function setHold(match, source, hold) {
@@ -512,6 +566,7 @@
       policyOrders,
       previewOrders,
       projection,
+      replacedSupport,
     }),
   });
 })();
