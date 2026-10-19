@@ -46,9 +46,10 @@ but never holds a lost node.
 Gesture and render bookkeeping stays local to the code that needs it, because
 no other code reads it: drag and click suppression (`game.js`), pinch fingers
 and the long-press timer (`tactical-ui.js`), the map key behind mobile
-auto-focus (`ux.js`) and the round counter that closes the inspector after a resolve (`tactical-ui.js`).
-Form drafts stay in their inputs and are read once on submit: the new-game
-dialog and the dashboard bulk reserve, invest and manual amount.
+auto-focus (`ux.js`) and the round counter that closes the inspector after a
+resolve (`tactical-ui.js`). Form drafts stay in their inputs and are read once
+on submit: the new-game dialog and the dashboard bulk reserve, invest and
+manual amount.
 
 ## Contract
 

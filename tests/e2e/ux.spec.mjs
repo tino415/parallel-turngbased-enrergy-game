@@ -63,7 +63,9 @@ test('edge selection highlights only then edits amount on second selection', asy
   expect(await page.evaluate(() => orders[0].edges[1])).toBe(3.5);
 });
 
-test('friendly edge permits both transfer directions without overwriting', async ({ page }) => {
+test('friendly edge switches direction and the new support replaces the reverse one', async ({
+  page,
+}) => {
   await page.evaluate(() => {
     state.nodes[1].owner = 0;
     state.nodes[1].active = 10;
@@ -77,9 +79,15 @@ test('friendly edge permits both transfer directions without overwriting', async
   await page.locator('#tacticalEdgeAmount').blur();
   await page.locator('#tacticalInspector select').selectOption('1');
   await expect(page.locator('#tacticalEdgeAmount')).toHaveValue('0');
+  await expect(page.locator('#tacticalInspector')).toContainText(
+    'Replaces Node 0 → 1: 2 manual support.',
+  );
   await page.locator('#tacticalEdgeAmount').fill('4');
   await page.locator('#tacticalEdgeAmount').blur();
-  expect(await page.evaluate(() => [orders[0].edges[1], orders[1].edges[0]])).toEqual([2, 4]);
+  expect(await page.evaluate(() => [orders[0]?.edges[1], orders[1].edges[0]])).toEqual([
+    undefined,
+    4,
+  ]);
 });
 
 test('closing selection keeps Focus on the last inspected node', async ({ page }) => {

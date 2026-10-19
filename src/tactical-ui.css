@@ -123,8 +123,8 @@ body > header #resolve {
 #tacticalInspector[hidden] {
   display: none !important;
 }
-.tactical-inspector-head,
-.tactical-inspector-actions {
+.tactical-inspector-head {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -133,16 +133,31 @@ body > header #resolve {
   background: #203450;
 }
 .tactical-inspector-head strong {
+  min-width: 0;
+  flex: 1 1 auto;
   font-size: 15px;
+  -webkit-user-select: text;
+  user-select: text;
 }
-.tactical-inspector-actions button {
-  flex: 1;
-  min-height: 39px;
+.tactical-inspector-head button {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  padding: 4px;
+  font-size: 22px;
+  line-height: 1;
 }
 .tactical-inspector-body {
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 12px 13px;
+}
+#tacticalInspector .tactical-inspector-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .tactical-metrics {
   display: flex;
@@ -216,62 +231,6 @@ body > header #resolve {
   outline: 3px solid #ffd47e;
   outline-offset: 2px;
 }
-@media (max-width: 760px) {
-  body > header {
-    padding: 5px 8px;
-  }
-  #score {
-    font-size: 11px;
-    width: auto;
-    white-space: nowrap;
-  }
-  .toolbar {
-    padding: 3px 8px;
-  }
-  .toolbar .view-tabs {
-    width: auto;
-    flex: 1;
-  }
-  .toolbar .view-tabs button {
-    padding: 8px 5px;
-  }
-  .layout {
-    padding: 3px 3px 7px;
-  }
-  #mapViewport {
-    height: calc(100dvh - 110px);
-    min-height: 180px;
-  }
-  #tacticalInspector {
-    left: 0 !important;
-    right: 0;
-    top: auto !important;
-    bottom: 0;
-    width: 100%;
-    max-height: min(56dvh, 560px);
-    border-radius: 17px 17px 0 0;
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-  #tacticalInspector:not(.is-editing) {
-    max-height: 145px;
-  }
-  .tactical-inspector-body {
-    padding: 9px 12px;
-  }
-  .tactical-inspector-head,
-  .tactical-inspector-actions {
-    padding: 8px 12px;
-  }
-  #mapViewport .map-zoom-controls {
-    top: 8px;
-    right: 8px;
-  }
-  #mapViewport .map-zoom-controls button {
-    min-width: 37px;
-    min-height: 39px;
-  }
-}
-
 /* Mobile: viewport-sized game shell. Only content panels and the inspector scroll. */
 @media (max-width: 760px) {
   :root {
@@ -291,6 +250,25 @@ body > header #resolve {
     min-height: 0;
     overflow: hidden;
     overscroll-behavior: none;
+  }
+
+  body > header {
+    padding: 5px 8px;
+  }
+  #score {
+    font-size: 11px;
+    width: auto;
+    white-space: nowrap;
+  }
+  .toolbar {
+    padding: 3px 8px;
+  }
+  .toolbar .view-tabs {
+    width: auto;
+    flex: 1;
+  }
+  .toolbar .view-tabs button {
+    padding: 8px 5px;
   }
 
   body > header,
@@ -328,6 +306,14 @@ body > header #resolve {
     min-height: 0;
     max-height: none;
   }
+  #mapViewport .map-zoom-controls {
+    top: 8px;
+    right: 8px;
+  }
+  #mapViewport .map-zoom-controls button {
+    min-width: 37px;
+    min-height: 39px;
+  }
 
   #dashboard,
   #messagesView {
@@ -362,44 +348,27 @@ body > header #resolve {
     white-space: nowrap;
   }
 
+  /* The editor lives ABOVE the mobile action dock, and the document never scrolls behind it. */
   #tacticalInspector {
+    left: 0 !important;
+    right: 0;
+    top: auto !important;
     bottom: var(--tactical-action-height);
+    width: 100%;
     max-height: min(56dvh, calc(100dvh - var(--tactical-action-height) - 110px));
+    border-radius: 17px 17px 0 0;
     padding-bottom: 0;
   }
-
   #tacticalInspector:not(.is-editing) {
     max-height: 145px;
   }
-}
+  #tacticalInspector .tactical-inspector-head {
+    padding: 8px 12px;
+  }
+  #tacticalInspector .tactical-inspector-body {
+    padding: 10px 12px 14px;
+  }
 
-/* The editor lives ABOVE the existing mobile action dock. No duplicate
-   action toolbar is created, and the document never scrolls behind it. */
-.tactical-inspector-head {
-  flex: 0 0 auto;
-}
-.tactical-inspector-head strong {
-  min-width: 0;
-  flex: 1 1 auto;
-  -webkit-user-select: text;
-  user-select: text;
-}
-.tactical-inspector-head button {
-  flex: 0 0 40px;
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
-  padding: 4px;
-  font-size: 22px;
-  line-height: 1;
-}
-#tacticalInspector .tactical-inspector-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-@media (max-width: 760px) {
   body.tactical-selection-active .ux-dock {
     display: flex !important;
     height: var(--tactical-action-height);
@@ -422,12 +391,6 @@ body > header #resolve {
     padding: 0;
     background: #101d30;
     border-radius: 13px 13px 0 0;
-  }
-  #tacticalInspector .tactical-inspector-head {
-    padding: 8px 12px;
-  }
-  #tacticalInspector .tactical-inspector-body {
-    padding: 10px 12px 14px;
   }
 }
 #map {
