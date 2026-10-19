@@ -118,10 +118,23 @@
     return { positions, links, nodes, seed, players };
   }
 
-  function evaluatePolicy({ policy, node, manualSpent, manualHold, neighbors, owners, source }) {
-    if (!policy || !policy.enabled || !node || node.owner !== 0 || manualHold) return [];
+  function evaluatePolicy({
+    policy,
+    node,
+    manualSpent,
+    manualInvest = 0,
+    manualWithdraw = 0,
+    manualHold,
+    neighbors,
+    owners,
+    source,
+  }) {
+    if (!policyApplies(policy, node, manualHold)) return [];
     const surplus = Math.max(0, node.active - manualSpent - policy.reserve);
-    const invest = (surplus * policy.investPct) / 100;
+    const invest = Math.min(
+      (surplus * policy.investPct) / 100,
+      investmentRoom(policy, node.invested + manualInvest, manualWithdraw),
+    );
     const transfer =
       policy.dest !== null && neighbors.includes(policy.dest) && owners[policy.dest] === 0
         ? surplus - invest
@@ -139,6 +152,32 @@
       });
     return result;
   }
+
+  function policyWithdrawal({ policy, node, manualWithdraw = 0, manualHold, softCap }) {
+    if (!softCap || !policyApplies(policy, node, manualHold)) return 0;
+    const step = Math.min(
+      (node.invested * divestPct(policy)) / 100,
+      node.invested - investTarget(policy),
+    );
+    return step > TARGET_EPSILON ? Math.max(0, step - manualWithdraw) : 0;
+  }
+
+  const TARGET_EPSILON = 1e-6;
+  const policyApplies = (policy, node, manualHold) =>
+    Boolean(policy?.enabled && node?.owner === 0 && !manualHold);
+  const investTarget = (policy) =>
+    Number.isFinite(policy.investTarget) ? policy.investTarget : Infinity;
+  const divestPct = (policy) =>
+    Number.isFinite(policy.divestPct) ? Math.max(0, Math.min(100, policy.divestPct)) : 0;
+
+  function investmentRoom(policy, invested, manualWithdraw) {
+    const target = investTarget(policy);
+    if (target === Infinity) return Infinity;
+    if (manualWithdraw > 0) return 0;
+    const room = target - invested;
+    return room > TARGET_EPSILON ? room : 0;
+  }
+
   function applyOverflow(node, rules = SOFT_CAP_RULES) {
     const next = { ...node };
     const total = Math.max(0, next.active + next.invested);
@@ -398,6 +437,16 @@
       for (const [id, p] of Object.entries(orders || {})) {
         if (state.nodes[Number(id)]?.owner === 0) requested[id] = p.withdraw ?? 0;
       }
+      for (const [id, policy] of Object.entries(policies)) {
+        const automatic = policyWithdrawal({
+          policy,
+          node: state.nodes[Number(id)],
+          manualWithdraw: requested[id] ?? 0,
+          manualHold: Boolean(orders[id]?.hold),
+          softCap,
+        });
+        if (automatic > 0) requested[id] = (requested[id] ?? 0) + automatic;
+      }
       const aiWithdrawals = aiWithdrawalsOverride ?? aiPlan?.withdrawals ?? {};
       for (const [id, amount] of Object.entries(aiWithdrawals)) {
         if (state.nodes[Number(id)]?.owner !== null && state.nodes[Number(id)]?.owner !== 0)
@@ -440,6 +489,8 @@
           policy: policies[source],
           node: nodes[source],
           manualSpent: allocated(orders[source] ?? { invest: 0, edges: {} }),
+          manualInvest: orders[source]?.invest ?? 0,
+          manualWithdraw: softCap ? (orders[source]?.withdraw ?? 0) : 0,
           manualHold: Boolean(orders[source]?.hold),
           neighbors: neighbors(source),
           owners: nodes.map((n) => n.owner),
@@ -580,6 +631,7 @@
     seeded,
     buildMap,
     evaluatePolicy,
+    policyWithdrawal,
     forecast,
     aiOrders,
     economicAI,
