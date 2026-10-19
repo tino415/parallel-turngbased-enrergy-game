@@ -652,6 +652,21 @@
       setAllocation(source, destination, amount);
     };
     field.append(input, error);
+    const replaced = bothFriendly ? replacedSupport(source, destination) : null;
+    if (replaced?.manual)
+      field.append(
+        textElement(
+          'small',
+          'Replaces Node ' +
+            destination +
+            ' → ' +
+            source +
+            ': ' +
+            numeric(replaced.manual) +
+            ' manual support.',
+          'tactical-warning',
+        ),
+      );
     body.append(field);
     if (bothFriendly) {
       const current = policies[source];
@@ -681,6 +696,14 @@
       };
       toggle.append(caption, autoTransfer);
       policyBox.append(toggle);
+      if (replaced.route)
+        policyBox.append(
+          textElement(
+            'p',
+            'Replaces Node ' + destination + ' → ' + source + ' surplus route.',
+            'tactical-warning',
+          ),
+        );
       if (current?.dest !== null && current?.dest !== undefined && current.dest !== destination) {
         policyBox.append(
           textElement(
