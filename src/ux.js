@@ -335,7 +335,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
     });
   };
 
-  const selectedBulk = new Set();
+  const bulkSelected = (id) => store.getSnapshot().ui.bulkSelection.includes(id);
   const originalDashboard = renderDashboard;
   renderDashboard = function() {
     originalDashboard();
@@ -344,9 +344,9 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
     byId('bulkApply').onclick=()=>{
       const reserve=Math.max(0,Number(byId('bulkReserve').value)||0);
       const investPct=Math.max(0,Math.min(100,Number(byId('bulkInvest').value)||0));
-      const chosen=[...selectedBulk].filter(id=>state.nodes[id]?.owner===0);
+      const chosen=store.getSnapshot().ui.bulkSelection.filter(id=>state.nodes[id]?.owner===0);
       if(!chosen.length) {byId('bulkApply').title='Select nodes first';return;}
-      for(const id of chosen) policies[id]={...defaultPolicy(),...policies[id],enabled:true,reserve,investPct};
+      store.applyBulkPolicy(chosen,reserve,investPct);
       render();
     };
     const dash = byId('dashboard');
@@ -372,8 +372,8 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
       head.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px';
       const label=document.createElement('label');
       label.style.cssText='display:flex;align-items:center;gap:8px';
-      const check=document.createElement('input');check.type='checkbox';check.checked=selectedBulk.has(n.id);
-      check.onchange=()=>{ if(check.checked)selectedBulk.add(n.id);else selectedBulk.delete(n.id);syncBulk(); };
+      const check=document.createElement('input');check.type='checkbox';check.checked=bulkSelected(n.id);
+      check.onchange=()=>{ store.setBulkSelected(n.id,check.checked);syncBulk(); };
       label.append(check,document.createTextNode('Node '+n.id));
       const edit=document.createElement('button');edit.textContent='Edit →';
       edit.onclick=()=>{selected=n.id;switchView('map');showNodeOnMobile();};
@@ -384,10 +384,10 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
       card.append(head,desc);cards.append(card);
     }
     dash.append(cards);
-    dash.querySelectorAll('.bulk-node').forEach(c => {c.checked=selectedBulk.has(Number(c.dataset.node));c.addEventListener('change',()=>{const id=Number(c.dataset.node);if(c.checked)selectedBulk.add(id);else selectedBulk.delete(id);syncBulk();});});
+    dash.querySelectorAll('.bulk-node').forEach(c => {c.checked=bulkSelected(Number(c.dataset.node));c.addEventListener('change',()=>{store.setBulkSelected(Number(c.dataset.node),c.checked);syncBulk();});});
     function syncBulk() {
-      dash.querySelectorAll('.bulk-node').forEach(c=>{c.checked=selectedBulk.has(Number(c.dataset.node));});
-      cards.querySelectorAll('input[type=checkbox]').forEach((c,i)=>{c.checked=selectedBulk.has(mine[i].id);});
+      dash.querySelectorAll('.bulk-node').forEach(c=>{c.checked=bulkSelected(Number(c.dataset.node));});
+      cards.querySelectorAll('input[type=checkbox]').forEach((c,i)=>{c.checked=bulkSelected(mine[i].id);});
     }
   };
 
@@ -524,7 +524,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   // dismisses the keyboard; the editor is already in its final layout.
   window.addEventListener('resize', redrawCamera);
   byId('overlay').onchange=render;
-  byId('clearAll').onclick=()=>{orders={};render();};
+  byId('clearAll').onclick=()=>{store.clearAllOrders();render();};
   // The original HTML has inline-mobile navigation; the native dialogs supersede it.
   render();
   if(mobile()) {

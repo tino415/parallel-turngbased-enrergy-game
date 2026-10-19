@@ -3,27 +3,33 @@ import { test, expect } from '@playwright/test';
 test('Messages shows multiplayer combat labels and per-player round totals', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => {
-    playerCount = 6;
-    N = 7;
-    state = {
-      round: 1,
-      finished: false,
-      nodes: Array.from({ length: 7 }, (_, id) => ({
-        id,
-        owner: id === 6 ? null : id,
-        active: [20, 20, 20, 1, 20, 1, 1][id],
-        invested: 0,
-      })),
-    };
-    edges = [
-      [1, 6],
-      [2, 3],
-      [4, 5],
-    ];
-    xy = xy.slice(0, N);
-    orders = {};
-    policies = {};
-    history = [];
+    store.replaceMatch({
+      ...store.getSnapshot().match,
+      state: {
+        round: 1,
+        finished: false,
+        nodes: Array.from({ length: 7 }, (_, id) => ({
+          id,
+          owner: id === 6 ? null : id,
+          active: [20, 20, 20, 1, 20, 1, 1][id],
+          invested: 0,
+        })),
+      },
+      orders: {},
+      policies: {},
+      history: [],
+      map: {
+        xy: xy.slice(0, 7),
+        edges: [
+          [1, 6],
+          [2, 3],
+          [4, 5],
+        ],
+        N: 7,
+        playerCount: 6,
+        mapSeed,
+      },
+    });
     render();
   });
   await page.locator('#uxDockResolve:visible, #resolve:visible').first().click();
