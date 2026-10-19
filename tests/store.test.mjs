@@ -202,11 +202,184 @@ test('ui commands change only the ui slice and ignore repeated values', () => {
   const after = store.getSnapshot();
   assert.equal(calls.length, 4);
   assert.equal(after.match, before.match);
-  assertSameData(after.ui, {
-    view: 'dashboard',
-    clipboard: { enabled: true, reserve: 1, investPct: 9, dest: null },
-    bulkSelection: [2, 0],
-  });
+  const { view, clipboard, bulkSelection } = after.ui;
+  assertSameData(
+    { view, clipboard, bulkSelection },
+    {
+      view: 'dashboard',
+      clipboard: { enabled: true, reserve: 1, investPct: 9, dest: null },
+      bulkSelection: [2, 0],
+    },
+  );
   store.setBulkSelected(2, false);
   assertSameData(store.getSnapshot().ui.bulkSelection, [0]);
+});
+
+test('inspecting a node highlights first and edits on the second selection', () => {
+  const store = newStore();
+  store.inspectNode(0);
+  let { selected, inspector } = store.getSnapshot().ui;
+  assert.equal(selected, 0);
+  assertSameData(inspector, {
+    active: { kind: 'node', id: 0 },
+    editing: false,
+    advancedOpen: false,
+    manualOpen: false,
+    focusedNode: 0,
+  });
+  store.setInspectorSection('advancedOpen', true);
+  store.inspectNode(0);
+  ({ inspector } = store.getSnapshot().ui);
+  assert.equal(inspector.editing, true);
+  assert.equal(inspector.advancedOpen, true);
+
+  store.inspectNode(13);
+  ({ selected, inspector } = store.getSnapshot().ui);
+  assert.equal(selected, 13);
+  assertSameData(inspector, {
+    active: { kind: 'node', id: 13 },
+    editing: false,
+    advancedOpen: false,
+    manualOpen: false,
+    focusedNode: 13,
+  });
+});
+
+test('inspecting an edge selects its friendly source, which a direction change replaces', () => {
+  const store = newStore();
+  store.inspectEdge(0, 1);
+  assert.equal(store.getSnapshot().ui.selected, 0);
+  assertSameData(store.getSnapshot().ui.inspector.active, { kind: 'edge', a: 0, b: 1, source: 0 });
+  store.inspectEdge(0, 1);
+  assert.equal(store.getSnapshot().ui.inspector.editing, true);
+  store.setEdgeSource(1);
+  assert.equal(store.getSnapshot().ui.selected, 1);
+  assert.equal(store.getSnapshot().ui.inspector.active.source, 1);
+
+  store.inspectEdge(3, 6);
+  assert.equal(store.getSnapshot().ui.selected, null);
+  assert.equal(store.getSnapshot().ui.inspector.active.source, null);
+});
+
+test('an edge between friendly nodes opens in the direction of its surplus route', () => {
+  const { selectors } = loadStore(),
+    owned = (match, ids) => ({
+      ...match,
+      state: {
+        ...match.state,
+        nodes: match.state.nodes.map((n) => (ids.includes(n.id) ? { ...n, owner: 0 } : n)),
+      },
+    });
+  const store = newStore();
+  store.replaceMatch(owned(store.getSnapshot().match, [1]));
+  const match = store.getSnapshot().match;
+  assert.equal(selectors.edgeSource(match, 0, 1), 0);
+  store.routeSurplus(1, 0, true);
+  assert.equal(selectors.edgeSource(store.getSnapshot().match, 0, 1), 1);
+  store.disablePolicy(1);
+  assert.equal(selectors.edgeSource(store.getSnapshot().match, 0, 1), 1);
+});
+
+test('dismissing clears selection and editing but keeps focus and section state', () => {
+  const store = newStore();
+  store.inspectNode(0);
+  store.inspectNode(0);
+  store.setInspectorSection('manualOpen', true);
+  store.dismissInspector();
+  const { selected, inspector } = store.getSnapshot().ui;
+  assert.equal(selected, null);
+  assertSameData(inspector, {
+    active: null,
+    editing: false,
+    advancedOpen: false,
+    manualOpen: true,
+    focusedNode: 0,
+  });
+  const before = store.getSnapshot();
+  store.dismissInspector();
+  store.editSelectedNode();
+  store.setCamera({ x: 0, y: 0, scale: 1 });
+  store.setOverlay('all');
+  assert.equal(store.getSnapshot(), before);
+});
+
+function storeWithBlueNodes(ids, GameStore = loadStore()) {
+  const store = newStore(GameStore),
+    match = store.getSnapshot().match,
+    nodes = match.state.nodes.map((n) => (ids.includes(n.id) ? { ...n, owner: 0, active: 20 } : n));
+  store.replaceMatch({ ...match, state: { ...match.state, nodes } });
+  return store;
+}
+
+test('a manual support replaces the manual support in the opposite direction', () => {
+  const store = storeWithBlueNodes([0, 1]);
+  store.setAllocation(0, null, 2);
+  store.setAllocation(0, 1, 3);
+  store.setAllocation(1, 0, 4);
+  assertSameData(store.getSnapshot().match.orders, {
+    0: { invest: 2, withdraw: 0, edges: {}, hold: false },
+    1: { invest: 0, withdraw: 0, edges: { 0: 4 }, hold: false },
+  });
+  store.setAllocation(0, 1, 5);
+  assertSameData(Object.keys(store.getSnapshot().match.orders[1]?.edges ?? {}), []);
+});
+
+test('a surplus route replaces the surplus route in the opposite direction', () => {
+  const store = storeWithBlueNodes([0, 1, 2]);
+  store.routeSurplus(0, 1, true);
+  store.routeSurplus(1, 0, true);
+  assert.equal(store.getSnapshot().match.policies[0].dest, null);
+  assert.equal(store.getSnapshot().match.policies[1].dest, 0);
+  store.changePolicy(0, 'dest', 1);
+  assert.equal(store.getSnapshot().match.policies[1].dest, null);
+  store.pastePolicy(1, { ...store.getSnapshot().match.policies[0], dest: 0 });
+  assert.equal(store.getSnapshot().match.policies[0].dest, null);
+  assert.equal(store.getSnapshot().match.policies[0].reserve, 5);
+});
+
+test('a manual support and a surplus route never cancel each other', () => {
+  const store = storeWithBlueNodes([0, 1]);
+  store.routeSurplus(1, 0, true);
+  store.setAllocation(0, 1, 3);
+  store.routeSurplus(1, 0, true);
+  const { orders, policies } = store.getSnapshot().match;
+  assert.equal(policies[1].dest, 0);
+  assert.equal(orders[0].edges[1], 3);
+});
+
+test('the reverse support a new order would replace is reported before it is set', () => {
+  const GameStore = loadStore(),
+    store = storeWithBlueNodes([0, 1], GameStore);
+  const replaced = () => GameStore.selectors.replacedSupport(store.getSnapshot().match, 0, 1);
+  assertSameData(replaced(), { manual: 0, route: false });
+  store.setAllocation(1, 0, 4);
+  store.routeSurplus(1, 0, true);
+  assertSameData(replaced(), { manual: 4, route: true });
+});
+
+test('a save with support both ways keeps the net manual support and clears both routes', () => {
+  const GameStore = loadStore(),
+    store = storeWithBlueNodes([0, 1], GameStore),
+    save = JSON.parse(JSON.stringify(GameStore.saveFromMatch(store.getSnapshot().match, null)));
+  save.orders = {
+    0: { invest: 1, withdraw: 0, edges: { 1: 3 }, hold: false },
+    1: { invest: 0, withdraw: 0, edges: { 0: 5 }, hold: false },
+  };
+  save.policies = {
+    0: { enabled: true, reserve: 4, investPct: 30, dest: 1 },
+    1: { enabled: true, reserve: 6, investPct: 20, dest: 0 },
+  };
+  const restored = GameStore.matchFromSave(save, DEFAULTS);
+  assertSameData(restored.orders, {
+    0: { invest: 1, withdraw: 0, edges: {}, hold: false },
+    1: { invest: 0, withdraw: 0, edges: { 0: 2 }, hold: false },
+  });
+  assertSameData(restored.policies, {
+    0: { enabled: true, reserve: 4, investPct: 30, dest: null },
+    1: { enabled: true, reserve: 6, investPct: 20, dest: null },
+  });
+  assert.equal(
+    restored.history[0],
+    'Node 0 and Node 1 sent surplus to each other; both routes were cleared.',
+  );
 });
