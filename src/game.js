@@ -3,7 +3,9 @@ const { buildMap, playerColor, SOFT_CAP_RULES } = GameEngine;
 const { selectors } = GameStore;
 const store = GameStore.createStore();
 let state, orders, policies, history, xy, edges, N, playerCount, mapSeed;
-store.subscribe(({ match }, previous) => {
+let { view: currentView, clipboard } = store.getSnapshot().ui;
+store.subscribe(({ match, ui }, previous) => {
+  ({ view: currentView, clipboard } = ui);
   if (match === previous.match) return;
   ({ state, orders, policies, history } = match);
   ({ xy, edges, N, playerCount, mapSeed } = match.map);
@@ -13,10 +15,8 @@ const currentMatch = () => store.getSnapshot().match;
 const neighbors = (i) => selectors.neighbors(currentMatch(), i);
 const $ = (id) => document.getElementById(id),
   fmt = (v) => v.toFixed(1);
-let clipboard = null,
-  selected = null,
-  camera = { x: 0, y: 0, scale: 1 },
-  currentView = 'map';
+let selected = null,
+  camera = { x: 0, y: 0, scale: 1 };
 const softCapEnabled = () => selectors.softCapEnabled(currentMatch());
 const withdrawal = (source, p) => selectors.withdrawal(currentMatch(), source, p);
 const availableEnergy = (source, p) => selectors.availableEnergy(currentMatch(), source, p);
@@ -87,7 +87,7 @@ function generate() {
   selected = null;
   store.replaceMatch(GameStore.generatedMatch(buildMap(mapOptions()), domDefaults()));
   camera = { x: 0, y: 0, scale: 1 };
-  currentView = 'map';
+  store.setView('map');
   $('newGameDialog').close();
   render();
 }
@@ -222,7 +222,7 @@ function renderPolicyEditor() {
   // an automatic order. The Enabled checkbox or an edited field creates the
   // actual policy, so there is no separate Create policy action.
   button('Copy', () => {
-    clipboard = { ...p };
+    store.copyPolicy(p);
     render();
   });
   if (clipboard)
@@ -658,7 +658,7 @@ window.addEventListener('resize', () => positionNodeDetails());
 
 const SAVE_KEY = 'parallel-energy-game-v1';
 function switchView(view) {
-  currentView = view;
+  store.setView(view);
   render();
 }
 function setActiveTab() {

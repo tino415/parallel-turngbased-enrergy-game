@@ -184,3 +184,29 @@ test('an old save without optional fields loads with empty plans and current def
   assert.equal(GameStore.selectors.softCapEnabled(restored), false);
   assert.equal(GameStore.matchFromSave({ state }, DEFAULTS), null);
 });
+
+test('ui commands change only the ui slice and ignore repeated values', () => {
+  const store = newStore();
+  const calls = [];
+  store.subscribe((snapshot, previous) => calls.push({ snapshot, previous }));
+  const before = store.getSnapshot();
+  store.setView('map');
+  store.setBulkSelected(3, false);
+  assert.equal(store.getSnapshot(), before);
+
+  store.setView('dashboard');
+  store.setBulkSelected(2, true);
+  store.setBulkSelected(0, true);
+  store.setBulkSelected(2, true);
+  store.copyPolicy({ enabled: true, reserve: 1, investPct: 9, dest: null });
+  const after = store.getSnapshot();
+  assert.equal(calls.length, 4);
+  assert.equal(after.match, before.match);
+  assertSameData(after.ui, {
+    view: 'dashboard',
+    clipboard: { enabled: true, reserve: 1, investPct: 9, dest: null },
+    bulkSelection: [2, 0],
+  });
+  store.setBulkSelected(2, false);
+  assertSameData(store.getSnapshot().ui.bulkSelection, [0]);
+});

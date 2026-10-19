@@ -314,8 +314,10 @@
     return { ...match, state: result.state, policies: result.policies, orders: {}, history };
   }
 
-  function createStore(ui = {}) {
-    let snapshot = Object.freeze({ match: null, ui: Object.freeze({ ...ui }) });
+  const INITIAL_UI = { view: 'map', clipboard: null, bulkSelection: [] };
+
+  function createStore() {
+    let snapshot = Object.freeze({ match: null, ui: Object.freeze(INITIAL_UI) });
     const listeners = new Set();
 
     function commit(slice, next) {
@@ -328,7 +330,13 @@
       (command) =>
       (...args) =>
         commit('match', command(snapshot.match, ...args));
-    const onUi = (key, value) => commit('ui', Object.freeze({ ...snapshot.ui, [key]: value }));
+    const setUi = (key, value) => {
+      if (snapshot.ui[key] !== value) commit('ui', Object.freeze({ ...snapshot.ui, [key]: value }));
+    };
+    const bulkSelectionWith = (id, selected) => {
+      const others = snapshot.ui.bulkSelection.filter((other) => other !== id);
+      return selected ? [...others, id] : others;
+    };
 
     return {
       getSnapshot: () => snapshot,
@@ -354,7 +362,12 @@
       applyBulkInvestment: onMatch(applyBulkInvestment),
       setDefaults: onMatch(setDefaults),
       resolve: onMatch(resolve),
-      setUi: onUi,
+      setView: (view) => setUi('view', view),
+      copyPolicy: (policy) => setUi('clipboard', { ...policy }),
+      setBulkSelected(id, selected) {
+        if (snapshot.ui.bulkSelection.includes(id) !== selected)
+          setUi('bulkSelection', bulkSelectionWith(id, selected));
+      },
     };
   }
 
