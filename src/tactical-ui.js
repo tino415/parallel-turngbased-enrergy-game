@@ -219,6 +219,7 @@
     if (!svg.contains(element)) return null;
     if (element.dataset.node !== undefined) return '[data-node="' + element.dataset.node + '"]';
     if (element.dataset.edge !== undefined) return '[data-edge="' + element.dataset.edge + '"]';
+    if (element.classList.contains('tactical-map-swap')) return '.tactical-map-swap';
     return null;
   }
 
@@ -274,7 +275,7 @@
         svgElement(
           'line',
           {
-            ...attributes,
+            ...(active.source === b ? reversed(attributes) : attributes),
             class: 'tactical-edge-selected',
           },
           graph,
@@ -305,10 +306,8 @@
         chooseEdge(a, b);
       });
     }
-    const ids =
-      active?.kind === 'node' ? [active.id] : active?.kind === 'edge' ? [active.a, active.b] : [];
-    for (const id of ids) {
-      const [x, y] = xy[id] || [];
+    for (const ring of selectionRings()) {
+      const [x, y] = xy[ring.id] || [];
       if (x === undefined) continue;
       svgElement(
         'circle',
@@ -316,11 +315,110 @@
           cx: x,
           cy: y,
           r: 34,
-          class: 'tactical-node-selected',
+          class: 'tactical-node-selected' + (ring.role ? ' tactical-node-' + ring.role : ''),
+          'data-ring': ring.id,
         },
         graph,
       );
+      if (ring.role)
+        svgElement('text', { x, y: y - 58, class: 'tactical-node-tag' }, graph).textContent =
+          ring.role.toUpperCase();
     }
+    drawDirectionArrow(graph);
+    drawMapSwap(graph);
+  }
+
+  function drawMapSwap(graph) {
+    if (active?.kind !== 'edge' || !bothEndsFriendly(active.a, active.b)) return;
+    const { source, destination } = edgeDirection();
+    const [ax, ay] = xy[active.a];
+    const [bx, by] = xy[active.b];
+    const length = Math.hypot(bx - ax, by - ay) || 1;
+    const besideTheLine = 38;
+    const x = (ax + bx) / 2 + ((by - ay) / length) * besideTheLine;
+    const y = (ay + by) / 2 - ((bx - ax) / length) * besideTheLine;
+    const button = svgElement(
+      'g',
+      {
+        class: 'tactical-map-swap',
+        transform: 'translate(' + x + ' ' + y + ')',
+        tabindex: 0,
+        role: 'button',
+        'aria-label': 'Swap direction: from Node ' + source + ' to Node ' + destination,
+      },
+      graph,
+    );
+    svgElement('circle', { r: 22, class: 'tactical-map-swap-hit' }, button);
+    svgElement('circle', { r: 16, class: 'tactical-map-swap-face' }, button);
+    svgElement('text', { y: 6, class: 'tactical-map-swap-label' }, button).textContent = '⇄';
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      swapDirection();
+    });
+    button.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      swapDirection();
+    });
+  }
+
+  function swapDirection() {
+    const { destination } = edgeDirection();
+    store.setEdgeSource(destination);
+    render();
+  }
+
+  const bothEndsFriendly = (a, b) => state.nodes[a].owner === 0 && state.nodes[b].owner === 0;
+
+  function selectionRings() {
+    if (active?.kind === 'node') return [{ id: active.id, role: null }];
+    if (active?.kind !== 'edge') return [];
+    if (active.source === null)
+      return [
+        { id: active.a, role: null },
+        { id: active.b, role: null },
+      ];
+    const { source, destination } = edgeDirection();
+    return [
+      { id: source, role: 'from' },
+      { id: destination, role: 'to' },
+    ];
+  }
+
+  function edgeDirection() {
+    return {
+      source: active.source,
+      destination: active.source === active.a ? active.b : active.a,
+    };
+  }
+
+  function reversed({ x1, y1, x2, y2 }) {
+    return { x1: x2, y1: y2, x2: x1, y2: y1 };
+  }
+
+  function drawDirectionArrow(graph) {
+    if (active?.kind !== 'edge' || active.source === null) return;
+    const { source, destination } = edgeDirection();
+    const [sx, sy] = xy[source];
+    const [tx, ty] = xy[destination];
+    const length = Math.hypot(tx - sx, ty - sy) || 1;
+    const along = [(tx - sx) / length, (ty - sy) / length];
+    const across = [-along[1], along[0]];
+    const tip = [tx - along[0] * 37, ty - along[1] * 37];
+    const corner = (side) => [
+      tip[0] - along[0] * 18 + across[0] * 10 * side,
+      tip[1] - along[1] * 18 + across[1] * 10 * side,
+    ];
+    svgElement(
+      'path',
+      {
+        d: 'M ' + [tip, corner(1), corner(-1)].map((point) => point.join(' ')).join(' L ') + ' Z',
+        class: 'tactical-edge-arrow',
+        'data-from': source,
+        'data-to': destination,
+      },
+      graph,
+    );
   }
 
   svg.addEventListener('click', (event) => {
@@ -697,51 +795,61 @@
     );
   }
 
-  function showEdge(body, a, b) {
-    const source = active.source;
-    const destination = source === a ? b : a;
-    body.append(
+  function directionRow(source, destination, swappable) {
+    const row = document.createElement('div');
+    row.className = 'tactical-primary-control tactical-direction';
+    row.dataset.key = 'direction';
+    row.append(nodeChip(source), textElement('span', '→', 'tactical-direction-arrow'));
+    row.append(nodeChip(destination));
+    const sentence = 'From Node ' + source + ' to Node ' + destination;
+    if (swappable) {
+      const swap = document.createElement('button');
+      swap.type = 'button';
+      swap.id = 'tacticalSwapDirection';
+      swap.textContent = '⇄';
+      swap.setAttribute('aria-label', sentence + '. Swap direction');
+      swap.onclick = swapDirection;
+      row.append(swap);
+    }
+    const status = textElement('span', sentence, 'tactical-visually-hidden');
+    status.id = 'tacticalDirectionStatus';
+    status.setAttribute('aria-live', 'polite');
+    row.append(status);
+    return row;
+  }
+
+  function nodeChip(id) {
+    const node = state.nodes[id];
+    const chip = document.createElement('span');
+    chip.className = 'tactical-node-chip';
+    chip.dataset.chip = id;
+    const swatch = textElement('span', '', 'tactical-node-swatch');
+    swatch.style.background = playerColor(node.owner);
+    chip.append(
+      swatch,
+      textElement('strong', 'Node ' + id),
       textElement(
-        'p',
-        'Node ' +
-          a +
-          ' (' +
-          (state.nodes[a].owner === 0 ? 'yours' : 'other') +
-          ') — Node ' +
-          b +
-          ' (' +
-          (state.nodes[b].owner === 0 ? 'yours' : 'other') +
-          ')',
+        'span',
+        (node.owner === 0 ? '' : GameEngine.playerName(node.owner) + ' · ') +
+          compactEnergy(node.active),
         'tactical-secondary',
       ),
     );
+    return chip;
+  }
+
+  function showEdge(body, a, b) {
+    const source = active.source;
+    const destination = source === a ? b : a;
     if (source === null) {
-      body.append(textElement('p', 'No friendly source: inspect only.', 'tactical-secondary'));
+      body.append(
+        directionRow(a, b, false),
+        textElement('p', 'No friendly source: inspect only.', 'tactical-secondary'),
+      );
       return;
     }
-    const bothFriendly = state.nodes[a].owner === 0 && state.nodes[b].owner === 0;
-    if (bothFriendly && editing) {
-      const direction = document.createElement('label');
-      direction.className = 'tactical-primary-control';
-      direction.append(textElement('strong', 'Transfer direction'));
-      const select = document.createElement('select');
-      for (const [from, to] of [
-        [a, b],
-        [b, a],
-      ]) {
-        const option = document.createElement('option');
-        option.value = String(from);
-        option.textContent = 'Node ' + from + ' → Node ' + to;
-        select.append(option);
-      }
-      select.value = String(source);
-      select.onchange = () => {
-        store.setEdgeSource(Number(select.value));
-        render();
-      };
-      direction.append(select);
-      body.append(direction);
-    }
+    const bothFriendly = bothEndsFriendly(a, b);
+    body.append(directionRow(source, destination, bothFriendly));
     const type = state.nodes[destination].owner === 0 ? 'Support transfer' : 'Attack';
     const value = plan(source).edges[destination] || 0;
     const recurring = bothFriendly
@@ -935,33 +1043,52 @@
     }
   }
 
-  function screenAnchor() {
-    if (!active) return null;
-    const graph = svg.querySelector('g');
-    const matrix = graph?.getScreenCTM();
-    if (!matrix) return null;
-    const location =
-      active.kind === 'node'
-        ? xy[active.id]
-        : [(xy[active.a][0] + xy[active.b][0]) / 2, (xy[active.a][1] + xy[active.b][1]) / 2];
+  const SELECTED_ITEM_MARGIN = 72;
+
+  function selectedItemBox() {
+    const matrix = svg.querySelector('g')?.getScreenCTM();
+    if (!active || !matrix) return null;
+    const ids = active.kind === 'node' ? [active.id] : [active.a, active.b];
+    const xs = ids.map((id) => matrix.a * xy[id][0] + matrix.e);
+    const ys = ids.map((id) => matrix.d * xy[id][1] + matrix.f);
+    const margin = SELECTED_ITEM_MARGIN * matrix.a;
     return {
-      x: matrix.a * location[0] + matrix.c * location[1] + matrix.e,
-      y: matrix.b * location[0] + matrix.d * location[1] + matrix.f,
+      left: Math.min(...xs) - margin,
+      right: Math.max(...xs) + margin,
+      top: Math.min(...ys) - margin,
+      bottom: Math.max(...ys) + margin,
     };
   }
 
   function positionInspector() {
-    if (!active || mobile()) return;
-    const anchor = screenAnchor();
-    if (!anchor) return;
-    const width = 360;
-    const left = Math.min(innerWidth - width - 12, Math.max(10, anchor.x + 35));
-    const top = Math.min(
-      innerHeight - Math.min(root.offsetHeight, innerHeight * 0.76) - 12,
-      Math.max(12, anchor.y - 50),
+    if (!active || root.hidden || mobile()) return;
+    const item = selectedItemBox();
+    if (!item) return;
+    const { left, top } = placementBeside(item);
+    root.style.left = left + 'px';
+    root.style.top = top + 'px';
+  }
+
+  function placementBeside(item) {
+    const width = root.offsetWidth;
+    const height = Math.min(root.offsetHeight, innerHeight * 0.76);
+    const gap = 12;
+    const clampLeft = (left) => Math.max(10, Math.min(innerWidth - width - 10, left));
+    const clampTop = (top) => Math.max(12, Math.min(innerHeight - height - 12, top));
+    const inWindow = ({ left, top }) =>
+      left >= 10 &&
+      top >= 12 &&
+      left + width <= innerWidth - 10 &&
+      top + height <= innerHeight - 12;
+    const candidates = [
+      { left: item.right + gap, top: clampTop(item.top) },
+      { left: item.left - gap - width, top: clampTop(item.top) },
+      { left: clampLeft(item.left), top: item.bottom + gap },
+      { left: clampLeft(item.left), top: item.top - gap - height },
+    ];
+    return (
+      candidates.find(inWindow) ?? { left: clampLeft(item.right + gap), top: clampTop(item.top) }
     );
-    root.style.left = Math.max(10, left) + 'px';
-    root.style.top = Math.max(12, top) + 'px';
   }
 
   function showInspector() {
