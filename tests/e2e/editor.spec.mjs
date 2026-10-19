@@ -47,11 +47,6 @@ test('edge draft and focus survive crossing the mobile breakpoint both ways', as
 });
 
 test('a full render while typing keeps the draft and focus', async ({ page }) => {
-  test.fail(
-    true,
-    'render() rebuilds the inspector: the panel shows the old value and focus drops to <body>. ' +
-      'Todoist 6hp82xQRQGvWqV64 "Keep editor inputs, drafts and focus stable during UI updates".',
-  );
   await openEdgeEditor(page, '0-1');
   const amount = page.locator('#tacticalEdgeAmount');
   await amount.fill('2.5');
