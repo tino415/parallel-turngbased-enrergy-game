@@ -100,20 +100,6 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
 #uxSettingsDialog .policy-box{margin-bottom:16px}
 #uxSettingsDialog label{line-height:1.6}
 .ux-dock{display:none}
-#dashboard{max-height:unset;overflow:visible}
-#dashboard h3{margin-top:5px}
-#dashboard>.policy-box{display:flex;align-items:end;flex-wrap:wrap;gap:9px}
-#dashboard>.policy-box label{margin:0;flex:1 1 130px}
-#dashboard>.policy-box button{min-height:39px}
-#dashboard>.policy-box hr{display:none}
-#dashboard>table{display:table;width:100%;font-size:12px}
-#dashboard th{position:sticky;top:0;background:#243a55;white-space:nowrap}
-#dashboard td{white-space:nowrap}
-#dashboard .ux-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:12px 0}
-#dashboard .ux-summary>div{padding:13px;border:1px solid #3c5672;background:#1a3049;border-radius:10px}
-#dashboard .ux-summary strong{display:block;font-size:22px}
-#dashboard .ux-summary span{font-size:11px;color:#a8bed8}
-#dashboard .ux-node-cards{display:none}
 #messagesView .log{max-height:65vh}
 @media(min-width:761px){.layout.ux-wide-view{grid-template-columns:minmax(0,1fr)}.layout.ux-wide-view #gameSidebar{display:none}}
 @media(max-width:1050px){.layout{grid-template-columns:minmax(0,1fr) 245px}.ux-editor-sections{grid-template-columns:minmax(0,1fr) minmax(230px,.9fr)}}
@@ -134,12 +120,6 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
  .ux-editor-sections{display:flex;flex-direction:column;gap:12px}.ux-editor-section{width:100%;padding:13px}.ux-jumps{display:flex}.ux-jumps button{flex:1;font-size:12px;padding:9px 6px}
  .ux-editor-footer{padding:10px 14px calc(10px + env(safe-area-inset-bottom))}.ux-editor-footer button{min-height:44px;min-width:85px}
  .ux-dialog{width:100vw;height:100dvh;max-height:100dvh;max-width:none;border:0;border-radius:0}
- #dashboard>.policy-box{display:block}#dashboard>.policy-box label,#dashboard>.policy-box button{margin:8px 0;width:100%}
- #dashboard>table{display:none}#dashboard .ux-node-cards{display:grid;gap:9px}
- #dashboard .ux-node-card{background:#1a304a;border:1px solid #3b5572;padding:12px;border-radius:10px}
- #dashboard .ux-node-card header{display:flex;align-items:center;justify-content:space-between;background:transparent;border:0;padding:0}
- #dashboard .ux-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
- #dashboard .ux-node-card button{font-size:12px}
 }
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 `;
@@ -312,62 +292,6 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
         showNodeOnMobile();
       };
     });
-  };
-
-  const bulkSelected = (id) => store.getSnapshot().ui.bulkSelection.includes(id);
-  const originalDashboard = renderDashboard;
-  renderDashboard = function() {
-    originalDashboard();
-    if (currentView !== 'dashboard') return;
-    // Bulk policy edits should not erase existing transfer destinations.
-    byId('bulkApply').onclick=()=>{
-      const reserve=Math.max(0,Number(byId('bulkReserve').value)||0);
-      const investPct=Math.max(0,Math.min(100,Number(byId('bulkInvest').value)||0));
-      const chosen=store.getSnapshot().ui.bulkSelection.filter(id=>state.nodes[id]?.owner===0);
-      if(!chosen.length) {byId('bulkApply').title='Select nodes first';return;}
-      store.applyBulkPolicy(chosen,reserve,investPct);
-      render();
-    };
-    const dash = byId('dashboard');
-    const mine = state.nodes.filter(n => n.owner === 0);
-    const energy = mine.reduce((a,n) => a+n.active,0);
-    const invested = mine.reduce((a,n) => a+n.invested,0);
-    const defense = mine.reduce((a,n) => a+projection(n.id).defense,0);
-    const summary = document.createElement('div');
-    summary.className = 'ux-summary';
-    [[ 'Your nodes', mine.length ],[ 'Active energy', fmtUX(energy) ],[ 'Invested',fmtUX(invested) ],[ 'Defense preview',fmtUX(defense) ]].forEach(([label,v])=>{
-      const item=document.createElement('div');
-      const title=document.createElement('span');title.textContent=label;
-      const value=document.createElement('strong');value.textContent=v;
-      item.append(title,value);summary.append(item);
-    });
-    dash.querySelector('h3').after(summary);
-    const cards = document.createElement('div');
-    cards.className = 'ux-node-cards';
-    for (const n of mine) {
-      const p=projection(n.id), card=document.createElement('article');
-      card.className='ux-node-card';
-      const head=document.createElement('div');
-      head.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px';
-      const label=document.createElement('label');
-      label.style.cssText='display:flex;align-items:center;gap:8px';
-      const check=document.createElement('input');check.type='checkbox';check.checked=bulkSelected(n.id);
-      check.onchange=()=>{ store.setBulkSelected(n.id,check.checked);syncBulk(); };
-      label.append(check,document.createTextNode('Node '+n.id));
-      const edit=document.createElement('button');edit.textContent='Edit →';
-      edit.onclick=()=>{store.select(n.id);switchView('map');showNodeOnMobile();};
-      head.append(label,edit);
-      const desc=document.createElement('div');desc.className='muted';
-      desc.textContent='Active '+fmtUX(n.active)+' · Invested '+fmtUX(n.invested)+' · Defense '+fmtUX(p.defense)+' · Next '+fmtUX(p.next)+(softCapEnabled()?' · Capacity '+fmtUX(n.active+n.invested)+'/'+SOFT_CAP_RULES.capacity+' · Overflow loss '+fmtUX(p.overflow):'');
-      desc.style.cssText='font-size:12px;line-height:1.7;margin-top:8px';
-      card.append(head,desc);cards.append(card);
-    }
-    dash.append(cards);
-    dash.querySelectorAll('.bulk-node').forEach(c => {c.checked=bulkSelected(Number(c.dataset.node));c.addEventListener('change',()=>{store.setBulkSelected(Number(c.dataset.node),c.checked);syncBulk();});});
-    function syncBulk() {
-      dash.querySelectorAll('.bulk-node').forEach(c=>{c.checked=bulkSelected(Number(c.dataset.node));});
-      cards.querySelectorAll('input[type=checkbox]').forEach((c,i)=>{c.checked=bulkSelected(mine[i].id);});
-    }
   };
 
   let lastMap = '';

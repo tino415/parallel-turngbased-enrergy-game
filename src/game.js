@@ -541,118 +541,9 @@ function renderFlows(svg, graph, element) {
     t.textContent = '+' + compactEnergy(p.income) + ' / I ' + compactEnergy(p.invest);
   }
 }
-function renderDashboard() {
+function renderViews() {
   $('mapViewport').hidden = currentView !== 'map';
-  $('dashboard').hidden = currentView !== 'dashboard';
   $('messagesView').hidden = currentView !== 'messages';
-  if (currentView !== 'dashboard') return;
-  const dashboard = $('dashboard');
-  dashboard.replaceChildren();
-  const title = document.createElement('h3');
-  title.textContent = 'Node dashboard — select several nodes for bulk policies';
-  dashboard.append(title);
-  const bulk = document.createElement('div');
-  bulk.className = 'policy-box';
-  bulk.innerHTML =
-    '<label>Reserve <input id="bulkReserve" type="number" min="0" value="5"></label><label>Invest % <input id="bulkInvest" type="number" min="0" max="100" value="70"></label><button id="bulkApply">Apply policy to selected</button><hr><label>One-time investment energy per selected node <input id="bulkManualInvest" type="number" min="0" value="5"></label><button id="bulkManualApply">Set manual investments</button>';
-  dashboard.append(bulk);
-  const table = document.createElement('table'),
-    head = document.createElement('tr');
-  for (const h of [
-    'Select',
-    'Node',
-    'Active',
-    'Invested',
-    'Income',
-    'Defense',
-    'Invest next',
-    'Next active',
-    'Invest %',
-    'Reserve',
-    'Policy',
-  ]) {
-    const th = document.createElement('th');
-    th.textContent = h;
-    head.append(th);
-  }
-  table.append(head);
-  for (const n of state.nodes.filter((n) => n.owner === 0)) {
-    const p = projection(n.id),
-      tr = document.createElement('tr');
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.dataset.node = n.id;
-    checkbox.className = 'bulk-node';
-    const makeCell = (child) => {
-      const td = document.createElement('td');
-      if (typeof child === 'string') td.textContent = child;
-      else td.append(child);
-      tr.append(td);
-    };
-    makeCell(checkbox);
-    const select = document.createElement('button');
-    select.textContent = n.id;
-    select.onclick = () => {
-      store.select(n.id);
-      switchView('map');
-      showNodeOnMobile();
-    };
-    makeCell(select);
-    for (const value of [n.active, n.invested, p.income, p.defense, p.invest, p.next])
-      makeCell(fmt(value));
-    const pct = document.createElement('input');
-    pct.type = 'number';
-    pct.min = 0;
-    pct.max = 100;
-    pct.step = 5;
-    pct.value = policies[n.id]?.investPct ?? 0;
-    pct.title = 'Persistent investment percentage';
-    pct.onchange = () => {
-      const val = Number(pct.value);
-      if (!Number.isFinite(val) || val < 0 || val > 100) {
-        render();
-        return;
-      }
-      store.enablePolicyWith(n.id, { investPct: val });
-      render();
-    };
-    makeCell(pct);
-    const reserve = document.createElement('input');
-    reserve.type = 'number';
-    reserve.min = 0;
-    reserve.step = 1;
-    reserve.value = policies[n.id]?.reserve ?? 5;
-    reserve.onchange = () => {
-      const val = Number(reserve.value);
-      if (!Number.isFinite(val) || val < 0) {
-        render();
-        return;
-      }
-      store.enablePolicyWith(n.id, { reserve: val });
-      render();
-    };
-    makeCell(reserve);
-    const toggle = document.createElement('input');
-    toggle.type = 'checkbox';
-    toggle.checked = Boolean(policies[n.id]?.enabled);
-    toggle.setAttribute('aria-label', 'Enable policy for node ' + n.id);
-    toggle.onchange = () => {
-      if (toggle.checked) store.enablePolicyWith(n.id, {});
-      else store.disablePolicy(n.id);
-      render();
-    };
-    makeCell(toggle);
-    table.append(tr);
-  }
-  dashboard.append(table);
-  $('bulkManualApply').onclick = () => {
-    const ids = [...dashboard.querySelectorAll('.bulk-node:checked')].map((x) =>
-        Number(x.dataset.node),
-      ),
-      amount = Math.max(0, Number($('bulkManualInvest').value) || 0);
-    store.applyBulkInvestment(ids, amount);
-    render();
-  };
 }
 function attachNavigation() {
   const svg = $('map');
@@ -757,7 +648,6 @@ function switchView(view) {
 function setActiveTab() {
   for (const [id, view] of [
     ['mapTab', 'map'],
-    ['tableView', 'dashboard'],
     ['messagesTab', 'messages'],
   ]) {
     const button = $(id);
@@ -901,7 +791,7 @@ function render() {
   renderPolicyEditor();
   renderOrders();
   renderFlows(svg, graph, element);
-  renderDashboard();
+  renderViews();
   $('log').replaceChildren();
   for (const line of history) {
     const entry = document.createElement('div');
@@ -937,7 +827,6 @@ $('generate').onclick = () => {
 for (const id of ['nodeCount', 'playerCount', 'density', 'seed'])
   $(id).addEventListener('input', previewMap);
 $('cancelNewGame').onclick = () => $('newGameDialog').close();
-$('tableView').onclick = () => switchView('dashboard');
 $('mapTab').onclick = () => switchView('map');
 $('messagesTab').onclick = () => switchView('messages');
 $('overlay').value = overlay;

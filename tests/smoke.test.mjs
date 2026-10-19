@@ -23,7 +23,7 @@ test('planning, automation, procedural generation and combat still exist', () =>
     'policyOrders',
     'generate',
     'renderFlows',
-    'renderDashboard',
+    'renderViews',
     'renderPolicyEditor',
   ]) {
     assert.match(js, new RegExp('function\\s+' + fn + '\\s*\\('));

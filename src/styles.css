@@ -178,27 +178,6 @@ button:disabled {
   -webkit-user-select: none;
   user-select: none;
 }
-#dashboard {
-  overflow: auto;
-  max-height: 70vh;
-}
-#dashboard table {
-  border-collapse: collapse;
-  width: 100%;
-  font-size: 13px;
-}
-#dashboard td,
-#dashboard th {
-  border-bottom: 1px solid #3d506a;
-  padding: 7px;
-  text-align: left;
-}
-#dashboard input {
-  width: 72px;
-}
-#dashboard select {
-  width: 100px;
-}
 .flow-label {
   fill: #f7fafc;
   stroke: #152033;
@@ -327,20 +306,10 @@ dialog#newGameDialog::backdrop {
   font-size: 14px;
   line-height: 1.85;
 }
-#dashboard[hidden],
 #messagesView[hidden],
 #mapViewport[hidden],
 [hidden] {
   display: none !important;
-}
-#dashboard {
-  max-height: 75vh;
-}
-#dashboard input[type='number'] {
-  width: 76px;
-}
-#dashboard input[type='checkbox'] {
-  width: auto;
 }
 @media (max-width: 760px) {
   .view-tabs {

@@ -31,10 +31,17 @@ test('new game editor shows combined capacity and can spend withdrawn reserves',
   await expect(page.locator('#score')).toContainText('Round 2');
 });
 
-test('new matches expose capacity and withdrawal in dashboard', async ({ page }) => {
-  await page.locator('#tableView').click();
-  await expect(page.locator('#dashboard')).toBeVisible();
-  await expect(page.locator('#dashboard')).toContainText('Capacity');
+test('new matches expose capacity in the group member rows', async ({ page }) => {
+  await page.evaluate(() => {
+    const match = store.getSnapshot().match;
+    const nodes = match.state.nodes.map((n) => (n.id === 1 ? { ...n, owner: 0 } : n));
+    store.replaceMatch({ ...match, state: { ...match.state, nodes } });
+    store.setGroupMode(true);
+    store.setBulkSelection([0, 1]);
+    render();
+  });
+  await expect(page.locator('.tactical-group-member-row').first()).toContainText('38 / 250');
+  await expect(page.locator('#tacticalInspector')).toContainText('Overflow loss');
 });
 
 test('legacy saved games do not silently switch on new gameplay rules', async ({ page }) => {

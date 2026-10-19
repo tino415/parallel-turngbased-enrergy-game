@@ -23,4 +23,4 @@ The interface must preserve the economy merged in PR #13: new-game soft energy c
 
 ## Review checks
 
-Validate keyboard focus on mobile after viewport resize, pointer/touch drag versus selection, two-tap edits, edge directions, access to the withdrawal allocator, and responsive placement of the inspector. Test Orders, Settings, Dashboard, and Messages after removing the permanent sidebar. Verify four viewport projects in Playwright and review screenshots before merge.
+Validate keyboard focus on mobile after viewport resize, pointer/touch drag versus selection, two-tap edits, edge directions, access to the withdrawal allocator, and responsive placement of the inspector. Test Orders, Settings and Messages after removing the permanent sidebar. Verify four viewport projects in Playwright and review screenshots before merge.

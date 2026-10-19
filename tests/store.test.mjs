@@ -47,8 +47,9 @@ function playCommands(store) {
   store.setAllocation(0, 2, 10);
   store.setDefaults({ reserve: '2', invest: '60' });
   store.resolve(seededRandom(11));
-  store.applyBulkPolicy([0, 1, 2], 4, 55);
-  store.applyBulkInvestment([0, 1], 1);
+  store.applyGroupPolicyField([0, 1, 2], 'reserve', 4);
+  store.applyGroupPolicyField([0, 1, 2], 'investPct', 55);
+  store.investOnEach([0, 1], 1);
   store.routeSurplus(2, 0, true);
   store.resolve(seededRandom(12));
 }
@@ -191,28 +192,27 @@ test('ui commands change only the ui slice and ignore repeated values', () => {
   store.subscribe((snapshot, previous) => calls.push({ snapshot, previous }));
   const before = store.getSnapshot();
   store.setView('map');
-  store.setBulkSelected(3, false);
+  store.setBulkSelection([]);
+  store.toggleGroupMember(5);
   assert.equal(store.getSnapshot(), before);
 
-  store.setView('dashboard');
-  store.setBulkSelected(2, true);
-  store.setBulkSelected(0, true);
-  store.setBulkSelected(2, true);
+  store.setView('messages');
+  store.toggleGroupMember(0);
   store.copyPolicy({ enabled: true, reserve: 1, investPct: 9, dest: null });
   const after = store.getSnapshot();
-  assert.equal(calls.length, 4);
+  assert.equal(calls.length, 3);
   assert.equal(after.match, before.match);
   const { view, clipboard, bulkSelection } = after.ui;
   assertSameData(
     { view, clipboard, bulkSelection },
     {
-      view: 'dashboard',
+      view: 'messages',
       clipboard: { enabled: true, reserve: 1, investPct: 9, dest: null },
-      bulkSelection: [2, 0],
+      bulkSelection: [0],
     },
   );
-  store.setBulkSelected(2, false);
-  assertSameData(store.getSnapshot().ui.bulkSelection, [0]);
+  store.toggleGroupMember(0);
+  assertSameData(store.getSnapshot().ui.bulkSelection, []);
 });
 
 test('inspecting a node highlights first and edits on the second selection', () => {

@@ -12,7 +12,7 @@ This is a **testing baseline**, not a claim that the current UI passes all requi
 - Applying bulk policy reserve/invest changes preserves pre-existing transfer destinations.
 - Normal page scrolling does not unexpectedly zoom the graph. Explicit Pan mode allows map movement with one finger; Scroll mode returns control to the browser.
 - Zoom in, zoom out, Focus and Fit actions are accessible and reversible, visible above the mobile action dock.
-- Dashboard and Messages are independently navigable and should not discard orders or round state.
+- Messages is independently navigable and should not discard orders or round state.
 - A refresh restores the saved match in the same browser profile.
 - Forms and menus do not cause horizontal page overflow.
 

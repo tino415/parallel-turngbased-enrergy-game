@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync } from 'node:fs';
-import { test, expect, inspector, isMobileLayout } from './support/game.mjs';
+import { test, expect, inspector } from './support/game.mjs';
 
 const fixture = (name) => new URL('./fixtures/' + name, import.meta.url);
 
@@ -61,21 +61,19 @@ async function resolveRound(page) {
   await expect(page.locator('#score')).toContainText('Round ' + (round + 1));
 }
 
-async function checkBulkNodes(page, testInfo, ids) {
-  for (const id of ids) {
-    const checkbox = isMobileLayout(testInfo)
-      ? page
-          .locator('.ux-node-card')
-          .filter({ hasText: 'Node ' + id })
-          .locator('input')
-      : page.locator(`#dashboard .bulk-node[data-node="${id}"]`);
-    await checkbox.check();
-  }
+async function selectGroup(page, ids) {
+  await page.locator('#fit').click();
+  for (const id of ids)
+    await page
+      .locator('#map .node-hit')
+      .nth(id)
+      .click({ modifiers: ['Shift'] });
+  await expect(inspector(page)).toContainText('Group · ' + ids.length + ' nodes');
 }
 
 test('a fixed command sequence produces the recorded orders, policies and rounds', async ({
   page,
-}, testInfo) => {
+}) => {
   test.setTimeout(120000);
   const trace = [];
   const record = async (step) => trace.push({ step, ...(await matchSnapshot(page)) });
@@ -120,14 +118,12 @@ test('a fixed command sequence produces the recorded orders, policies and rounds
   await closeInspector(page);
   await record('policy pasted to node 1, node 2 routes surplus to node 0');
 
-  await page.locator('#tableView').click();
-  await checkBulkNodes(page, testInfo, [0, 1]);
-  await commit(page.locator('#bulkReserve'), 4);
-  await commit(page.locator('#bulkInvest'), 55);
-  await page.locator('#bulkApply').click();
-  await commit(page.locator('#bulkManualInvest'), 1);
-  await page.locator('#bulkManualApply').click();
-  await page.locator('#mapTab').click();
+  await selectGroup(page, [0, 1]);
+  await commit(page.locator('#group-reserve'), 4);
+  await commit(page.locator('#group-investPct'), 55);
+  await commit(page.locator('#groupInvestEach'), 1);
+  await expect(inspector(page)).toContainText('Applied to all 2 nodes.');
+  await page.locator('#tacticalGroupBar').getByRole('button', { name: 'Done' }).click();
   await record('dashboard bulk policy and manual investment');
 
   await openFromMenu(page, 'Orders');

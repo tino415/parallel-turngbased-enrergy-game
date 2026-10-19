@@ -18,19 +18,20 @@ You control the blue nodes. Other player colors are AI opponents; gray nodes are
 
 ## Interface
 
-The main content has three tabs:
+The main content has two tabs:
 
-| View          | What it does                                                                                                                                                                         |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Map**       | Select blue nodes, inspect connections and order-flow overlays, pan and zoom.                                                                                                        |
-| **Dashboard** | Review your nodes' energy, defense and production; apply bulk policies or manual investments; edit each node's policy investment %, reserve and enabled state directly in the table. |
-| **Messages**  | See combat events and round summaries (the most recent 70 entries).                                                                                                                  |
+| View         | What it does                                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------------- |
+| **Map**      | Select blue nodes, or a group of them, inspect connections and order-flow overlays, pan and zoom. |
+| **Messages** | See combat events and round summaries (the most recent 70 entries).                               |
 
 In the proposed new-match rules, selecting a friendly node shows **total energy versus sustainable capacity**, a **Withdraw invested → active** entry, funded order budget and a **projected overflow-loss estimate** (before combat). Legacy saves keep their original economy rather than silently changing rules mid-match.
 
 Selecting a node opens an editable details dialog on both desktop and mobile. On mobile the editor fills the screen, with active/invested/defending energy, a live manual/policy energy budget, combat-strength ranges, manual allocations, and persistent policy controls. The desktop sidebar instead provides a compact selection and next-round overview. Planned orders and conquest defaults live in separate Orders and Settings dialogs; mobile keeps Orders and Resolve round in a bottom action bar.
 
-**Persistent policies:** For each blue node, reserve some active energy, invest a specified percentage of the remaining surplus, and optionally transfer the rest to **one adjacent friendly node**. Policies do not initiate attacks. Manual orders take priority; a policy can be disabled, removed, copied, pasted, or paused for one round. The dashboard can apply reserve/invest percentages to multiple selected nodes at once; existing transfer destinations are preserved when applying these bulk changes.
+**Persistent policies:** For each blue node, keep a defense floor of active energy and split the surplus above it into shares: invest a percentage, grow the defense floor by a percentage, and send a percentage as **border pressure** against an enemy neighbour. Whatever remains goes to **one adjacent friendly node**, or stays on the node. The shares add up to at most 100%. Investment can stop at a target, and under the new-match rules it can scale an over-target node back down by a percentage each round, paying the withdrawal fee. The defense floor can grow or shrink towards a target. Pressure banks its share until it reaches a minimum, then attacks the weakest eligible neighbour (or a pinned one) with the whole bank; neutral nodes are eligible only when the policy includes them. Manual orders take priority; a policy can be disabled, removed, copied, pasted, or paused for one round.
+
+**Node groups:** Shift+click (or Ctrl/Cmd+click) your nodes on the map, long-press one on a touch screen, use the **Select** button in the mobile dock, or press Shift+Enter on a focused node to build a group. The group bar picks **All**, **Border** or **Interior** nodes. With two or more nodes, the inspector edits the group: each policy field applies to every member on its own, mixed values show their range, and a change that any member would reject is not applied. Destinations and pinned pressure targets stay per node. The group can also invest a fixed amount on each node this round, pause their policies, clear their orders or paste a copied policy. Escape or **Done** leaves the group.
 
 **Map navigation:** Drag empty map space to pan. Use the **+ / −** controls overlaid on the map or **Ctrl/Cmd + scroll** to zoom; ordinary scrolling scrolls the page. On mobile, vertical swipes over the map scroll the page too. **Fit map** shows the full graph; **Focus** centers the last inspected node (or your first node if none has been inspected). Mobile opens focused on your starting node so labels remain legible. The overlay selector defaults to all planned attacks and transfers, with optional manual/policy/hidden filters. Every owned node always displays its projected next-round income and investment, regardless of map selection or flow filter.
 
@@ -68,9 +69,9 @@ The build copies `index.html`, `_headers`, and `src/` into `dist/`. No bundling 
 
 | Path                | Responsibility                                                                                                                              |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `index.html`        | Page, tabs, map area, dashboard container and New game dialog                                                                               |
+| `index.html`        | Page, tabs, map area and New game dialog                                                                                                    |
 | `src/styles.css`    | Responsive layout and styling                                                                                                               |
-| `src/ux.js`         | Responsive full-screen editor, contextual dialogs, map overlays and mobile dashboard cards                                                  |
+| `src/ux.js`         | Responsive full-screen editor, contextual dialogs and map overlays                                                                          |
 | `src/game.js`       | Browser UI, order entry, map rendering, autosave and view navigation                                                                        |
 | `src/engine.js`     | Browser-independent map generation, policy evaluation, forecasts, AI and full round resolution; accepts injected RNG for reproducible tests |
 | `tests/*.test.mjs`  | Syntax/structure, graph generation, economy/policy and round-resolution regression tests                                                    |

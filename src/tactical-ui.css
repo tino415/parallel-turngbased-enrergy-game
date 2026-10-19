@@ -329,7 +329,6 @@ body > header #resolve {
     max-height: none;
   }
 
-  #dashboard,
   #messagesView {
     flex: 1 1 auto;
     min-height: 0;
