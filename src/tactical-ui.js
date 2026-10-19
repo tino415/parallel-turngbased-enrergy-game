@@ -542,7 +542,7 @@
   // Clicking elsewhere (header, toolbar or outside the editor) closes it.
   // Map nodes/edges handle their own selection, and dragging should not close it.
   document.addEventListener('click', (event) => {
-    if (!active || root.hidden || root.contains(event.target)) return;
+    if (!active || root.hidden || event.composedPath().includes(root)) return;
     if (event.target.closest('dialog, #tacticalMenu, .ux-dock, #tacticalGroupBar')) return;
     // render() rebuilds SVG nodes synchronously: the clicked target may already
     // be detached by the time the event bubbles to document. The original

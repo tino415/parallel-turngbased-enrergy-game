@@ -74,6 +74,7 @@ test('a one-node group edits that node alone from the bar or a member row', asyn
   });
   await inspector(page).getByRole('button', { name: 'Edit node 1 alone' }).click();
   await expect(inspector(page)).toContainText('Node 1');
+  await expect(page.locator('#tacticalPolicyPercent')).toBeVisible();
   await expect(groupBar(page)).toBeHidden();
 });
 
