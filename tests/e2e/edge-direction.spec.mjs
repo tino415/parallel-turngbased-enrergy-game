@@ -1,4 +1,11 @@
-import { test, expect, inspector, openEdgeEditor } from './support/game.mjs';
+import {
+  test,
+  expect,
+  inspector,
+  openEdgeEditor,
+  edgeHit,
+  isMobileLayout,
+} from './support/game.mjs';
 
 async function giveNodeOneToBlue(page) {
   await page.evaluate(() => {
@@ -35,8 +42,8 @@ test('the editor names both nodes as on the map', async ({ page }) => {
   const chips = inspector(page).locator('.tactical-node-chip');
   await expect(chips).toHaveCount(2);
   await expect(chips.nth(0)).toContainText('Node 0');
-  await expect(chips.nth(0)).toContainText(/yours · [0-9]/);
-  await expect(chips.nth(1)).toContainText('yours · 20.0');
+  await expect(chips.nth(0)).toContainText(/Node 0 *[0-9]/);
+  await expect(chips.nth(1)).toContainText('20.0');
   await expect(chips.nth(1)).toContainText('Node 1');
   await page.keyboard.press('Escape');
   await openEdgeEditor(page, '0-2');
@@ -63,22 +70,62 @@ test('swapping by keyboard keeps focus on the swap button and announces the dire
 });
 
 for (const edge of ['0-1', '0-2']) {
-  test(`both ends of connection ${edge} stay on the map and outside the editor`, async ({
+  test(`the desktop editor opens beside connection ${edge}, not over it`, async ({
     page,
-  }) => {
+  }, testInfo) => {
+    test.skip(isMobileLayout(testInfo), 'Phones use the bottom drawer');
     await giveNodeOneToBlue(page);
     await openEdgeEditor(page, edge);
     const editor = await inspector(page).boundingBox();
-    const controls = await page.locator('.map-zoom-controls').boundingBox();
-    const map = await page.locator('#mapViewport').boundingBox();
     for (const id of edge.split('-')) {
       const box = await ring(page, id).boundingBox();
       expect(overlaps(box, editor), `node ${id} is under the editor`).toBe(false);
-      expect(overlaps(box, controls), `node ${id} is under the zoom buttons`).toBe(false);
-      expect(box.x).toBeGreaterThanOrEqual(map.x);
-      expect(box.y).toBeGreaterThanOrEqual(map.y);
-      expect(box.x + box.width).toBeLessThanOrEqual(map.x + map.width);
-      expect(box.y + box.height).toBeLessThanOrEqual(map.y + map.height);
     }
   });
 }
+
+test('opening and closing a connection editor leaves the map zoom and position alone', async ({
+  page,
+}) => {
+  await giveNodeOneToBlue(page);
+  const before = await page.evaluate(() => ({ ...camera }));
+  await openEdgeEditor(page, '0-1');
+  expect(await page.evaluate(() => ({ ...camera }))).toEqual(before);
+  await page.keyboard.press('Escape');
+  await expect(inspector(page)).toBeHidden();
+  expect(await page.evaluate(() => ({ ...camera }))).toEqual(before);
+});
+
+test('the map swap button flips the direction before the editor opens', async ({ page }) => {
+  await giveNodeOneToBlue(page);
+  await edgeHit(page, '0-1').click();
+  await expect(inspector(page)).toBeHidden();
+  const swap = page.locator('#map .tactical-map-swap');
+  await expect(swap).toHaveAttribute('aria-label', 'Swap direction: from Node 0 to Node 1');
+  await swap.click();
+  await expect(arrow(page)).toHaveAttribute('data-from', '1');
+  await expect(inspector(page)).toBeHidden();
+  await edgeHit(page, '0-1').click();
+  await expect(inspector(page)).toContainText('Support transfer · 1 → 0');
+});
+
+test('the map swap button works from the keyboard and keeps focus', async ({ page }) => {
+  await giveNodeOneToBlue(page);
+  await edgeHit(page, '0-1').focus();
+  await page.keyboard.press('Enter');
+  const swap = page.locator('#map .tactical-map-swap');
+  await swap.focus();
+  await page.keyboard.press('Enter');
+  await expect(arrow(page)).toHaveAttribute('data-from', '1');
+  await expect(page.locator('#map .tactical-map-swap')).toBeFocused();
+  await expect(page.locator('#map .tactical-map-swap')).toHaveAttribute(
+    'aria-label',
+    'Swap direction: from Node 1 to Node 0',
+  );
+});
+
+test('an attack connection has no map swap button', async ({ page }) => {
+  await edgeHit(page, '0-2').click();
+  await expect(arrow(page)).toHaveAttribute('data-to', '2');
+  await expect(page.locator('#map .tactical-map-swap')).toHaveCount(0);
+});

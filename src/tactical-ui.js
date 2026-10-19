@@ -266,6 +266,7 @@
     if (!svg.contains(element)) return null;
     if (element.dataset.node !== undefined) return '[data-node="' + element.dataset.node + '"]';
     if (element.dataset.edge !== undefined) return '[data-edge="' + element.dataset.edge + '"]';
+    if (element.classList.contains('tactical-map-swap')) return '.tactical-map-swap';
     return null;
   }
 
@@ -373,7 +374,51 @@
           ring.role.toUpperCase();
     }
     drawDirectionArrow(graph);
+    drawMapSwap(graph);
   }
+
+  function drawMapSwap(graph) {
+    if (active?.kind !== 'edge' || !bothEndsFriendly(active.a, active.b)) return;
+    const { source, destination } = edgeDirection();
+    const [ax, ay] = xy[active.a];
+    const [bx, by] = xy[active.b];
+    const length = Math.hypot(bx - ax, by - ay) || 1;
+    const besideTheLine = 38;
+    const x = (ax + bx) / 2 + ((by - ay) / length) * besideTheLine;
+    const y = (ay + by) / 2 - ((bx - ax) / length) * besideTheLine;
+    const button = svgElement(
+      'g',
+      {
+        class: 'tactical-map-swap',
+        transform: 'translate(' + x + ' ' + y + ')',
+        tabindex: 0,
+        role: 'button',
+        'aria-label': 'Swap direction: from Node ' + source + ' to Node ' + destination,
+      },
+      graph,
+    );
+    svgElement('circle', { r: 22, class: 'tactical-map-swap-hit' }, button);
+    svgElement('circle', { r: 16, class: 'tactical-map-swap-face' }, button);
+    svgElement('text', { y: 6, class: 'tactical-map-swap-label' }, button).textContent = '⇄';
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      swapDirection();
+    });
+    button.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      swapDirection();
+    });
+  }
+
+  function swapDirection() {
+    const { destination } = edgeDirection();
+    active.source = destination;
+    selected = destination;
+    render();
+  }
+
+  const bothEndsFriendly = (a, b) => state.nodes[a].owner === 0 && state.nodes[b].owner === 0;
 
   function selectionRings() {
     if (active?.kind === 'node') return [{ id: active.id, role: null }];
@@ -622,13 +667,9 @@
       const swap = document.createElement('button');
       swap.type = 'button';
       swap.id = 'tacticalSwapDirection';
-      swap.textContent = '⇄ Swap';
+      swap.textContent = '⇄';
       swap.setAttribute('aria-label', sentence + '. Swap direction');
-      swap.onclick = () => {
-        active.source = destination;
-        selected = destination;
-        render();
-      };
+      swap.onclick = swapDirection;
       row.append(swap);
     }
     const status = textElement('span', sentence, 'tactical-visually-hidden');
@@ -650,8 +691,7 @@
       textElement('strong', 'Node ' + id),
       textElement(
         'span',
-        (node.owner === 0 ? 'yours' : GameEngine.playerName(node.owner)) +
-          ' · ' +
+        (node.owner === 0 ? '' : GameEngine.playerName(node.owner) + ' · ') +
           compactEnergy(node.active),
         'tactical-secondary',
       ),
@@ -669,7 +709,7 @@
       );
       return;
     }
-    const bothFriendly = state.nodes[a].owner === 0 && state.nodes[b].owner === 0;
+    const bothFriendly = bothEndsFriendly(a, b);
     body.append(directionRow(source, destination, bothFriendly));
     const type = state.nodes[destination].owner === 0 ? 'Support transfer' : 'Attack';
     const value = plan(source).edges[destination] || 0;
@@ -865,7 +905,6 @@
   }
 
   const SELECTED_ITEM_MARGIN = 72;
-  let framedEdge = null;
 
   function selectedItemBox() {
     const matrix = svg.querySelector('g')?.getScreenCTM();
@@ -881,14 +920,6 @@
       bottom: Math.max(...ys) + margin,
     };
   }
-
-  const overlaps = (a, b) =>
-    a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
-  const contains = (outer, inner) =>
-    inner.left >= outer.left &&
-    inner.right <= outer.right &&
-    inner.top >= outer.top &&
-    inner.bottom <= outer.bottom;
 
   function positionInspector() {
     if (!active || root.hidden || mobile()) return;
@@ -921,68 +952,6 @@
     );
   }
 
-  function frameEdgeOnOpen() {
-    const key = active?.kind === 'edge' && !root.hidden ? active.a + '-' + active.b : null;
-    if (key === framedEdge) return;
-    framedEdge = key;
-    if (key === null) return;
-    const item = selectedItemBox();
-    const map = viewport.getBoundingClientRect();
-    const editor = root.getBoundingClientRect();
-    if (!item) return;
-    const area = uncoveredMapArea(map, editor);
-    const visible = mobile()
-      ? contains(area, item)
-      : contains(map, item) && !overlaps(item, editor);
-    if (visible) return;
-    moveCameraToShow(item, area);
-    positionInspector();
-  }
-
-  function uncoveredMapArea(map, editor) {
-    const area = { left: map.left, right: map.right, top: map.top, bottom: map.bottom };
-    if (mobile()) {
-      const controls = viewport.querySelector('.map-zoom-controls').getBoundingClientRect();
-      return {
-        ...area,
-        top: Math.max(map.top, controls.bottom),
-        bottom: Math.min(map.bottom, editor.top),
-      };
-    }
-    if (editor.left - map.left >= map.right - editor.right)
-      return { ...area, right: Math.min(map.right, editor.left) };
-    return { ...area, left: Math.max(map.left, editor.right) };
-  }
-
-  function moveCameraToShow(item, area) {
-    const graph = svg.querySelector('g');
-    const matrix = graph.getScreenCTM();
-    const pixelsPerUnit = matrix.a / camera.scale;
-    const zoom = Math.min(
-      1,
-      (area.right - area.left) / (item.right - item.left),
-      (area.bottom - area.top) / (item.bottom - item.top),
-    );
-    const scale = Math.max(0.3, camera.scale * zoom);
-    const worldCenter = {
-      x: ((item.left + item.right) / 2 - matrix.e) / matrix.a,
-      y: ((item.top + item.bottom) / 2 - matrix.f) / matrix.d,
-    };
-    const svgOrigin = {
-      x: matrix.e - camera.x * pixelsPerUnit,
-      y: matrix.f - camera.y * pixelsPerUnit,
-    };
-    camera = {
-      scale,
-      x: ((area.left + area.right) / 2 - svgOrigin.x) / pixelsPerUnit - scale * worldCenter.x,
-      y: ((area.top + area.bottom) / 2 - svgOrigin.y) / pixelsPerUnit - scale * worldCenter.y,
-    };
-    graph.setAttribute(
-      'transform',
-      'translate(' + camera.x + ' ' + camera.y + ') scale(' + camera.scale + ')',
-    );
-  }
-
   function showInspector() {
     // The first tap highlights only. The second tap opens the editor above
     // the unchanged mobile Orders/Resolve dock, or near the edge on desktop.
@@ -994,7 +963,6 @@
     document.body.classList.toggle('tactical-selection-active', !root.hidden);
     if (root.hidden) {
       mountLegacyControls();
-      frameEdgeOnOpen();
       return;
     }
     root.classList.toggle('is-editing', editing);
@@ -1018,7 +986,6 @@
     updateChildrenInPlace(root, [header, body]);
     mountLegacyControls();
     positionInspector();
-    frameEdgeOnOpen();
   }
 
   function mountLegacyControls() {

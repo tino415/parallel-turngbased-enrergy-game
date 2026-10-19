@@ -461,12 +461,13 @@ body > header #resolve {
 }
 .tactical-direction {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
 }
 .tactical-node-chip {
   display: inline-flex;
+  white-space: nowrap;
   align-items: center;
   gap: 6px;
   padding: 5px 10px;
@@ -480,10 +481,6 @@ body > header #resolve {
   height: 12px;
   border-radius: 50%;
 }
-#tacticalSwapDirection {
-  margin-left: auto;
-  min-height: 38px;
-}
 .tactical-visually-hidden {
   position: absolute;
   width: 1px;
@@ -491,4 +488,33 @@ body > header #resolve {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+#tacticalSwapDirection {
+  min-width: 40px;
+  min-height: 40px;
+  margin-left: auto;
+  padding: 0;
+  font-size: 19px;
+}
+.tactical-map-swap {
+  cursor: pointer;
+}
+.tactical-map-swap-hit {
+  fill: transparent;
+}
+.tactical-map-swap-face {
+  fill: #203956;
+  stroke: #ffc56d;
+  stroke-width: 2;
+}
+#map .tactical-map-swap-label {
+  fill: #ffc56d;
+  font-size: 17px;
+  font-weight: 700;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.tactical-map-swap:focus-visible .tactical-map-swap-face {
+  stroke: #fff;
+  stroke-width: 3;
 }
