@@ -521,7 +521,12 @@
     };
     label.append(percent);
     primary.append(label, slider, ...investmentTargetControls(id, policy));
-    body.append(primary, defenseControls(id, policy), sharesLine(id, policy));
+    body.append(
+      primary,
+      defenseControls(id, policy),
+      ...pressureControls(id, policy),
+      sharesLine(id, policy),
+    );
     body.append(
       textElement(
         'p',
@@ -645,10 +650,89 @@
     return 'Floor ' + numeric(floor) + ' → ' + numeric(next) + ' of ' + numeric(target) + outlook;
   }
 
+  function pressureControls(id, policy) {
+    const border = neighbors(id).filter((other) => state.nodes[other].owner !== 0);
+    if (!border.length) return [];
+    const block = document.createElement('div');
+    block.className = 'tactical-primary-control';
+    const against = document.createElement('label');
+    against.append(textElement('span', 'Against'));
+    const select = document.createElement('select');
+    select.id = 'tacticalPressureTarget';
+    select.dataset.key = id + ':pressureTarget';
+    select.setAttribute('aria-label', 'Pressure target');
+    for (const [value, title] of [
+      ['', 'Weakest enemy'],
+      ...border.map((other) => [String(other), 'Node ' + other]),
+    ]) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = title;
+      option.selected = (value === '' ? null : Number(value)) === (policy?.pressureTarget ?? null);
+      select.append(option);
+    }
+    select.onchange = () =>
+      changePolicy(id, 'pressureTarget', select.value === '' ? null : Number(select.value));
+    against.append(select);
+    const neutral = document.createElement('label');
+    neutral.append(textElement('span', 'Include neutral nodes'));
+    const includeNeutral = document.createElement('input');
+    includeNeutral.type = 'checkbox';
+    includeNeutral.id = 'tacticalPressureNeutral';
+    includeNeutral.checked = policy?.pressureNeutral === true;
+    includeNeutral.setAttribute('aria-label', 'Include neutral nodes');
+    includeNeutral.onchange = () => changePolicy(id, 'pressureNeutral', includeNeutral.checked);
+    neutral.append(includeNeutral);
+    block.append(
+      textElement('strong', 'Border pressure'),
+      policyNumberField({
+        id: 'tacticalPressurePct',
+        key: id + ':pressurePct',
+        label: 'Send % of surplus',
+        value: policy?.pressurePct ?? 0,
+        max: 100,
+        onCommit: (value) => changeShare(id, 'pressurePct', value ?? 0),
+      }),
+      against,
+      policyNumberField({
+        id: 'tacticalPressureMin',
+        key: id + ':pressureMin',
+        label: 'Attack when at least this much is banked',
+        value: policy?.pressureMin ?? 10,
+        onCommit: (value) => value !== null && changePolicy(id, 'pressureMin', value),
+      }),
+      neutral,
+    );
+    const status = selectors.pressureStatus(currentMatch(), id);
+    if (status) block.append(textElement('p', pressureStatusText(status), 'tactical-secondary'));
+    return [block];
+  }
+
+  function pressureStatusText({ bank, nextBank, minimum, target, pulse }) {
+    if (target === null)
+      return 'No eligible neighbour: the share goes to the rest and the bank waits.';
+    if (pulse > 0) return 'Pulse this round: ' + numeric(pulse) + ' → Node ' + target;
+    return (
+      'Banked ' +
+      numeric(bank) +
+      ' → ' +
+      numeric(nextBank) +
+      ' / ' +
+      numeric(minimum) +
+      ' · next pulse → Node ' +
+      target +
+      ' (active ' +
+      numeric(state.nodes[target].active) +
+      ')'
+    );
+  }
+
   function sharesLine(id, policy) {
     const effective = { ...defaultPolicy(), ...policy };
     const invest = effective.investPct;
     const defense = Number.isFinite(effective.defenseTarget) ? (effective.defensePct ?? 0) : 0;
+    const pressure = effective.pressurePct ?? 0;
+    const total = invest + defense + pressure;
     const destination =
       effective.dest !== null && state.nodes[effective.dest]?.owner === 0
         ? '→ Node ' + effective.dest
@@ -659,10 +743,12 @@
         numeric(invest) +
         '% + defense ' +
         numeric(defense) +
-        '% = ' +
-        numeric(invest + defense) +
+        '%' +
+        (pressure > 0 ? ' + pressure ' + numeric(pressure) + '%' : '') +
+        ' = ' +
+        numeric(total) +
         '% · rest ' +
-        numeric(Math.max(0, 100 - invest - defense)) +
+        numeric(Math.max(0, 100 - total)) +
         '% ' +
         destination,
       'tactical-secondary',
@@ -935,6 +1021,8 @@
       }
       body.append(policyBox);
     }
+    if (type === 'Attack' && state.nodes[destination].owner !== null)
+      body.append(pressureToggle(source, destination));
     if (type === 'Attack') {
       body.append(
         textElement(
@@ -962,6 +1050,50 @@
         ),
       );
     }
+  }
+
+  function pressureToggle(source, destination) {
+    const current = policies[source];
+    const box = document.createElement('div');
+    box.className = 'tactical-primary-control';
+    const toggle = document.createElement('label');
+    toggle.append(
+      textElement(
+        'strong',
+        'Pressure Node ' + destination + ' from Node ' + source + ' each round',
+      ),
+    );
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = 'tacticalAutoPressure';
+    checkbox.checked = current?.pressurePct > 0 && current.pressureTarget === destination;
+    checkbox.setAttribute(
+      'aria-label',
+      'Pressure Node ' + destination + ' from Node ' + source + ' each round',
+    );
+    checkbox.onchange = () => {
+      store.pressureFrom(source, destination, checkbox.checked);
+      render();
+    };
+    toggle.append(checkbox);
+    box.append(toggle);
+    const status = checkbox.checked ? selectors.pressureStatus(currentMatch(), source) : null;
+    box.append(
+      textElement(
+        'p',
+        status
+          ? pressureStatusText(status)
+          : 'Sends ' +
+              (current?.pressurePct > 0 ? numeric(current.pressurePct) : '10') +
+              '% of surplus in pulses of at least ' +
+              numeric(current?.pressureMin ?? 10) +
+              '. Edit Node ' +
+              source +
+              ' to change either value.',
+        'tactical-secondary',
+      ),
+    );
+    return box;
   }
 
   function screenAnchor() {

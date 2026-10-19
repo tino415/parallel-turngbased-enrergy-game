@@ -306,7 +306,8 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
       if (n.owner !== 0) continue;
       const p=projection(n.id),[x,y]=xy[n.id];
       const t=element('text',{x,y:y+53,'font-size':12,fill:'#92ebc9',class:'ux-income-label'},graph);
-      t.textContent='+'+compactEnergy(p.income)+' / I '+compactEnergy(p.invest)+(softCapEnabled()&&p.overflow>.05?' / −'+compactEnergy(p.overflow):'');
+      const bank=policies[n.id]?.pressureBank??0;
+      t.textContent='+'+compactEnergy(p.income)+' / I '+compactEnergy(p.invest)+(softCapEnabled()&&p.overflow>.05?' / −'+compactEnergy(p.overflow):'')+(bank>.05?' / ⟂ '+compactEnergy(bank)+'/'+compactEnergy(policies[n.id].pressureMin??10):'');
     }
   };
 

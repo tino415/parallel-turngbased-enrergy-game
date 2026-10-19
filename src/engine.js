@@ -129,27 +129,50 @@
     manualHold,
     neighbors,
     owners,
+    actives,
     source,
   }) {
     if (!policyApplies(policy, node, manualHold)) return { orders: [], next: policy };
     const floor = shrunkDefenseFloor(policy);
-    const surplus = Math.max(0, node.active - manualSpent - floor);
+    const banked = pressureActive(policy)
+      ? Math.min(pressureBank(policy), Math.max(0, node.active - manualSpent - floor))
+      : 0;
+    const surplus = Math.max(0, node.active - manualSpent - floor - banked);
     const shares = policyShares(policy);
     const growth = Math.min((surplus * shares.defense) / 100, defenseRoom(policy, floor));
     const invest = Math.min(
       (surplus * shares.invest) / 100,
       investmentRoom(policy, node.invested + manualInvest, manualWithdraw),
     );
+    const target = pressureActive(policy)
+      ? pressureTargetFor({ policy, neighbors, owners, actives })
+      : null;
+    const share = target === null ? 0 : (surplus * shares.pressure) / 100;
+    const pulse =
+      target !== null && banked + share >= pressureMinimum(policy) - TARGET_EPSILON
+        ? banked + share
+        : 0;
     const transfer =
       policy.dest !== null && neighbors.includes(policy.dest) && owners[policy.dest] === 0
-        ? surplus - growth - invest
+        ? surplus - growth - invest - share
         : 0;
-    const orders = policyOrders({ source, policy, invest, transfer });
-    const next = hasDefenseTarget(policy) ? { ...policy, reserve: floor + growth } : policy;
+    const orders = policyOrders({ source, policy, invest, transfer, pulse, target });
+    let next = policy;
+    if (hasDefenseTarget(policy)) next = { ...next, reserve: floor + growth };
+    if (pressureActive(policy) || pressureBank(policy) > 0)
+      next = { ...next, pressureBank: pulse > 0 ? 0 : banked + share };
     return { orders, next };
   }
 
-  function policyOrders({ source, policy, invest, transfer }) {
+  function pressureTargetFor({ policy, neighbors, owners, actives }) {
+    const eligible = neighbors.filter(
+      (id) => owners[id] !== 0 && (owners[id] !== null || policy.pressureNeutral === true),
+    );
+    if (eligible.includes(policy.pressureTarget)) return policy.pressureTarget;
+    return eligible.sort((a, b) => actives[a] - actives[b] || a - b)[0] ?? null;
+  }
+
+  function policyOrders({ source, policy, invest, transfer, pulse = 0, target = null }) {
     const result = [];
     if (invest > 1e-9)
       result.push({ source, type: 'invest', amount: invest, dest: null, automatic: true });
@@ -161,6 +184,8 @@
         dest: policy.dest,
         automatic: true,
       });
+    if (pulse > 1e-9)
+      result.push({ source, type: 'attack', amount: pulse, dest: target, automatic: true });
     return result;
   }
 
@@ -206,11 +231,27 @@
     return room > TARGET_EPSILON ? room : 0;
   }
 
+  const finitePositive = (value, fallback) =>
+    Number.isFinite(value) && value > 0 ? value : fallback;
+  const pressurePct = (policy) => Math.min(100, finitePositive(policy.pressurePct, 0));
+  const pressureActive = (policy) => pressurePct(policy) > 0;
+  const pressureBank = (policy) => finitePositive(policy.pressureBank, 0);
+  const pressureMinimum = (policy) => finitePositive(policy.pressureMin, 10);
+
   function policyShares(policy) {
-    const shares = { invest: policy.investPct, defense: defensePct(policy) };
-    const total = shares.invest + shares.defense;
-    if (shares.defense === 0 || total <= 100) return shares;
-    return { invest: (shares.invest * 100) / total, defense: (shares.defense * 100) / total };
+    const shares = {
+      invest: policy.investPct,
+      defense: defensePct(policy),
+      pressure: pressurePct(policy),
+    };
+    const added = shares.defense + shares.pressure;
+    const total = shares.invest + added;
+    if (added === 0 || total <= 100) return shares;
+    return {
+      invest: (shares.invest * 100) / total,
+      defense: (shares.defense * 100) / total,
+      pressure: (shares.pressure * 100) / total,
+    };
   }
 
   function applyOverflow(node, rules = SOFT_CAP_RULES) {
@@ -530,6 +571,7 @@
           manualHold: Boolean(orders[source]?.hold),
           neighbors: neighbors(source),
           owners: nodes.map((n) => n.owner),
+          actives: state.nodes.map((n) => n.active),
         }),
       }));
     const automatic = policyPlans.flatMap((plan) => plan.orders);
@@ -571,9 +613,13 @@
     const battles = {};
     for (const o of valid.filter((o) => o.type === 'attack')) {
       const key = o.dest + ':' + o.owner;
-      if (!battles[key]) battles[key] = { dest: o.dest, owner: o.owner, amount: 0 };
+      if (!battles[key])
+        battles[key] = { dest: o.dest, owner: o.owner, amount: 0, sources: [], pressure: true };
       battles[key].amount += o.amount;
+      battles[key].sources.push(o.source);
+      battles[key].pressure &&= Boolean(o.automatic);
     }
+    const pressureResults = [];
     const byTarget = {};
     for (const attack of Object.values(battles)) (byTarget[attack.dest] ??= []).push(attack);
     for (const [destination, attacks] of Object.entries(byTarget)) {
@@ -604,6 +650,20 @@
         }
         const attackerLoss = a.amount - attackerSurvived;
         const defenderLoss = defenderBefore - defenderSurvived;
+        if (a.pressure) {
+          pressureResults.push(
+            'Node ' +
+              a.sources.join(', ') +
+              ' → Node ' +
+              node.id +
+              ' (' +
+              fmt(a.amount) +
+              ', ' +
+              (atk > def ? 'captured' : 'defended') +
+              ')',
+          );
+          continue;
+        }
         log(
           'Round ' +
             state.round +
@@ -635,6 +695,8 @@
         }
       }
     }
+    if (pressureResults.length)
+      log('Round ' + state.round + ' · Pressure: ' + pressureResults.join(', ') + '.');
     for (const n of nodes) {
       const income = 1 + n.invested * 0.1;
       n.active = clamp(n.active * 0.9 + income);
@@ -679,6 +741,7 @@
     buildMap,
     evaluatePolicy,
     planPolicy,
+    pressureTargetFor,
     policyWithdrawal,
     forecast,
     aiOrders,

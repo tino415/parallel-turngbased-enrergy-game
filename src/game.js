@@ -420,6 +420,9 @@ function renderOrders() {
     if (p.withdraw > 0) parts.push('Withdraw ' + fmt(p.withdraw));
     const scaleDown = selectors.policyWithdrawal(currentMatch(), id);
     if (scaleDown > 0) parts.push('Policy withdraws ' + fmt(scaleDown));
+    const pressure = selectors.pressureStatus(currentMatch(), id);
+    if (pressure && !pressure.pulse)
+      parts.push('Pressure banked ' + fmt(pressure.bank) + ' / ' + fmt(pressure.minimum));
     if (p.invest > 0) parts.push('Invest ' + fmt(p.invest));
     for (const [dest, amount] of Object.entries(p.edges))
       parts.push(
