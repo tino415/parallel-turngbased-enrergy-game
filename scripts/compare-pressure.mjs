@@ -19,25 +19,33 @@ const seed = args.seed ?? 'pressure-v1';
 assert.ok(Number.isSafeInteger(matches) && matches > 0 && matches <= 1000);
 assert.ok(Number.isSafeInteger(rounds) && rounds > 0 && rounds <= 1000);
 
-const bluePolicy = (pressure) => ({
+const bluePolicy = {
   enabled: true,
   reserve: 5,
   investPct: 40,
   investTarget: 150,
   defensePct: 20,
   defenseTarget: 30,
-  pressurePct: pressure ? 10 : 0,
-  pressureMin: 10,
   dest: null,
-});
+};
 
-function policiesFor(state, previous, pressure) {
+function weakestEnemyNeighbour(state, links, id) {
+  return links
+    .flatMap(([a, b]) => (a === id ? [b] : b === id ? [a] : []))
+    .filter((other) => state.nodes[other].owner !== null && state.nodes[other].owner !== 0)
+    .sort((a, b) => state.nodes[a].active - state.nodes[b].active || a - b)[0];
+}
+
+function policiesFor(state, links, previous, pressure) {
   const policies = {};
   for (const node of state.nodes.filter((n) => n.owner === 0)) {
     const kept = previous[node.id];
+    const target = pressure ? weakestEnemyNeighbour(state, links, node.id) : undefined;
+    const bank = target === undefined ? 0 : (kept?.pressure?.[target]?.bank ?? 0);
     policies[node.id] = {
-      ...bluePolicy(pressure),
-      ...(kept ? { reserve: kept.reserve, pressureBank: kept.pressureBank ?? 0 } : {}),
+      ...bluePolicy,
+      ...(kept ? { reserve: kept.reserve } : {}),
+      ...(target === undefined ? {} : { pressure: { [target]: { pct: 10, min: 10, bank } } }),
     };
   }
   return policies;
@@ -50,7 +58,7 @@ function play(index, pressure) {
   let policies = {};
   let peakNodes = 1;
   while (!state.finished && state.round <= rounds) {
-    policies = policiesFor(state, policies, pressure);
+    policies = policiesFor(state, map.links, policies, pressure);
     const result = engine.resolveRound({
       state,
       playerCount: players,
