@@ -346,7 +346,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
       const investPct=Math.max(0,Math.min(100,Number(byId('bulkInvest').value)||0));
       const chosen=[...selectedBulk].filter(id=>state.nodes[id]?.owner===0);
       if(!chosen.length) {byId('bulkApply').title='Select nodes first';return;}
-      for(const id of chosen) policies[id]={...defaultPolicy(),...policies[id],enabled:true,reserve,investPct};
+      store.applyBulkPolicy(chosen,reserve,investPct);
       render();
     };
     const dash = byId('dashboard');
@@ -524,7 +524,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   // dismisses the keyboard; the editor is already in its final layout.
   window.addEventListener('resize', redrawCamera);
   byId('overlay').onchange=render;
-  byId('clearAll').onclick=()=>{orders={};render();};
+  byId('clearAll').onclick=()=>{store.clearAllOrders();render();};
   // The original HTML has inline-mobile navigation; the native dialogs supersede it.
   render();
   if(mobile()) {

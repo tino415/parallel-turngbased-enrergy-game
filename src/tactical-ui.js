@@ -649,15 +649,10 @@
       autoTransfer.onchange = () => {
         if (autoTransfer.checked) {
           // Changing destination must never overwrite investment or reserve.
-          policies[source] = {
-            ...defaultPolicy(),
-            ...policies[source],
-            enabled: true,
-            dest: destination,
-          };
-        } else if (policies[source]?.dest === destination) {
+          store.routeSurplus(source, destination, true);
+        } else {
           // Disable only this route, leaving other policy settings intact.
-          policies[source] = { ...policies[source], dest: null };
+          store.routeSurplus(source, destination, false);
         }
         render();
       };
