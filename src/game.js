@@ -1,88 +1,36 @@
 'use strict';
-const { buildMap, evaluatePolicy, forecast, playerColor, SOFT_CAP_RULES } = GameEngine;
-let N = 14;
-let edges = [
-  [0, 1],
-  [0, 2],
-  [1, 3],
-  [1, 4],
-  [2, 4],
-  [2, 5],
-  [3, 6],
-  [4, 6],
-  [4, 7],
-  [5, 7],
-  [6, 8],
-  [7, 8],
-  [7, 9],
-  [8, 10],
-  [9, 10],
-  [9, 11],
-  [10, 12],
-  [11, 12],
-  [11, 13],
-  [12, 13],
-];
-let xy = [
-  [70, 230],
-  [165, 115],
-  [165, 355],
-  [280, 70],
-  [290, 210],
-  [280, 385],
-  [415, 105],
-  [420, 295],
-  [520, 170],
-  [530, 375],
-  [630, 220],
-  [640, 405],
-  [725, 300],
-  [735, 415],
-];
-const neighbors = (i) => edges.flatMap(([a, b]) => (a === i ? [b] : b === i ? [a] : []));
+const { buildMap, playerColor, SOFT_CAP_RULES } = GameEngine;
+const { selectors } = GameStore;
+const store = GameStore.createStore();
+let state, orders, policies, history, xy, edges, N, playerCount, mapSeed;
+let { view: currentView, clipboard } = store.getSnapshot().ui;
+store.subscribe(({ match, ui }, previous) => {
+  ({ view: currentView, clipboard } = ui);
+  if (match === previous.match) return;
+  ({ state, orders, policies, history } = match);
+  ({ xy, edges, N, playerCount, mapSeed } = match.map);
+  saveGame();
+});
+const currentMatch = () => store.getSnapshot().match;
+const neighbors = (i) => selectors.neighbors(currentMatch(), i);
 const $ = (id) => document.getElementById(id),
-  clamp = (v) => Math.max(0, v),
-  rnd = (a, b) => a + Math.random() * (b - a),
   { compactEnergy, exactEnergy } = EnergyFormat,
   fmt = exactEnergy;
-let state,
-  orders,
-  policies,
-  clipboard = null,
-  selected = null,
-  history = [],
-  playerCount = 2,
-  mapSeed = 'classic',
-  camera = { x: 0, y: 0, scale: 1 },
-  viewDashboard = false,
-  currentView = 'map',
-  autosaveAvailable = false;
-const softCapEnabled = () => state?.rulesVersion === SOFT_CAP_RULES.version;
-const withdrawal = (source, p = plan(source)) => (softCapEnabled() ? p.withdraw || 0 : 0);
-const availableEnergy = (source, p = plan(source)) =>
-  state.nodes[source].active + withdrawal(source, p) * (1 - SOFT_CAP_RULES.withdrawalFee);
+let selected = null,
+  camera = { x: 0, y: 0, scale: 1 };
+const softCapEnabled = () => selectors.softCapEnabled(currentMatch());
+const withdrawal = (source, p) => selectors.withdrawal(currentMatch(), source, p);
+const availableEnergy = (source, p) => selectors.availableEnergy(currentMatch(), source, p);
+function domDefaults() {
+  return {
+    enabled: $('autoConquer').checked,
+    reserve: $('defaultReserve').value,
+    invest: $('defaultInvest').value,
+  };
+}
 function fresh() {
-  const nodes = Array.from({ length: N }, (_, id) => ({
-    id,
-    owner: null,
-    active: rnd(3, 7),
-    invested: 0,
-  }));
-  const starts =
-    playerCount === 2
-      ? [0, N - 1]
-      : Array.from({ length: playerCount }, (_, i) => Math.floor((i * N) / playerCount));
-  for (let i = 0; i < starts.length; i++) {
-    const node = nodes[starts[i]];
-    node.owner = i;
-    node.active = 24;
-    node.invested = 14;
-  }
-  state = { round: 1, nodes, finished: false, rulesVersion: SOFT_CAP_RULES.version };
-  orders = {};
-  policies = {};
   selected = null;
-  history = ['New match started. You are Blue.'];
+  store.replaceMatch(GameStore.classicMatch(Math.random, domDefaults()));
   camera = { x: 0, y: 0, scale: 1 };
   render();
 }
@@ -137,21 +85,10 @@ function previewMap() {
     options.seed;
 }
 function generate() {
-  const options = mapOptions(),
-    map = buildMap(options);
-  mapSeed = map.seed;
-  N = map.nodes.length;
-  playerCount = map.players;
-  xy = map.positions;
-  edges = map.links;
-  state = { round: 1, nodes: map.nodes, finished: false, rulesVersion: SOFT_CAP_RULES.version };
-  orders = {};
-  policies = {};
   selected = null;
-  history = ['Generated ' + N + ' nodes, ' + playerCount + ' players, seed ' + map.seed];
+  store.replaceMatch(GameStore.generatedMatch(buildMap(mapOptions()), domDefaults()));
   camera = { x: 0, y: 0, scale: 1 };
-  currentView = 'map';
-  viewDashboard = false;
+  store.setView('map');
   $('newGameDialog').close();
   render();
 }
@@ -160,44 +97,14 @@ function openNewGame() {
   $('newGameDialog').showModal();
 }
 
-function log(message) {
-  history.unshift(message);
-  history = history.slice(0, 70);
-}
-
-function plan(source) {
-  return orders[source] ?? { invest: 0, withdraw: 0, edges: {} };
-}
-function allocated(source, p = plan(source)) {
-  return p.invest + Object.values(p.edges).reduce((sum, n) => sum + n, 0);
-}
+const plan = (source) => selectors.plan(currentMatch(), source);
+const allocated = (source, p) => selectors.allocated(currentMatch(), source, p);
 function setAllocation(source, destination, value) {
-  if (state.finished || state.nodes[source]?.owner !== 0) return;
-  const amount = Number(value),
-    node = state.nodes[source],
-    p = {
-      invest: plan(source).invest,
-      withdraw: withdrawal(source),
-      edges: { ...plan(source).edges },
-      hold: plan(source).hold || false,
-    };
-  if (!Number.isFinite(amount) || amount < 0) return;
-  if (destination === 'withdraw' && softCapEnabled()) {
-    if (amount > node.invested + 1e-8) return;
-    p.withdraw = amount;
-  } else if (destination === null) p.invest = amount;
-  else if (neighbors(source).includes(destination)) {
-    if (amount === 0) delete p.edges[destination];
-    else p.edges[destination] = amount;
-  } else return;
-  if (allocated(source, p) > availableEnergy(source, p) + 1e-8) {
-    $('hint').textContent =
-      'Over budget: allocations cannot exceed ' + fmt(availableEnergy(source, p));
-    return;
-  }
-  if (allocated(source, p) < 1e-9 && !p.hold && !p.withdraw) delete orders[source];
-  else orders[source] = p;
-  render();
+  const before = currentMatch(),
+    overBudget = store.setAllocation(source, destination, value);
+  if (overBudget !== undefined)
+    $('hint').textContent = 'Over budget: allocations cannot exceed ' + fmt(overBudget);
+  else if (currentMatch() !== before) render();
 }
 function numberField(value, max, onChange) {
   const input = document.createElement('input');
@@ -206,7 +113,7 @@ function numberField(value, max, onChange) {
   input.max = String(max);
   input.step = '0.1';
   input.value = String(Number(value.toFixed(2)));
-  input.addEventListener('change', () => {
+  input.onchange = () => {
     const amount = Number(input.value);
     if (!Number.isFinite(amount) || amount < 0 || amount > max + 1e-8) {
       input.value = String(Number(value.toFixed(2)));
@@ -214,13 +121,15 @@ function numberField(value, max, onChange) {
       return;
     }
     onChange(amount);
-  });
+  };
   return input;
 }
 function renderAllocator() {
-  const container = $('allocator');
-  container.replaceChildren();
-  if (selected === null || state.nodes[selected].owner !== 0) return;
+  updateChildrenInPlace($('allocator'), allocatorControls());
+}
+function allocatorControls() {
+  if (selected === null || state.nodes[selected].owner !== 0) return [];
+  const container = document.createElement('div');
   const n = state.nodes[selected],
     p = plan(selected),
     used = allocated(selected),
@@ -253,6 +162,7 @@ function renderAllocator() {
     const input = numberField(amount, max, (value) => setAllocation(selected, target, value));
     input.dataset.allocation =
       target === null ? 'invest' : target === 'withdraw' ? 'withdraw' : 'edge-' + target;
+    input.dataset.key = selected + ':' + input.dataset.allocation;
     row.append(name, input);
     fields.append(row);
   };
@@ -279,34 +189,26 @@ function renderAllocator() {
   const clear = document.createElement('button');
   clear.textContent = 'Clear node allocations';
   clear.onclick = () => {
-    delete orders[selected];
+    store.clearNodeOrders(selected);
     render();
   };
   container.append(clear);
+  return [...container.childNodes];
 }
 
-function defaultPolicy() {
-  return { enabled: true, reserve: 5, investPct: 50, dest: null };
-}
+const defaultPolicy = selectors.defaultPolicy;
 function policyOrders(source) {
-  return evaluatePolicy({
-    policy: policies[source],
-    node: { ...state.nodes[source], active: availableEnergy(source) },
-    manualSpent: allocated(source),
-    manualHold: Boolean(plan(source).hold),
-    neighbors: neighbors(source),
-    owners: state.nodes.map((n) => n.owner),
-    source,
-  });
+  return selectors.policyOrders(currentMatch(), source);
 }
 function changePolicy(source, key, value) {
-  policies[source] = { ...defaultPolicy(), ...policies[source], [key]: value };
+  store.changePolicy(source, key, value);
   render();
 }
 function renderPolicyEditor() {
-  const container = $('policyEditor');
-  container.replaceChildren();
-  if (selected === null || state.nodes[selected].owner !== 0) return;
+  updateChildrenInPlace($('policyEditor'), policyControls());
+}
+function policyControls() {
+  if (selected === null || state.nodes[selected].owner !== 0) return [];
   const source = selected,
     p = { ...defaultPolicy(), enabled: false, ...policies[source] },
     box = document.createElement('div');
@@ -326,18 +228,12 @@ function renderPolicyEditor() {
   // an automatic order. The Enabled checkbox or an edited field creates the
   // actual policy, so there is no separate Create policy action.
   button('Copy', () => {
-    clipboard = { ...p };
+    store.copyPolicy(p);
     render();
   });
   if (clipboard)
     button('Paste', () => {
-      policies[source] = {
-        ...clipboard,
-        dest:
-          neighbors(source).includes(clipboard.dest) && state.nodes[clipboard.dest].owner === 0
-            ? clipboard.dest
-            : null,
-      };
+      store.pastePolicy(source, clipboard);
       render();
     });
   box.append(actions);
@@ -356,10 +252,12 @@ function renderPolicyEditor() {
     const reserve = numberField(p.reserve, 100000, (value) =>
       changePolicy(source, 'reserve', value),
     );
+    reserve.dataset.key = source + ':reserve';
     add('Active defense reserve', reserve);
     const invest = numberField(p.investPct, 100, (value) =>
       changePolicy(source, 'investPct', value),
     );
+    invest.dataset.key = source + ':investPct';
     add('Invest % of surplus', invest);
     const dest = document.createElement('select');
     for (const [value, title] of [
@@ -381,9 +279,7 @@ function renderPolicyEditor() {
     pause.type = 'checkbox';
     pause.checked = Boolean(plan(source).hold);
     pause.onchange = () => {
-      const m = { ...plan(source), edges: { ...plan(source).edges }, hold: pause.checked };
-      if (allocated(source, m) === 0 && !m.hold && !m.withdraw) delete orders[source];
-      else orders[source] = m;
+      store.setHold(source, pause.checked);
       render();
     };
     add(' Pause policy this round ', pause);
@@ -402,7 +298,86 @@ function renderPolicyEditor() {
     ' · Defense ' +
     fmt(Math.max(0, availableEnergy(source) - allocated(source) - spent));
   box.append(preview);
-  container.append(box);
+  return [box];
+}
+function updateChildrenInPlace(parent, nextChildren) {
+  let index = 0;
+  for (const next of nextChildren) {
+    const match = reusableChild(parent, index, next);
+    if (match) {
+      while (parent.childNodes[index] !== match) parent.childNodes[index].remove();
+      updateInPlace(match, next);
+    } else parent.insertBefore(next, parent.childNodes[index] ?? null);
+    index++;
+  }
+  while (parent.childNodes.length > index) parent.lastChild.remove();
+}
+function reusableChild(parent, from, next) {
+  for (const current of [...parent.childNodes].slice(from)) {
+    if (sameControl(current, next)) return current;
+    if (current.contains(document.activeElement)) return null;
+  }
+  return null;
+}
+function sameControl(current, next) {
+  if (current.nodeType !== next.nodeType) return false;
+  if (current.nodeType !== Node.ELEMENT_NODE) return true;
+  return (
+    current.tagName === next.tagName &&
+    current.id === next.id &&
+    current.type === next.type &&
+    current.dataset.key === next.dataset.key
+  );
+}
+function updateInPlace(current, next) {
+  if (current.nodeType !== Node.ELEMENT_NODE) {
+    if (current.nodeValue !== next.nodeValue) current.nodeValue = next.nodeValue;
+    return;
+  }
+  updateAttributes(current, next);
+  for (const handler of ['onclick', 'onchange', 'oninput', 'ontoggle'])
+    current[handler] = next[handler] && handlerSeeingLiveState(current, next, next[handler]);
+  if (!next.hasAttribute('data-mount')) updateChildrenInPlace(current, [...next.childNodes]);
+  if (isDraftBeingTyped(current)) return;
+  if ('checked' in next && current.checked !== next.checked) current.checked = next.checked;
+  if (isFormValue(next) && current.value !== next.value) current.value = next.value;
+}
+function handlerSeeingLiveState(current, next, respond) {
+  return (event) => {
+    copyFormState(current, next);
+    const before = formState(next);
+    respond(event);
+    const after = formState(next);
+    for (const property of Object.keys(after))
+      if (after[property] !== before[property]) current[property] = after[property];
+  };
+}
+function formState(element) {
+  return Object.fromEntries(
+    ['value', 'checked', 'open']
+      .filter((property) => property in element)
+      .map((property) => [property, element[property]]),
+  );
+}
+function copyFormState(from, to) {
+  for (const [property, value] of Object.entries(formState(from)))
+    if (to[property] !== value) to[property] = value;
+}
+function updateAttributes(current, next) {
+  for (const { name } of [...current.attributes])
+    if (!next.hasAttribute(name)) current.removeAttribute(name);
+  for (const { name, value } of next.attributes)
+    if (current.getAttribute(name) !== value) current.setAttribute(name, value);
+}
+function isDraftBeingTyped(element) {
+  return (
+    element === document.activeElement &&
+    element.tagName === 'INPUT' &&
+    ['number', 'text'].includes(element.type)
+  );
+}
+function isFormValue(element) {
+  return ['INPUT', 'SELECT', 'TEXTAREA'].includes(element.tagName);
 }
 function renderOrders() {
   const container = $('orders');
@@ -433,7 +408,7 @@ function renderOrders() {
     const remove = document.createElement('button');
     remove.textContent = 'Clear ×';
     remove.onclick = () => {
-      delete orders[id];
+      store.clearNodeOrders(id);
       render();
     };
     top.append(choose, remove);
@@ -477,54 +452,15 @@ function clickNode(id) {
 
 function resolve() {
   if (state.finished) return;
-  const defaults = $('autoConquer').checked
-    ? {
-        enabled: true,
-        reserve: Math.max(0, Number($('defaultReserve').value) || 0),
-        investPct: Math.max(0, Math.min(100, Number($('defaultInvest').value) || 0)),
-      }
-    : null;
-  const result = GameEngine.resolveRound({
-    state,
-    playerCount,
-    orders,
-    policies,
-    links: edges,
-    defaultConquestPolicy: defaults,
-  });
-  state = result.state;
-  policies = result.policies;
-  orders = {};
-  for (const event of result.events) log(event);
+  store.resolve();
   render();
 }
 
 function previewOrders() {
-  const manual = Object.entries(orders).flatMap(([source, p]) => [
-    ...(p.invest > 0
-      ? [{ source: Number(source), type: 'invest', amount: p.invest, automatic: false }]
-      : []),
-    ...Object.entries(p.edges).map(([dest, amount]) => ({
-      source: Number(source),
-      dest: Number(dest),
-      amount,
-      type: state.nodes[Number(dest)].owner === 0 ? 'transfer' : 'attack',
-      automatic: false,
-    })),
-  ]);
-  return [...manual, ...Object.keys(policies).map(Number).flatMap(policyOrders)];
+  return selectors.previewOrders(currentMatch());
 }
 function projection(id) {
-  const scheduled = previewOrders(),
-    incoming = scheduled
-      .filter((o) => o.dest === id && o.type === 'transfer')
-      .reduce((a, o) => a + o.amount, 0);
-  return forecast(
-    state.nodes[id],
-    incoming,
-    scheduled.filter((o) => o.source === id),
-    { softCap: softCapEnabled(), withdraw: withdrawal(id) },
-  );
+  return selectors.projection(currentMatch(), id);
 }
 function renderFlows(svg, graph, element) {
   const filter = $('overlay').value;
@@ -673,7 +609,7 @@ function renderDashboard() {
         render();
         return;
       }
-      policies[n.id] = { ...defaultPolicy(), ...policies[n.id], enabled: true, investPct: val };
+      store.enablePolicyWith(n.id, { investPct: val });
       render();
     };
     makeCell(pct);
@@ -688,7 +624,7 @@ function renderDashboard() {
         render();
         return;
       }
-      policies[n.id] = { ...defaultPolicy(), ...policies[n.id], enabled: true, reserve: val };
+      store.enablePolicyWith(n.id, { reserve: val });
       render();
     };
     makeCell(reserve);
@@ -697,41 +633,20 @@ function renderDashboard() {
     toggle.checked = Boolean(policies[n.id]?.enabled);
     toggle.setAttribute('aria-label', 'Enable policy for node ' + n.id);
     toggle.onchange = () => {
-      if (toggle.checked) policies[n.id] = { ...defaultPolicy(), ...policies[n.id], enabled: true };
-      else if (policies[n.id]) policies[n.id].enabled = false;
+      if (toggle.checked) store.enablePolicyWith(n.id, {});
+      else store.disablePolicy(n.id);
       render();
     };
     makeCell(toggle);
     table.append(tr);
   }
   dashboard.append(table);
-  $('bulkApply').onclick = () => {
-    const selectedIds = [...dashboard.querySelectorAll('.bulk-node:checked')].map((x) =>
-      Number(x.dataset.node),
-    );
-    for (const id of selectedIds)
-      policies[id] = {
-        enabled: true,
-        reserve: Math.max(0, Number($('bulkReserve').value) || 0),
-        investPct: Math.max(0, Math.min(100, Number($('bulkInvest').value) || 0)),
-        dest: null,
-      };
-    render();
-  };
   $('bulkManualApply').onclick = () => {
     const ids = [...dashboard.querySelectorAll('.bulk-node:checked')].map((x) =>
         Number(x.dataset.node),
       ),
       amount = Math.max(0, Number($('bulkManualInvest').value) || 0);
-    for (const id of ids) {
-      const p = { ...plan(id), edges: { ...plan(id).edges } },
-        available = availableEnergy(id, p) - Object.values(p.edges).reduce((a, b) => a + b, 0);
-      if (amount <= available + 1e-8) {
-        p.invest = amount;
-        if (allocated(id, p) < 1e-9 && !p.hold && !p.withdraw) delete orders[id];
-        else orders[id] = p;
-      }
-    }
+    store.applyBulkInvestment(ids, amount);
     render();
   };
 }
@@ -830,7 +745,7 @@ window.addEventListener('resize', () => positionNodeDetails());
 
 const SAVE_KEY = 'parallel-energy-game-v1';
 function switchView(view) {
-  currentView = view;
+  store.setView(view);
   render();
 }
 function setActiveTab() {
@@ -851,23 +766,7 @@ function saveGame() {
   try {
     localStorage.setItem(
       SAVE_KEY,
-      JSON.stringify({
-        state,
-        orders,
-        policies,
-        xy,
-        edges,
-        N,
-        playerCount,
-        mapSeed,
-        history,
-        selected,
-        defaults: {
-          enabled: $('autoConquer').checked,
-          reserve: $('defaultReserve').value,
-          invest: $('defaultInvest').value,
-        },
-      }),
+      JSON.stringify(GameStore.saveFromMatch(currentMatch(), selected)),
     );
   } catch (e) {
     console.warn('Autosave unavailable', e);
@@ -877,26 +776,15 @@ function restoreGame() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return false;
-    const save = JSON.parse(raw);
-    if (
-      !save.state ||
-      !Array.isArray(save.state.nodes) ||
-      !Array.isArray(save.xy) ||
-      !Array.isArray(save.edges)
-    )
-      return false;
+    const save = JSON.parse(raw),
+      match = GameStore.matchFromSave(save, domDefaults());
+    if (!match) return false;
     // Always recover an existing match; New Game is the explicit way to replace it.
-    ({ state, orders, policies, xy, edges, N, playerCount, mapSeed, history, selected } = save);
-    orders ??= {};
-    policies ??= {};
-    history ??= [];
-    selected ??= null;
-    if (save.defaults) {
-      $('autoConquer').checked = Boolean(save.defaults.enabled);
-      $('defaultReserve').value = save.defaults.reserve;
-      $('defaultInvest').value = save.defaults.invest;
-    }
-    history.unshift('Recovered saved match from this browser.');
+    $('autoConquer').checked = match.defaults.enabled;
+    $('defaultReserve').value = match.defaults.reserve;
+    $('defaultInvest').value = match.defaults.invest;
+    selected = save.selected ?? null;
+    store.replaceMatch({ ...match, defaults: domDefaults() });
     render();
     return true;
   } catch (e) {
@@ -904,6 +792,8 @@ function restoreGame() {
     return false;
   }
 }
+for (const id of ['autoConquer', 'defaultReserve', 'defaultInvest'])
+  $(id).addEventListener('change', () => store.setDefaults(domDefaults()));
 window.addEventListener('beforeunload', (event) => {
   if (!state || state.finished) return;
   saveGame();
@@ -1013,7 +903,6 @@ function render() {
     $('log').append(entry);
   }
   setActiveTab();
-  saveGame();
 }
 function nodeTooltip(n) {
   const lines = ['Node ' + n.id, 'Active ' + fmt(n.active), 'Invested ' + fmt(n.invested)];
@@ -1024,7 +913,7 @@ function nodeTooltip(n) {
   return lines.join('\n');
 }
 $('clearAll').onclick = () => {
-  orders = {};
+  store.clearAllOrders();
   render();
 };
 $('resolve').onclick = resolve;
