@@ -1,0 +1,111 @@
+# Architecture: state, commands and rendering
+
+The game is six classic scripts loaded with `defer` into one global scope, in
+this order: `engine.js`, `store.js`, `format.js`, `game.js`, `ux.js`,
+`tactical-ui.js`. Later scripts build on, and in places replace, functions from
+earlier ones.
+
+| Module           | Owns                                                                    | Touches the DOM |
+| ---------------- | ----------------------------------------------------------------------- | --------------- |
+| `engine.js`      | Rules: map generation, policy evaluation, forecast, AI, `resolveRound`  | no              |
+| `store.js`       | All match and interface state, commands, selectors, subscriptions       | no              |
+| `format.js`      | Energy number formatting                                                | no              |
+| `game.js`        | The base renderer, map navigation, save and restore, the global mirrors | yes             |
+| `ux.js`          | Layout, dialogs, side panel, dock, dashboard cards, camera fitting      | yes             |
+| `tactical-ui.js` | Map selection, the contextual inspector, pinch zoom, the ☰ menu        | yes             |
+
+## State ownership
+
+`GameStore.createStore()` holds one frozen snapshot `{ match, ui }`. Every
+change goes through a store command, and a slice keeps its identity until a
+command really changes it.
+
+| Value                                                  | Slice              | Saved | Written by                    |
+| ------------------------------------------------------ | ------------------ | ----- | ----------------------------- |
+| `state` (round, nodes, finished, rulesVersion)         | `match.state`      | yes   | `resolve`, `replaceMatch`     |
+| manual orders per node                                 | `match.orders`     | yes   | allocation and order commands |
+| persistent policies per node                           | `match.policies`   | yes   | policy commands, `resolve`    |
+| message history                                        | `match.history`    | yes   | `resolve`, `replaceMatch`     |
+| map: `xy`, `edges`, `N`, `playerCount`, `mapSeed`      | `match.map`        | yes   | `replaceMatch`                |
+| conquest defaults (enabled, reserve, invest)           | `match.defaults`   | yes   | `setDefaults`                 |
+| selected node                                          | `ui.selected`      | yes¹  | `select`, inspector commands  |
+| view tab                                               | `ui.view`          | no    | `setView`                     |
+| flow filter                                            | `ui.overlay`       | no    | `setOverlay`                  |
+| camera (`x`, `y`, `scale`)                             | `ui.camera`        | no    | `setCamera`                   |
+| policy clipboard                                       | `ui.clipboard`     | no    | `copyPolicy`                  |
+| dashboard bulk selection                               | `ui.bulkSelection` | no    | `setBulkSelected`             |
+| inspector target, editing, open sections, focused node | `ui.inspector`     | no    | inspector commands            |
+
+¹ `selected` stays in the save format so that old saves keep loading. ux.js
+clears it on load.
+
+Gesture and render bookkeeping stays local to the code that needs it, because
+no other code reads it: drag and click suppression (`game.js`), pinch fingers
+(`tactical-ui.js`), the map key behind mobile auto-focus (`ux.js`) and the
+round counter that closes the inspector after a resolve (`tactical-ui.js`).
+Form drafts stay in their inputs and are read once on submit: the new-game
+dialog and the dashboard bulk reserve, invest and manual amount.
+
+## Contract
+
+- **Commands** (`store.<command>(...)`) validate input, call the engine where
+  rules apply, and commit at most one new snapshot. A command that changes
+  nothing commits nothing. `setAllocation` returns the energy limit when it
+  rejects an over-budget amount; the caller shows the hint.
+- **Selectors** (`GameStore.selectors.<name>(match, ...)`) derive plans,
+  budgets, policy orders, previews, projections and the edge source. They never
+  draw random numbers and never resolve a round.
+- **Subscriptions** (`store.subscribe((snapshot, previous) => ...)`) run
+  synchronously after every commit. `game.js` uses one to refresh the global
+  mirrors and to autosave when `match` changed; `tactical-ui.js` uses one to
+  mirror `ui.inspector`.
+- **Autosave** writes once per committed match change, plus on `pagehide` and
+  `beforeunload`. Camera, view, filter and inspector changes never write.
+- **Globals** `state`, `orders`, `policies`, `history`, `xy`, `edges`, `N`,
+  `playerCount`, `mapSeed`, `currentView`, `overlay`, `clipboard`, `selected`
+  and `camera` are read-only mirrors of the snapshot, kept for the existing
+  readers, the specs and the console. Never assign them: the next commit
+  overwrites the assignment, and nothing saves it. Use a command, or
+  `store.replaceMatch` in test setup.
+
+## Rendering
+
+Rendering is still the explicit `render()` call each interaction made before
+the store existed, so no render runs that did not run before. `render` is
+replaced in load order, and each layer calls the previous one:
+
+1. `game.js` draws the SVG map, score, allocator, policy editor, order list,
+   dashboard table, log and tab state.
+2. `ux.js` adds the camera viewBox, side panel, dock counts, editor stats,
+   budget bar and dashboard summary and cards.
+3. `tactical-ui.js` adds edge hit areas, selection rings and the inspector,
+   which it updates in place to keep drafts and focus.
+
+The flow filter (`#overlay`) calls the `ux.js`-level render that `ux.js` captured
+before `tactical-ui.js` loaded, so changing the filter never rebuilds the inspector.
+
+`renderFlows`, `renderOrders`, `renderDashboard`, `clickNode`,
+`showNodeOnMobile` and `positionNodeDetails` are also replaced in load order.
+The last definition wins and is the one in use.
+
+| DOM subtree                                                                                                  | Rendered by      |
+| ------------------------------------------------------------------------------------------------------------ | ---------------- |
+| `#map` content, `#score`, `#resolve`, `#log`, `#orders`, `#dashboard` table, `#allocator`, `#policyEditor`   | `game.js`        |
+| `#map` viewBox and camera transform, `#uxSide*`, `#uxDock*`, `#uxEditorStats`, `#uxBalance`, dashboard cards | `ux.js`          |
+| `#tacticalInspector`, `#tacticalMenu`, `.tactical-edge-hit`, selection rings, flow edge colors               | `tactical-ui.js` |
+
+`#allocator` and `#policyEditor` are built by `game.js`. `tactical-ui.js` moves
+their sections into the inspector while it edits a node and parks them in the
+hidden `#tacticalNodeControls` otherwise. The legacy `#nodeDialog` never shows,
+because `tactical-ui.js` closes it whenever it opens, but `ux.js` still renders
+the editor stats, budget bar and notes into it.
+
+## Next steps
+
+- Let renderers subscribe to the slices they draw instead of being called
+  explicitly, one subtree each, and retire the `render = function` chain. The
+  order of the three layers and the pre-inspector filter path have to
+  survive this; `docs/RENDER_AUTOSAVE_BASELINE.md` has the numbers to compare.
+- Remove the legacy `#nodeDialog` and the `ux.js` editor stats, budget bar and
+  notes that render into it unseen.
+- Retire the read-only mirrors as their readers move to the snapshot.
