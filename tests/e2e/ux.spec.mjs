@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { chooseSource } from './support/game.mjs';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -77,7 +78,7 @@ test('friendly edge switches direction and the new support replaces the reverse 
   await expect(page.locator('#tacticalInspector')).toContainText('Support transfer');
   await page.locator('#tacticalEdgeAmount').fill('2');
   await page.locator('#tacticalEdgeAmount').blur();
-  await page.locator('#tacticalInspector select').selectOption('1');
+  await chooseSource(page, 1);
   await expect(page.locator('#tacticalEdgeAmount')).toHaveValue('0');
   await expect(page.locator('#tacticalInspector')).toContainText(
     'Replaces Node 0 → 1: 2 manual support.',
@@ -411,7 +412,10 @@ for (const [source, destination] of [
 
     const inspector = page.locator('#tacticalInspector');
     await expect(inspector).toBeVisible();
-    await expect(inspector.locator('select')).toHaveValue(String(source));
+    await expect(inspector.locator('#tacticalSwapDirection')).toHaveAttribute(
+      'aria-label',
+      `From Node ${source} to Node ${destination}. Swap direction`,
+    );
     await expect(inspector.locator('#tacticalAutoTransfer')).toBeChecked();
     await expect(inspector).toContainText(
       `Send remaining surplus to Node ${destination} each round`,
@@ -421,11 +425,11 @@ for (const [source, destination] of [
     // Switching direction must reflect that direction's actual policy without
     // modifying or removing the policy for the opposite source.
     const reverse = destination;
-    await inspector.locator('select').selectOption(String(reverse));
+    await chooseSource(page, reverse);
     await expect(inspector.locator('#tacticalAutoTransfer')).not.toBeChecked();
     expect(await page.evaluate((id) => policies[id].dest, source)).toBe(destination);
 
-    await inspector.locator('select').selectOption(String(source));
+    await chooseSource(page, source);
     await expect(inspector.locator('#tacticalAutoTransfer')).toBeChecked();
     await inspector.getByRole('button', { name: 'Clear map selection' }).click();
     await edge.click();
