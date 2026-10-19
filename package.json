@@ -10,7 +10,8 @@
     "test:ui:report": "playwright show-report",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "simulate": "node scripts/simulate.mjs"
+    "simulate": "node scripts/simulate.mjs",
+    "measure:render": "node scripts/measure-render.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",
