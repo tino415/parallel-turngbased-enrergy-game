@@ -97,7 +97,7 @@
     )
       return null;
     const { state, xy, edges, N, playerCount, mapSeed } = save;
-    return {
+    return withOneWaySupport({
       state,
       orders: save.orders ?? {},
       policies: save.policies ?? {},
@@ -110,7 +110,42 @@
             invest: save.defaults.invest,
           }
         : defaults,
-    };
+    });
+  }
+
+  function withOneWaySupport(match) {
+    return withOneWayRoutes(withOneWayManualSupport(match));
+  }
+
+  function withOneWayManualSupport(match) {
+    return match.map.edges.reduce((next, [a, b]) => {
+      const forward = plan(next, a).edges[b] || 0,
+        backward = plan(next, b).edges[a] || 0;
+      if (!forward || !backward) return next;
+      const [source, destination] = forward >= backward ? [a, b] : [b, a],
+        p = plan(next, source),
+        edges = { ...p.edges, [destination]: Math.abs(forward - backward) };
+      if (forward === backward) delete edges[destination];
+      return withoutManualSupport(withOrder(next, source, { ...p, edges }), destination, source);
+    }, match);
+  }
+
+  function withOneWayRoutes(match) {
+    return match.map.edges.reduce((next, [a, b]) => {
+      if (next.policies[a]?.dest !== b || next.policies[b]?.dest !== a) return next;
+      return {
+        ...next,
+        policies: {
+          ...next.policies,
+          [a]: { ...next.policies[a], dest: null },
+          [b]: { ...next.policies[b], dest: null },
+        },
+        history: [
+          'Node ' + a + ' and Node ' + b + ' sent surplus to each other; both routes were cleared.',
+          ...next.history,
+        ],
+      };
+    }, match);
   }
 
   function saveFromMatch(match, selected) {
@@ -273,9 +308,25 @@
     return { ...match, orders };
   }
 
-  function withPolicy(match, source, policy) {
-    return { ...match, policies: { ...match.policies, [source]: policy } };
+  function withoutManualSupport(match, source, destination) {
+    const p = plan(match, source);
+    if (!p.edges[destination]) return match;
+    const edges = { ...p.edges };
+    delete edges[destination];
+    return withOrder(match, source, { ...p, edges });
   }
+
+  function withPolicy(match, source, policy) {
+    const policies = { ...match.policies, [source]: policy };
+    if (policies[policy.dest]?.dest === source)
+      policies[policy.dest] = { ...policies[policy.dest], dest: null };
+    return { ...match, policies };
+  }
+
+  const replacedSupport = (match, source, destination) => ({
+    manual: plan(match, destination).edges[source] || 0,
+    route: match.policies[destination]?.dest === source,
+  });
 
   function setAllocation(match, source, destination, value) {
     if (match.state.finished || !isOwn(match, source)) return { match };
@@ -299,7 +350,10 @@
     } else return { match };
     if (allocated(match, source, p) > availableEnergy(match, source, p) + 1e-8)
       return { match, overBudget: availableEnergy(match, source, p) };
-    return { match: withOrder(match, source, p) };
+    const next = withOrder(match, source, p);
+    if (amount > 0 && isOwn(match, destination))
+      return { match: withoutManualSupport(next, destination, source) };
+    return { match: next };
   }
 
   function setHold(match, source, hold) {
@@ -444,7 +498,86 @@
     return { ...match, state: result.state, policies: result.policies, orders: {}, history };
   }
 
-  const INITIAL_UI = { view: 'map', clipboard: null, bulkSelection: [] };
+  function edgeSource(match, a, b) {
+    const aOwned = isOwn(match, a);
+    const bOwned = isOwn(match, b);
+    if (!aOwned) return bOwned ? b : null;
+    if (!bOwned) return a;
+
+    // Both directions are possible on friendly edges. Open an existing
+    // automatic surplus transfer in its saved direction instead of always
+    // defaulting to the first endpoint.
+    const { policies } = match;
+    const aToB = policies[a]?.enabled && policies[a].dest === b;
+    const bToA = policies[b]?.enabled && policies[b].dest === a;
+    if (aToB !== bToA) return aToB ? a : b;
+
+    // An explicitly chosen, but disabled, policy destination is still useful
+    // context when no enabled direction exists.
+    const aConfigured = policies[a]?.dest === b;
+    const bConfigured = policies[b]?.dest === a;
+    if (aConfigured !== bConfigured) return aConfigured ? a : b;
+
+    return a;
+  }
+
+  function sameValue(a, b) {
+    if (a === b) return true;
+    if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+    const keys = Object.keys(a);
+    return keys.length === Object.keys(b).length && keys.every((key) => sameValue(a[key], b[key]));
+  }
+
+  const CLOSED_INSPECTOR = { active: null, editing: false, advancedOpen: false, manualOpen: false };
+  const INITIAL_UI = {
+    view: 'map',
+    overlay: 'all',
+    clipboard: null,
+    bulkSelection: [],
+    selected: null,
+    camera: { x: 0, y: 0, scale: 1 },
+    inspector: { ...CLOSED_INSPECTOR, focusedNode: null },
+  };
+  const sameTarget = (active, target) =>
+    active?.kind === target.kind &&
+    (target.kind === 'node'
+      ? active.id === target.id
+      : active.a === target.a && active.b === target.b);
+
+  function inspect(ui, target) {
+    if (sameTarget(ui.inspector.active, target))
+      return { inspector: { ...ui.inspector, editing: true } };
+    return { inspector: { ...ui.inspector, ...CLOSED_INSPECTOR, active: target } };
+  }
+
+  function inspectNode(ui, id) {
+    const next = inspect(ui, { kind: 'node', id });
+    return { selected: id, inspector: { ...next.inspector, focusedNode: id } };
+  }
+
+  function inspectEdge(ui, match, a, b) {
+    const next = inspect(ui, { kind: 'edge', a, b, source: edgeSource(match, a, b) });
+    return { selected: next.inspector.active.source, inspector: next.inspector };
+  }
+
+  function editSelectedNode(ui) {
+    if (ui.selected === null) return {};
+    return {
+      inspector: {
+        ...ui.inspector,
+        active: { kind: 'node', id: ui.selected },
+        focusedNode: ui.selected,
+        editing: true,
+      },
+    };
+  }
+
+  function dismissInspector(ui) {
+    return {
+      selected: null,
+      inspector: { ...ui.inspector, active: null, editing: false },
+    };
+  }
 
   function createStore() {
     let snapshot = Object.freeze({ match: null, ui: Object.freeze(INITIAL_UI) });
@@ -460,9 +593,16 @@
       (command) =>
       (...args) =>
         commit('match', command(snapshot.match, ...args));
-    const setUi = (key, value) => {
-      if (snapshot.ui[key] !== value) commit('ui', Object.freeze({ ...snapshot.ui, [key]: value }));
+    const updateUi = (fields) => {
+      if (Object.entries(fields).every(([key, value]) => sameValue(snapshot.ui[key], value)))
+        return;
+      commit('ui', Object.freeze({ ...snapshot.ui, ...fields }));
     };
+    const setUi = (key, value) => updateUi({ [key]: value });
+    const onUi =
+      (command) =>
+      (...args) =>
+        updateUi(command(snapshot.ui, ...args));
     const bulkSelectionWith = (id, selected) => {
       const others = snapshot.ui.bulkSelection.filter((other) => other !== id);
       return selected ? [...others, id] : others;
@@ -503,6 +643,28 @@
         if (snapshot.ui.bulkSelection.includes(id) !== selected)
           setUi('bulkSelection', bulkSelectionWith(id, selected));
       },
+      setOverlay: (overlay) => setUi('overlay', overlay),
+      select: (id) => setUi('selected', id),
+      setCamera: (camera) => setUi('camera', camera),
+      inspectNode: onUi(inspectNode),
+      inspectEdge: (a, b) => updateUi(inspectEdge(snapshot.ui, snapshot.match, a, b)),
+      editSelectedNode: onUi(editSelectedNode),
+      dismissInspector: onUi(dismissInspector),
+      closeInspector: () =>
+        updateUi({ inspector: { ...snapshot.ui.inspector, active: null, editing: false } }),
+      forgetInspectedNode: () =>
+        updateUi({ inspector: { ...snapshot.ui.inspector, active: null } }),
+      setEdgeSource: (source) =>
+        updateUi({
+          selected: source,
+          inspector: {
+            ...snapshot.ui.inspector,
+            active: { ...snapshot.ui.inspector.active, source },
+          },
+        }),
+      setInspectorSection: (section, open) =>
+        updateUi({ inspector: { ...snapshot.ui.inspector, [section]: open } }),
+      focusNode: (id) => updateUi({ inspector: { ...snapshot.ui.inspector, focusedNode: id } }),
     };
   }
 
@@ -530,6 +692,7 @@
     }),
     selectors: Object.freeze({
       neighbors,
+      edgeSource,
       softCapEnabled,
       defaultPolicy,
       plan,
@@ -543,6 +706,7 @@
       pressureStatus,
       previewOrders,
       projection,
+      replacedSupport,
     }),
   });
 })();

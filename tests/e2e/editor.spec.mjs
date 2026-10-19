@@ -175,3 +175,25 @@ test('Orders closes with Escape and reopens with the planned order', async ({ pa
     await expect(inspector(page)).toBeHidden();
   }
 });
+
+test('the edge editor names the reverse support a new order replaces', async ({ page }) => {
+  await page.evaluate(() => {
+    const match = store.getSnapshot().match;
+    const nodes = match.state.nodes.map((n) => (n.id === 1 ? { ...n, owner: 0, active: 20 } : n));
+    store.replaceMatch({ ...match, state: { ...match.state, nodes } });
+    store.setAllocation(1, 0, 3);
+    store.routeSurplus(1, 0, true);
+    render();
+  });
+  await openEdgeEditor(page, '0-1');
+  await page.locator('#tacticalInspector select').selectOption('0');
+  await expect(inspector(page)).toContainText('Replaces Node 1 → 0: 3 manual');
+  await expect(inspector(page)).toContainText('Replaces Node 1 → 0 surplus route');
+  await page.locator('#tacticalEdgeAmount').fill('2');
+  await page.locator('#tacticalEdgeAmount').press('Tab');
+  expect(await page.evaluate(() => [orders[0].edges[1], orders[1]?.edges[0]])).toEqual([
+    2,
+    undefined,
+  ]);
+  await expect(inspector(page)).not.toContainText('3 manual');
+});

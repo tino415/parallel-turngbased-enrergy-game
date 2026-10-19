@@ -14,11 +14,6 @@
   root.setAttribute('aria-label', 'Selected map item');
   document.body.append(root);
 
-  const style = document.createElement('link');
-  style.rel = 'stylesheet';
-  style.href = './src/tactical-ui.css';
-  document.head.append(style);
-
   const menu = document.createElement('details');
   menu.id = 'tacticalMenu';
   menu.innerHTML =
@@ -57,7 +52,7 @@
   const originalRenderFlows = renderFlows;
   renderFlows = (mapSvg, graph, element) => {
     originalRenderFlows(mapSvg, graph, element);
-    const filter = byId('overlay').value;
+    const filter = overlay;
     const visible =
       filter === 'none'
         ? []
@@ -102,12 +97,12 @@
     graph.querySelectorAll('line.ux-flow-overlay').forEach((line) => line.remove());
   };
 
-  let active = null;
-  let editing = false;
-  let advancedOpen = false;
-  let manualOpen = false;
+  let { active, editing, advancedOpen, manualOpen, focusedNode } = store.getSnapshot().ui.inspector;
+  store.subscribe(({ ui }) => {
+    ({ active, editing, advancedOpen, manualOpen, focusedNode } = ui.inspector);
+  });
+  store.focusNode(state.nodes.find((node) => node.owner === 0)?.id ?? 0);
   let previousRound = state.round;
-  let focusedNode = state.nodes.find((node) => node.owner === 0)?.id ?? 0;
   const svg = byId('map');
   const viewport = byId('mapViewport');
   // Keep the editor independent of the action dock. Mobile positions it above
@@ -166,14 +161,14 @@
       const factor = svg.viewBox.baseVal.width / rect.width;
       const scale = Math.min(6, Math.max(0.25, (pinch.scale * distance(a, b)) / pinch.distance));
       const ratio = scale / pinch.scale;
-      camera = {
+      store.setCamera({
         scale,
         x:
           (center.x - rect.left) * factor -
           ((pinch.center.x - rect.left) * factor - pinch.x) * ratio,
         y:
           (center.y - rect.top) * factor - ((pinch.center.y - rect.top) * factor - pinch.y) * ratio,
-      };
+      });
       const graph = svg.querySelector('g');
       graph?.setAttribute(
         'transform',
@@ -194,59 +189,17 @@
   svg.addEventListener('pointercancel', endTouch, true);
 
   function chooseNode(id) {
-    if (active?.kind === 'node' && active.id === id) {
-      editing = true;
-    } else {
-      active = { kind: 'node', id };
-      editing = false;
-      advancedOpen = false;
-      manualOpen = false;
-    }
-    focusedNode = id;
-    selected = id;
+    store.inspectNode(id);
     render();
   }
 
-  function sourceForEdge(a, b) {
-    const aOwned = state.nodes[a].owner === 0;
-    const bOwned = state.nodes[b].owner === 0;
-    if (!aOwned) return bOwned ? b : null;
-    if (!bOwned) return a;
-
-    // Both directions are possible on friendly edges. Open an existing
-    // automatic surplus transfer in its saved direction instead of always
-    // defaulting to the first endpoint (which showed an unchecked box for
-    // policies configured in the reverse direction).
-    const aToB = policies[a]?.enabled && policies[a].dest === b;
-    const bToA = policies[b]?.enabled && policies[b].dest === a;
-    if (aToB !== bToA) return aToB ? a : b;
-
-    // An explicitly chosen, but disabled, policy destination is still useful
-    // context when no enabled direction exists.
-    const aConfigured = policies[a]?.dest === b;
-    const bConfigured = policies[b]?.dest === a;
-    if (aConfigured !== bConfigured) return aConfigured ? a : b;
-
-    return a;
-  }
-
   function chooseEdge(a, b) {
-    if (active?.kind === 'edge' && active.a === a && active.b === b) {
-      editing = true;
-    } else {
-      active = { kind: 'edge', a, b, source: sourceForEdge(a, b) };
-      editing = false;
-      advancedOpen = false;
-      manualOpen = false;
-    }
-    selected = active.source;
+    store.inspectEdge(a, b);
     render();
   }
 
   function dismiss() {
-    active = null;
-    selected = null;
-    editing = false;
+    store.dismissInspector();
     render();
   }
 
@@ -273,9 +226,7 @@
   clickNode = chooseNode;
   showNodeOnMobile = () => {
     if (selected === null) return;
-    active = { kind: 'node', id: selected };
-    focusedNode = selected;
-    editing = true;
+    store.editSelectedNode();
     render();
   };
 
@@ -289,11 +240,11 @@
     const height = Math.max(260, viewport.clientHeight);
     const vh = (vw * height) / width;
     const scale = mobile() ? 2.35 : 1.75;
-    camera = {
+    store.setCamera({
       scale,
       x: vw / 2 - xy[focusedNode][0] * scale,
       y: vh / 2 - xy[focusedNode][1] * scale,
-    };
+    });
     render();
   };
 
@@ -548,9 +499,9 @@
     }
     const policyHolder = document.createElement('div');
     policyHolder.dataset.mount = 'policy';
-    addDetails(body, 'Other policy settings', policyHolder, advancedOpen, (open) => {
-      advancedOpen = open;
-    });
+    addDetails(body, 'Other policy settings', policyHolder, advancedOpen, (open) =>
+      store.setInspectorSection('advancedOpen', open),
+    );
     const manualHolder = document.createElement('div');
     manualHolder.dataset.mount = 'manual';
     addDetails(
@@ -558,9 +509,7 @@
       'Manual investment, withdrawal and allocations',
       manualHolder,
       manualOpen,
-      (open) => {
-        manualOpen = open;
-      },
+      (open) => store.setInspectorSection('manualOpen', open),
     );
   }
 
@@ -873,8 +822,7 @@
       }
       select.value = String(source);
       select.onchange = () => {
-        active.source = Number(select.value);
-        selected = active.source;
+        store.setEdgeSource(Number(select.value));
         render();
       };
       direction.append(select);
@@ -929,6 +877,21 @@
       setAllocation(source, destination, amount);
     };
     field.append(input, error);
+    const replaced = bothFriendly ? replacedSupport(source, destination) : null;
+    if (replaced?.manual)
+      field.append(
+        textElement(
+          'small',
+          'Replaces Node ' +
+            destination +
+            ' → ' +
+            source +
+            ': ' +
+            numeric(replaced.manual) +
+            ' manual support.',
+          'tactical-warning',
+        ),
+      );
     body.append(field);
     if (bothFriendly) {
       const current = policies[source];
@@ -958,6 +921,14 @@
       };
       toggle.append(caption, autoTransfer);
       policyBox.append(toggle);
+      if (replaced.route)
+        policyBox.append(
+          textElement(
+            'p',
+            'Replaces Node ' + destination + ' → ' + source + ' surplus route.',
+            'tactical-warning',
+          ),
+        );
       if (current?.dest !== null && current?.dest !== undefined && current.dest !== destination) {
         policyBox.append(
           textElement(
@@ -1175,12 +1146,10 @@
   const oldRender = render;
   render = function () {
     if (state.round !== previousRound) {
-      active = null;
-      selected = null;
-      editing = false;
+      store.dismissInspector();
       previousRound = state.round;
     }
-    if (active?.kind === 'node' && !state.nodes[active.id]) active = null;
+    if (active?.kind === 'node' && !state.nodes[active.id]) store.forgetInspectedNode();
     const focusedMapItem = mapItemSelector(document.activeElement);
     oldRender();
     // The thumb-reachable control mirrors the authoritative round button.
@@ -1189,14 +1158,7 @@
     showInspector();
     if (focusedMapItem) svg.querySelector(focusedMapItem)?.focus();
   };
-  byId('generate').addEventListener(
-    'click',
-    () => {
-      active = null;
-      editing = false;
-    },
-    true,
-  );
+  byId('generate').addEventListener('click', () => store.closeInspector(), true);
   // The legacy node dialog must remain mounted for older renderer references,
   // but must never appear together with the contextual node inspector.
   // Hide the inspector while deliberate Orders/Settings/New game dialogs are open.

@@ -5,151 +5,9 @@
   const byId = (id) => document.getElementById(id);
   const mobile = () => window.matchMedia('(max-width:760px)').matches;
   const fmtUX = exactEnergy;
-  const style = document.createElement('style');
-  style.textContent = `
-:root{color-scheme:dark;--ux-bg:#0b1424;--ux-panel:#14233a;--ux-card:#1b2d46;--ux-border:#344963;--ux-muted:#a6bad2;--ux-blue:#589cff;--ux-green:#6edab4}
-body{background:var(--ux-bg);color:#f1f6ff;overflow-x:hidden}
-button,input,select{border-radius:9px}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #f0d27e;outline-offset:2px}
-header{background:#101d30;padding:12px 22px;align-items:center}
-header h1{font-size:18px}header .muted{font-size:11px}
-header>div:last-child{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-#score{background:#1c304a;border:1px solid #344963;border-radius:8px;padding:9px 11px;white-space:nowrap;font-size:12px}
-header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;font-weight:750}
-#mobileSettings{display:inline-block}
-.toolbar{background:#0b1424;max-width:1480px;margin:auto;padding:13px 20px 2px;gap:16px}
-.view-tabs{background:#182942;border:1px solid #344963;border-radius:11px;padding:4px}
-.view-tabs button{border:0;background:transparent;padding:10px 15px;font-size:13px}
-.view-tabs button.active{background:#315d94;border-radius:8px}
-.layout{max-width:1480px;grid-template-columns:minmax(0,1fr) 288px;gap:14px;padding:14px 20px}
-.layout>.panel{background:var(--ux-panel);border-color:var(--ux-border)}
-.layout>.panel:first-child{min-width:0}
-#mapViewport{height:min(70vh,730px);min-height:450px;background:#0d1a2b;border:1px solid #33455f;border-radius:11px}
-#mapViewport svg{display:block}
-.ux-map-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 4px 12px}
-.ux-map-heading h2{font-size:17px;margin:0}
-.ux-map-heading .muted{font-size:12px;margin:3px 0 0}
-.ux-map-heading label{display:flex;align-items:center;gap:7px;font-size:12px;color:#afc2d9}
-.ux-map-heading select{width:145px}
-#map .ux-flow-overlay{pointer-events:none}
-#mapViewport .map-zoom-controls{right:12px;top:12px;bottom:auto;gap:6px}
-#mapViewport .map-zoom-controls button{min-width:43px;min-height:43px;font-size:15px;background:#203956eb}
-#mapViewport .map-zoom-controls #focusMap{font-size:12px}
-.map-explanation{font-size:12px;line-height:1.6;margin:12px 0 0}
-#gameSidebar{height:max-content;padding:15px}
-.ux-side-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
-.ux-side-head h3{font-size:15px;margin:0}
-.ux-side-section+.ux-side-section{border-top:1px solid #354963;margin-top:17px;padding-top:17px}
-.ux-node-card{border:1px solid #405b77;border-radius:12px;background:var(--ux-card);padding:14px}
-.ux-node-card strong{font-size:21px}
-.ux-node-card .muted{margin:8px 0;line-height:1.6}
-.ux-node-card button{width:100%}
-.ux-side-list{font-size:12px;color:#c7d4e7;display:grid;gap:9px}
-.ux-side-list>div{padding:9px;border:1px solid #344963;border-radius:9px;background:#1c304a}
-.ux-side-action{width:100%;margin-top:12px}
-#nodeDialog{width:min(1000px,96vw);max-height:94dvh;padding:0;background:#101d30;border:1px solid #526681;border-radius:16px;box-shadow:0 22px 85px #000b}
-#nodeDialog::backdrop,.ux-dialog::backdrop{background:#030912ce}
-#nodeDialog .mobile-node-header{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#14243b;padding:14px 18px;border-bottom:1px solid #344963;margin:0}
-#selectedTitle{font-size:21px;margin:0}
-#details{margin:6px 0;color:#b6c9e0}
-#hint{border:1px solid #39516f;background:#192f48;padding:11px 13px;border-radius:10px;line-height:1.55}
-#mobileNodeContent{max-height:none;overflow:visible}
-.ux-editor-scroll{max-height:calc(94dvh - 125px);overflow-y:auto;overscroll-behavior:contain;padding:18px}
-.ux-editor-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 13px}
-.ux-stat{background:#20334d;border:1px solid #405675;padding:14px;border-radius:11px}
-.ux-stat strong{display:block;font-size:24px;line-height:1.25}
-.ux-stat span{font-size:11px;color:#a8bed8;display:block;margin-bottom:4px}
-.ux-budget{border:1px solid #3b5370;background:#16283f;border-radius:12px;padding:15px;margin-bottom:16px}
-.ux-budget-head{display:flex;justify-content:space-between;gap:10px;font-size:13px}
-.ux-budget-bar{display:flex;height:11px;border-radius:20px;overflow:hidden;background:#33455e;margin:12px 0 10px}
-.ux-budget-bar>span{height:100%;display:block}
-.ux-budget-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#c2d1e4}
-.ux-budget-legend b{color:white}
-.ux-editor-sections{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(260px,.85fr);gap:14px;align-items:start}
-.ux-editor-section{border:1px solid #354b66;border-radius:12px;padding:15px;background:#182c45;min-width:0}
-.ux-editor-section>h3{font-size:17px;margin:0 0 12px}
-#allocator .order-row{background:transparent;border:0;padding:0;margin:0}
-#allocator .order-row:first-child{display:none}
-#allocator .order-row strong{display:none}
-#allocator .allocation-line{display:grid;grid-template-columns:minmax(0,1fr) 104px;gap:12px;min-height:46px;border-bottom:1px solid #344963;padding:8px 0;margin:0}
-#allocator .allocation-line label{font-size:13px;color:#e0eaf7}
-#allocator .allocation-line input{min-height:36px;width:100%}
-#allocator>button{margin-top:15px;border-color:#6a5262;color:#ffd1c9}
-#policyEditor .policy-box{margin:0;background:transparent;border:0;padding:0}
-#policyEditor .policy-box h3{font-size:17px;margin:0 0 12px}
-#policyEditor .policy-box label{display:block;color:#b8cbe1;line-height:1.5;margin:12px 0;font-size:12px}
-#policyEditor .policy-box label input[type=number],#policyEditor .policy-box label select{display:block;margin-top:5px;min-height:39px}
-#policyEditor .policy-actions{gap:6px}
-#policyEditor .policy-actions button{font-size:12px}
-#policyEditor .muted{line-height:1.6}
-.ux-combat-note{font-size:12px;line-height:1.6;color:#a9c0d9;margin-top:13px}
-.ux-editor-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;background:#14243b;border-top:1px solid #344963}
-.ux-editor-footer .muted{font-size:12px}
-.ux-editor-footer button{min-width:120px}
-.ux-jumps{display:none;gap:8px;margin:0 0 12px}
-.ux-dialog{width:min(720px,96vw);max-height:92dvh;overflow-y:auto;background:#14243b;color:#eef5ff;border:1px solid #526681;border-radius:15px;padding:0}
-.ux-dialog-header{display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:0;background:#172943;padding:16px;border-bottom:1px solid #3c5069;z-index:1}
-.ux-dialog-header h2{font-size:19px;margin:0}
-.ux-dialog-body{padding:16px}
-.ux-dialog-body .policy-box{margin-top:0}
-.ux-dialog-body>h3{font-size:15px}
-#uxOrdersDialog #orders{display:grid;gap:9px}
-#uxOrdersDialog .order-row{margin:0;padding:13px}
-#uxOrdersDialog .order-top button{font-size:12px}
-#uxOrdersDialog #clearAll{margin-top:14px;color:#ffbfba}
-#uxOrdersDialog .muted{line-height:1.6}
-#uxSettingsDialog .policy-box{margin-bottom:16px}
-#uxSettingsDialog label{line-height:1.6}
-.ux-dock{display:none}
-#dashboard{max-height:unset;overflow:visible}
-#dashboard h3{margin-top:5px}
-#dashboard>.policy-box{display:flex;align-items:end;flex-wrap:wrap;gap:9px}
-#dashboard>.policy-box label{margin:0;flex:1 1 130px}
-#dashboard>.policy-box button{min-height:39px}
-#dashboard>.policy-box hr{display:none}
-#dashboard>table{display:table;width:100%;font-size:12px}
-#dashboard th{position:sticky;top:0;background:#243a55;white-space:nowrap}
-#dashboard td{white-space:nowrap}
-#dashboard .ux-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:12px 0}
-#dashboard .ux-summary>div{padding:13px;border:1px solid #3c5672;background:#1a3049;border-radius:10px}
-#dashboard .ux-summary strong{display:block;font-size:22px}
-#dashboard .ux-summary span{font-size:11px;color:#a8bed8}
-#dashboard .ux-node-cards{display:none}
-#messagesView .log{max-height:65vh}
-@media(min-width:761px){.layout.ux-wide-view{grid-template-columns:minmax(0,1fr)}.layout.ux-wide-view #gameSidebar{display:none}}
-@media(max-width:1050px){.layout{grid-template-columns:minmax(0,1fr) 245px}.ux-editor-sections{grid-template-columns:minmax(0,1fr) minmax(230px,.9fr)}}
-@media(max-width:760px){
- header{padding:9px 12px;gap:7px}header h1{font-size:15px}header .muted{font-size:10px}header>div:last-child{gap:5px}header #score{width:auto;font-size:11px;padding:5px 7px}header #resolve,header #reset{display:none}#mobileSettings{display:inline-block;font-size:12px}
- .toolbar{padding:7px 8px}.view-tabs{width:100%;gap:3px}.view-tabs button{flex:1;padding:10px 5px}
- .layout{padding:5px 5px 84px;display:block}.layout>.panel:first-child{padding:5px;background:transparent;border:0}.ux-map-heading{padding:8px 4px}.ux-map-heading h2{font-size:14px}.ux-map-heading .muted{font-size:10px}.ux-map-heading label{font-size:11px}.ux-map-heading select{width:118px;max-width:118px;font-size:12px}
- #mapViewport{height:calc(100dvh - 240px);min-height:340px;max-height:none;border-radius:10px}
- #mapViewport .map-zoom-controls{top:11px;bottom:auto;right:9px;flex-direction:row;gap:5px}#mapViewport .map-zoom-controls button{min-width:40px;min-height:42px;font-size:15px;padding:6px}#mapViewport .map-zoom-controls #fit,#mapViewport .map-zoom-controls #focusMap{font-size:11px}
- #gameSidebar{display:none!important}.map-explanation{display:none}
- .ux-dock{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:20;padding:9px 12px calc(10px + env(safe-area-inset-bottom));gap:9px;background:#101d30;border-top:1px solid #40536d}
- .ux-dock button{flex:1;min-height:45px;font-weight:750}
- #nodeDialog{width:100vw;height:100dvh;max-height:100dvh;max-width:none;border:0;border-radius:0}
- #nodeDialog .mobile-node-header{padding:12px 14px}
- #selectedTitle{font-size:18px}
- .ux-editor-scroll{max-height:calc(100dvh - 128px);padding:13px 12px}
- .ux-editor-stats{gap:7px}.ux-stat{padding:11px}.ux-stat strong{font-size:20px}.ux-stat span{font-size:10px}
- .ux-editor-sections{display:flex;flex-direction:column;gap:12px}.ux-editor-section{width:100%;padding:13px}.ux-jumps{display:flex}.ux-jumps button{flex:1;font-size:12px;padding:9px 6px}
- .ux-editor-footer{padding:10px 14px calc(10px + env(safe-area-inset-bottom))}.ux-editor-footer button{min-height:44px;min-width:85px}
- .ux-dialog{width:100vw;height:100dvh;max-height:100dvh;max-width:none;border:0;border-radius:0}
- #dashboard>.policy-box{display:block}#dashboard>.policy-box label,#dashboard>.policy-box button{margin:8px 0;width:100%}
- #dashboard>table{display:none}#dashboard .ux-node-cards{display:grid;gap:9px}
- #dashboard .ux-node-card{background:#1a304a;border:1px solid #3b5572;padding:12px;border-radius:10px}
- #dashboard .ux-node-card header{display:flex;align-items:center;justify-content:space-between;background:transparent;border:0;padding:0}
- #dashboard .ux-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
- #dashboard .ux-node-card button{font-size:12px}
-}
-@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
-`;
-  document.head.append(style);
-
   const nodeDialog = byId('nodeDialog');
-  // Selection exists only while inspecting/editing a node; Focus remembers
-  // the latest inspected node independently of the active editor.
-  let lastInspectedNodeId = state.nodes[selected] ? selected : null;
-  selected = null;
+  // Selection exists only while inspecting/editing a node.
+  store.select(null);
   const oldHeader = nodeDialog.querySelector('.mobile-node-header');
   const oldClose = byId('closeNodeDialog');
   const slot = byId('nodeDetailsSlot');
@@ -195,13 +53,6 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   oldHeader.append(selectedTitle, oldClose);
   oldClose.textContent = '← Back to map';
   oldClose.onclick = () => nodeDialog.close();
-  nodeDialog.addEventListener('close', () => {
-    if (selected === null) return;
-    lastInspectedNodeId = selected;
-    selected = null;
-    // A closed editor must not leave a persistent node highlight or sidebar selection.
-    render();
-  });
   const scroll = document.createElement('div');
   scroll.className = 'ux-editor-scroll';
   const stats = document.createElement('div');
@@ -272,9 +123,6 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   const toolbar = document.querySelector('.toolbar');
   const hintZoom = toolbar.querySelector('.desktop-zoom-hint');
   if (hintZoom) hintZoom.remove();
-  // Show every planned attack and support transfer by default.
-  // Players can explicitly filter flow types without losing economy labels.
-  byId('overlay').value = 'all';
   const focusButton = document.createElement('button');
   focusButton.id = 'focusMap';
   focusButton.type = 'button';
@@ -285,7 +133,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   // Keep the game's normal renderer and engine; only change graphical overlays.
   const originalRenderFlows = renderFlows;
   renderFlows = function(svg, graph, element) {
-    const filter = byId('overlay').value;
+    const filter = overlay;
     const paths = filter === 'none' ? [] : previewOrders();
     for (const o of paths) {
       if (o.dest === null || o.dest === undefined || o.amount <= .01) continue;
@@ -313,16 +161,6 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
 
   // Existing DOM allocators and policy evaluation remain authoritative.
   positionNodeDetails = function() {};
-  showNodeOnMobile = function() {
-    if (selected !== null && !nodeDialog.open) nodeDialog.showModal();
-  };
-  clickNode = function(id) {
-    if (!state.nodes[id]) return;
-    lastInspectedNodeId = id;
-    selected = id;
-    render();
-    showNodeOnMobile();
-  };
   const originalOrders = renderOrders;
   renderOrders = function() {
     originalOrders();
@@ -377,7 +215,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
       check.onchange=()=>{ store.setBulkSelected(n.id,check.checked);syncBulk(); };
       label.append(check,document.createTextNode('Node '+n.id));
       const edit=document.createElement('button');edit.textContent='Edit →';
-      edit.onclick=()=>{selected=n.id;switchView('map');showNodeOnMobile();};
+      edit.onclick=()=>{store.select(n.id);switchView('map');showNodeOnMobile();};
       head.append(label,edit);
       const desc=document.createElement('div');desc.className='muted';
       desc.textContent='Active '+fmtUX(n.active)+' · Invested '+fmtUX(n.invested)+' · Defense '+fmtUX(p.defense)+' · Next '+fmtUX(p.next)+(softCapEnabled()?' · Capacity '+fmtUX(n.active+n.invested)+'/'+SOFT_CAP_RULES.capacity+' · Overflow loss '+fmtUX(p.overflow):'');
@@ -411,10 +249,10 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
     if (g) g.setAttribute('transform','translate('+camera.x+' '+camera.y+') scale('+camera.scale+')');
   }
   function fitCameraUX() {
-    if (!mobile()) { camera={x:0,y:0,scale:1}; render(); return; }
+    if (!mobile()) { store.setCamera({x:0,y:0,scale:1}); render(); return; }
     const [vw,vh,bw,bh]=viewBounds();
     const scale=Math.min((vw-100)/bw,(vh-120)/bh);
-    camera={x:(vw-bw*scale)/2,y:(vh-bh*scale)/2,scale:scale};
+    store.setCamera({x:(vw-bw*scale)/2,y:(vh-bh*scale)/2,scale:scale});
     render();
   }
   function focusCameraUX(id) {
@@ -422,14 +260,14 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
     if (!n || !xy[id]) return;
     const [vw,vh]=viewBounds();
     const scale=mobile()?2.35:1.75;
-    camera={x:vw/2-xy[id][0]*scale,y:vh/2-xy[id][1]*scale,scale};
+    store.setCamera({x:vw/2-xy[id][0]*scale,y:vh/2-xy[id][1]*scale,scale});
     render();
   }
   function zoomUX(factor) {
     const [vw,vh]=viewBounds();
     const next=Math.min(6,Math.max(.25,camera.scale*factor));
     factor=next/camera.scale;
-    camera={x:vw/2-(vw/2-camera.x)*factor,y:vh/2-(vh/2-camera.y)*factor,scale:next};
+    store.setCamera({x:vw/2-(vw/2-camera.x)*factor,y:vh/2-(vh/2-camera.y)*factor,scale:next});
     render();
   }
   render = function() {
@@ -442,7 +280,7 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
       lastMap=key;
       if(mobile() && (isFirst || state.round===1)) {
         const mine=state.nodes.find(n=>n.owner===0);
-        if(mine){const [vw,vh]=viewBounds(),scale=2.35;camera={x:vw/2-xy[mine.id][0]*scale,y:vh/2-xy[mine.id][1]*scale,scale};}
+        if(mine){const [vw,vh]=viewBounds(),scale=2.35;store.setCamera({x:vw/2-xy[mine.id][0]*scale,y:vh/2-xy[mine.id][1]*scale,scale});}
       }
     }
     redrawCamera();
@@ -514,17 +352,12 @@ header .primary,.ux-primary{background:#387dcc;border-color:#579eec;color:white;
   byId('zoomIn').onclick=()=>zoomUX(1.25);
   byId('zoomOut').onclick=()=>zoomUX(.8);
   byId('fit').onclick=fitCameraUX;
-  focusButton.onclick=()=>{
-    const id=state.nodes[lastInspectedNodeId]
-      ? lastInspectedNodeId
-      : state.nodes.find(n=>n.owner===0)?.id;
-    if(id!==undefined && id!==null)focusCameraUX(id);
-  };
   // Opening the on-screen keyboard resizes the mobile viewport. Moving
   // focused input elements between parents here blurs them and immediately
   // dismisses the keyboard; the editor is already in its final layout.
   window.addEventListener('resize', redrawCamera);
-  byId('overlay').onchange=render;
+  const renderBeforeInspector=render;
+  byId('overlay').onchange=()=>{store.setOverlay(byId('overlay').value);renderBeforeInspector();};
   byId('clearAll').onclick=()=>{store.clearAllOrders();render();};
   // The original HTML has inline-mobile navigation; the native dialogs supersede it.
   render();
