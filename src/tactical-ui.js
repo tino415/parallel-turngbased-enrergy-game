@@ -459,18 +459,20 @@
     slider.oninput = () => {
       byId('tacticalPolicyPercent').value = slider.value;
     };
-    slider.onchange = () => changePolicy(id, 'investPct', Number(slider.value));
+    slider.onchange = () => {
+      if (!changeShare(id, 'investPct', Number(slider.value))) slider.value = String(pct);
+    };
     percent.onchange = () => {
       const value = Number(percent.value);
       if (!Number.isFinite(value) || value < 0 || value > 100) {
         percent.value = String(pct);
         return;
       }
-      changePolicy(id, 'investPct', value);
+      if (!changeShare(id, 'investPct', value)) percent.value = String(pct);
     };
     label.append(percent);
-    primary.append(label, slider);
-    body.append(primary);
+    primary.append(label, slider, ...investmentTargetControls(id, policy));
+    body.append(primary, defenseControls(id, policy), sharesLine(id, policy));
     body.append(
       textElement(
         'p',
@@ -503,6 +505,195 @@
       manualHolder,
       manualOpen,
       (open) => store.setInspectorSection('manualOpen', open),
+    );
+  }
+
+  function investmentTargetControls(id, policy) {
+    const target = policy?.investTarget ?? null;
+    const controls = [
+      policyNumberField({
+        id: 'tacticalInvestTarget',
+        key: id + ':investTarget',
+        label: 'Until invested reaches',
+        value: target,
+        placeholder: 'no limit',
+        onCommit: (value) => changePolicy(id, 'investTarget', value),
+      }),
+    ];
+    if (softCapEnabled())
+      controls.push(
+        policyNumberField({
+          id: 'tacticalDivestPct',
+          key: id + ':divestPct',
+          label: 'Above the target, scale down % per round',
+          value: policy?.divestPct ?? 0,
+          max: 100,
+          onCommit: (value) => changePolicy(id, 'divestPct', value ?? 0),
+        }),
+      );
+    const status = investmentStatusText(id);
+    if (status) controls.push(textElement('p', status, 'tactical-secondary'));
+    const reserve = policy?.reserve ?? defaultPolicy().reserve;
+    if (softCapEnabled() && target !== null && target + reserve > SOFT_CAP_RULES.capacity)
+      controls.push(
+        textElement(
+          'p',
+          'Target plus defense reserve is above the ' +
+            SOFT_CAP_RULES.capacity +
+            ' capacity: overflow decay trims invested every round and the policy refills it.',
+          'tactical-warning',
+        ),
+      );
+    return controls;
+  }
+
+  function defenseControls(id, policy) {
+    const block = document.createElement('div');
+    block.className = 'tactical-primary-control';
+    block.append(
+      textElement('strong', 'Defense floor ' + numeric(policy?.reserve ?? defaultPolicy().reserve)),
+      policyNumberField({
+        id: 'tacticalDefensePct',
+        key: id + ':defensePct',
+        label: 'Grow by % of surplus',
+        value: policy?.defensePct ?? 0,
+        max: 100,
+        onCommit: (value) => changeShare(id, 'defensePct', value ?? 0),
+      }),
+      policyNumberField({
+        id: 'tacticalDefenseTarget',
+        key: id + ':defenseTarget',
+        label: 'Up to',
+        value: policy?.defenseTarget ?? null,
+        placeholder: 'fixed floor',
+        onCommit: (value) => changePolicy(id, 'defenseTarget', value),
+      }),
+    );
+    const status = selectors.defenseStatus(currentMatch(), id);
+    if (status) block.append(textElement('p', defenseStatusText(status), 'tactical-secondary'));
+    if (status && status.target > status.sustainable + 0.05)
+      block.append(
+        textElement(
+          'p',
+          'The target is above what this node sustains: the floor stalls near ' +
+            numeric(status.sustainable) +
+            '.',
+          'tactical-warning',
+        ),
+      );
+    return block;
+  }
+
+  function defenseStatusText({ floor, next, target, sustainable }) {
+    const outlook = ' · sustainable ≈ ' + numeric(sustainable);
+    if (Math.abs(floor - target) < 0.05) return 'Floor ' + numeric(floor) + ' · target reached';
+    if (floor > target)
+      return (
+        'Floor ' + numeric(floor) + ' → ' + numeric(next) + ', shrinking to ' + numeric(target)
+      );
+    return 'Floor ' + numeric(floor) + ' → ' + numeric(next) + ' of ' + numeric(target) + outlook;
+  }
+
+  function sharesLine(id, policy) {
+    const effective = { ...defaultPolicy(), ...policy };
+    const invest = effective.investPct;
+    const defense = Number.isFinite(effective.defenseTarget) ? (effective.defensePct ?? 0) : 0;
+    const destination =
+      effective.dest !== null && state.nodes[effective.dest]?.owner === 0
+        ? '→ Node ' + effective.dest
+        : 'stays on the node';
+    const line = textElement(
+      'p',
+      'Shares: invest ' +
+        numeric(invest) +
+        '% + defense ' +
+        numeric(defense) +
+        '% = ' +
+        numeric(invest + defense) +
+        '% · rest ' +
+        numeric(Math.max(0, 100 - invest - defense)) +
+        '% ' +
+        destination,
+      'tactical-secondary',
+    );
+    line.id = 'tacticalShares';
+    return line;
+  }
+
+  function changeShare(id, key, value) {
+    const accepted = changePolicy(id, key, value);
+    if (!accepted)
+      byId('tacticalShares').textContent =
+        'Shares cannot add up to more than 100%. Lower another share first.';
+    return accepted;
+  }
+
+  function policyNumberField({ id, key, label, value, max = Infinity, placeholder, onCommit }) {
+    const field = document.createElement('label');
+    field.append(textElement('span', label));
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = '0';
+    if (max !== Infinity) input.max = String(max);
+    input.step = '1';
+    input.id = id;
+    input.dataset.key = key;
+    input.value = value === null ? '' : String(value);
+    if (placeholder) input.placeholder = placeholder;
+    input.setAttribute('aria-label', label);
+    const revert = () => (input.value = value === null ? '' : String(value));
+    input.onchange = () => {
+      const committed = input.value.trim() === '' ? null : Number(input.value);
+      if (committed !== null && !(committed >= 0 && committed <= max)) revert();
+      else if (onCommit(committed) === false) revert();
+    };
+    field.append(input);
+    return field;
+  }
+
+  function investmentStatusText(id) {
+    const status = selectors.investmentStatus(currentMatch(), id);
+    if (!status) return null;
+    const { invested, target, invest, withdraw, fee, roundsToTarget } = status;
+    const progress = 'Invested ' + numeric(invested);
+    if (roundsToTarget === 0) return progress + ' · target reached';
+    if (status.blockedByManualWithdrawal)
+      return (
+        progress +
+        ' of ' +
+        numeric(target) +
+        ' · no reinvestment this round after a manual withdrawal. Lower the target to keep it withdrawn.'
+      );
+    if (invested < target)
+      return (
+        progress +
+        ' of ' +
+        numeric(target) +
+        ' · +' +
+        numeric(invest) +
+        ' this round · ' +
+        numeric(Math.max(0, target - invested - plan(id).invest - invest)) +
+        ' to go'
+      );
+    if (roundsToTarget === null)
+      return (
+        progress +
+        ', above the target ' +
+        numeric(target) +
+        (softCapEnabled() ? ' · scale-down is off' : '')
+      );
+    return (
+      progress +
+      ' → ' +
+      numeric(target) +
+      ' · policy withdraws ' +
+      numeric(withdraw) +
+      ' this round, ' +
+      numeric(fee) +
+      ' fee · ' +
+      roundsToTarget +
+      (roundsToTarget === 1 ? ' round' : ' rounds') +
+      ' to target'
     );
   }
 

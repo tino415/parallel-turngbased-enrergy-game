@@ -201,8 +201,9 @@ function policyOrders(source) {
   return selectors.policyOrders(currentMatch(), source);
 }
 function changePolicy(source, key, value) {
-  store.changePolicy(source, key, value);
+  const accepted = store.changePolicy(source, key, value);
   render();
+  return accepted;
 }
 function renderPolicyEditor() {
   updateChildrenInPlace($('policyEditor'), policyControls());
@@ -419,6 +420,8 @@ function renderOrders() {
     details.className = 'muted';
     const parts = [];
     if (p.withdraw > 0) parts.push('Withdraw ' + fmt(p.withdraw));
+    const scaleDown = selectors.policyWithdrawal(currentMatch(), id);
+    if (scaleDown > 0) parts.push('Policy withdraws ' + fmt(scaleDown));
     if (p.invest > 0) parts.push('Invest ' + fmt(p.invest));
     for (const [dest, amount] of Object.entries(p.edges))
       parts.push(

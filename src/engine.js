@@ -118,14 +118,38 @@
     return { positions, links, nodes, seed, players };
   }
 
-  function evaluatePolicy({ policy, node, manualSpent, manualHold, neighbors, owners, source }) {
-    if (!policy || !policy.enabled || !node || node.owner !== 0 || manualHold) return [];
-    const surplus = Math.max(0, node.active - manualSpent - policy.reserve);
-    const invest = (surplus * policy.investPct) / 100;
+  const evaluatePolicy = (args) => planPolicy(args).orders;
+
+  function planPolicy({
+    policy,
+    node,
+    manualSpent,
+    manualInvest = 0,
+    manualWithdraw = 0,
+    manualHold,
+    neighbors,
+    owners,
+    source,
+  }) {
+    if (!policyApplies(policy, node, manualHold)) return { orders: [], next: policy };
+    const floor = shrunkDefenseFloor(policy);
+    const surplus = Math.max(0, node.active - manualSpent - floor);
+    const shares = policyShares(policy);
+    const growth = Math.min((surplus * shares.defense) / 100, defenseRoom(policy, floor));
+    const invest = Math.min(
+      (surplus * shares.invest) / 100,
+      investmentRoom(policy, node.invested + manualInvest, manualWithdraw),
+    );
     const transfer =
       policy.dest !== null && neighbors.includes(policy.dest) && owners[policy.dest] === 0
-        ? surplus - invest
+        ? surplus - growth - invest
         : 0;
+    const orders = policyOrders({ source, policy, invest, transfer });
+    const next = hasDefenseTarget(policy) ? { ...policy, reserve: floor + growth } : policy;
+    return { orders, next };
+  }
+
+  function policyOrders({ source, policy, invest, transfer }) {
     const result = [];
     if (invest > 1e-9)
       result.push({ source, type: 'invest', amount: invest, dest: null, automatic: true });
@@ -139,6 +163,56 @@
       });
     return result;
   }
+
+  function policyWithdrawal({ policy, node, manualWithdraw = 0, manualHold, softCap }) {
+    if (!softCap || !policyApplies(policy, node, manualHold)) return 0;
+    const step = Math.min(
+      (node.invested * divestPct(policy)) / 100,
+      node.invested - investTarget(policy),
+    );
+    return step > TARGET_EPSILON ? Math.max(0, step - manualWithdraw) : 0;
+  }
+
+  const TARGET_EPSILON = 1e-6;
+  const policyApplies = (policy, node, manualHold) =>
+    Boolean(policy?.enabled && node?.owner === 0 && !manualHold);
+  const investTarget = (policy) =>
+    Number.isFinite(policy.investTarget) ? policy.investTarget : Infinity;
+  const divestPct = (policy) =>
+    Number.isFinite(policy.divestPct) ? Math.max(0, Math.min(100, policy.divestPct)) : 0;
+
+  function investmentRoom(policy, invested, manualWithdraw) {
+    const target = investTarget(policy);
+    if (target === Infinity) return Infinity;
+    if (manualWithdraw > 0) return 0;
+    const room = target - invested;
+    return room > TARGET_EPSILON ? room : 0;
+  }
+
+  const hasDefenseTarget = (policy) => Number.isFinite(policy.defenseTarget);
+  const defensePct = (policy) =>
+    hasDefenseTarget(policy) && Number.isFinite(policy.defensePct)
+      ? Math.max(0, Math.min(100, policy.defensePct))
+      : 0;
+
+  function shrunkDefenseFloor(policy) {
+    if (!hasDefenseTarget(policy) || policy.reserve <= policy.defenseTarget) return policy.reserve;
+    return Math.max(policy.defenseTarget, policy.reserve * (1 - defensePct(policy) / 100));
+  }
+
+  function defenseRoom(policy, floor) {
+    if (!hasDefenseTarget(policy)) return 0;
+    const room = policy.defenseTarget - floor;
+    return room > TARGET_EPSILON ? room : 0;
+  }
+
+  function policyShares(policy) {
+    const shares = { invest: policy.investPct, defense: defensePct(policy) };
+    const total = shares.invest + shares.defense;
+    if (shares.defense === 0 || total <= 100) return shares;
+    return { invest: (shares.invest * 100) / total, defense: (shares.defense * 100) / total };
+  }
+
   function applyOverflow(node, rules = SOFT_CAP_RULES) {
     const next = { ...node };
     const total = Math.max(0, next.active + next.invested);
@@ -398,6 +472,16 @@
       for (const [id, p] of Object.entries(orders || {})) {
         if (state.nodes[Number(id)]?.owner === 0) requested[id] = p.withdraw ?? 0;
       }
+      for (const [id, policy] of Object.entries(policies)) {
+        const automatic = policyWithdrawal({
+          policy,
+          node: state.nodes[Number(id)],
+          manualWithdraw: requested[id] ?? 0,
+          manualHold: Boolean(orders[id]?.hold),
+          softCap,
+        });
+        if (automatic > 0) requested[id] = (requested[id] ?? 0) + automatic;
+      }
       const aiWithdrawals = aiWithdrawalsOverride ?? aiPlan?.withdrawals ?? {};
       for (const [id, amount] of Object.entries(aiWithdrawals)) {
         if (state.nodes[Number(id)]?.owner !== null && state.nodes[Number(id)]?.owner !== 0)
@@ -432,27 +516,32 @@
           dest: Number(dest),
         })),
     ]);
-    const automatic = Object.keys(policies)
+    const policyPlans = Object.keys(policies)
       .map(Number)
-      .flatMap((source) =>
-        evaluatePolicy({
+      .map((source) => ({
+        source,
+        ...planPolicy({
           source,
           policy: policies[source],
           node: nodes[source],
           manualSpent: allocated(orders[source] ?? { invest: 0, edges: {} }),
+          manualInvest: orders[source]?.invest ?? 0,
+          manualWithdraw: softCap ? (orders[source]?.withdraw ?? 0) : 0,
           manualHold: Boolean(orders[source]?.hold),
           neighbors: neighbors(source),
           owners: nodes.map((n) => n.owner),
         }),
-      );
+      }));
+    const automatic = policyPlans.flatMap((plan) => plan.orders);
     const ai =
       aiOrdersOverride === null
         ? Object.values(aiPlan ? aiPlan.orders : aiOrders(nodes, links)).flat()
         : aiOrdersOverride;
     const all = [...manual, ...automatic, ...ai];
     const valid = [],
-      spent = {};
-    for (const o of all) {
+      spent = {},
+      rejectedPolicies = new Set();
+    const acceptable = (o) => {
       const n = nodes[o.source];
       if (
         !n ||
@@ -460,13 +549,22 @@
         o.amount <= 0 ||
         (spent[o.source] || 0) + o.amount > n.active + 1e-8
       )
+        return false;
+      if (o.type !== 'invest' && !neighbors(o.source).includes(o.dest)) return false;
+      if (o.type === 'transfer' && nodes[o.dest].owner !== n.owner) return false;
+      if (o.type === 'attack' && nodes[o.dest].owner === n.owner) return false;
+      return true;
+    };
+    for (const o of all) {
+      if (!acceptable(o)) {
+        if (o.automatic) rejectedPolicies.add(o.source);
         continue;
-      if (o.type !== 'invest' && !neighbors(o.source).includes(o.dest)) continue;
-      if (o.type === 'transfer' && nodes[o.dest].owner !== n.owner) continue;
-      if (o.type === 'attack' && nodes[o.dest].owner === n.owner) continue;
+      }
       spent[o.source] = (spent[o.source] || 0) + o.amount;
-      valid.push({ ...o, owner: n.owner });
+      valid.push({ ...o, owner: nodes[o.source].owner });
     }
+    for (const { source, next } of policyPlans)
+      if (next !== policies[source] && !rejectedPolicies.has(source)) nextPolicies[source] = next;
     for (const o of valid) nodes[o.source].active = clamp(nodes[o.source].active - o.amount);
     for (const o of valid.filter((o) => o.type === 'invest')) nodes[o.source].invested += o.amount;
     for (const o of valid.filter((o) => o.type === 'transfer')) nodes[o.dest].active += o.amount;
@@ -580,6 +678,8 @@
     seeded,
     buildMap,
     evaluatePolicy,
+    planPolicy,
+    policyWithdrawal,
     forecast,
     aiOrders,
     economicAI,
