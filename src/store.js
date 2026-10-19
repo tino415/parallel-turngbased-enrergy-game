@@ -1,7 +1,7 @@
 'use strict';
 
 (() => {
-  const { planPolicy, forecast, resolveRound, SOFT_CAP_RULES } = GameEngine;
+  const { planPolicy, forecast, resolveRound, playerName, SOFT_CAP_RULES } = GameEngine;
   const HISTORY_LIMIT = 70;
   const TARGET_EPSILON = 1e-6;
   const sum = (values) => values.reduce((total, value) => total + value, 0);
@@ -479,6 +479,34 @@
     );
   }
 
+  const EMPIRE_COLUMNS = ['player', 'invested', 'active', 'nodes'];
+  const DEFAULT_EMPIRE_SORT = { column: 'player', direction: 'asc' };
+
+  function empireStats(match, sort = DEFAULT_EMPIRE_SORT) {
+    const sign = sort.direction === 'asc' ? 1 : -1;
+    return Array.from({ length: match.map.playerCount }, (_, owner) => empireOf(match, owner)).sort(
+      (a, b) => sign * (a[sort.column] - b[sort.column]) || a.player - b.player,
+    );
+  }
+
+  function empireOf(match, owner) {
+    const nodes = match.state.nodes.filter((node) => node.owner === owner);
+    return {
+      player: owner,
+      name: playerName(owner),
+      invested: sum(nodes.map((node) => node.invested)),
+      active: sum(nodes.map((node) => node.active)),
+      nodes: nodes.length,
+    };
+  }
+
+  function nextEmpireSort(sort, column) {
+    if (!EMPIRE_COLUMNS.includes(column)) return sort;
+    if (sort.column === column)
+      return { column, direction: sort.direction === 'asc' ? 'desc' : 'asc' };
+    return { column, direction: column === 'player' ? 'asc' : 'desc' };
+  }
+
   function applyGroupPolicyField(match, ids, key, value) {
     const rejected = [];
     const next = ids
@@ -580,6 +608,7 @@
   const CLOSED_INSPECTOR = { active: null, editing: false, advancedOpen: false, manualOpen: false };
   const INITIAL_UI = {
     view: 'map',
+    empireSort: DEFAULT_EMPIRE_SORT,
     overlay: 'all',
     clipboard: null,
     bulkSelection: [],
@@ -714,6 +743,7 @@
         setUi('bulkSelection', bulkSelectionWith(id, !snapshot.ui.bulkSelection.includes(id)));
       },
       setView: (view) => setUi('view', view),
+      sortEmpires: (column) => setUi('empireSort', nextEmpireSort(snapshot.ui.empireSort, column)),
       copyPolicy: (policy) => setUi('clipboard', { ...policy }),
       setOverlay: (overlay) => setUi('overlay', overlay),
       select: (id) => setUi('selected', id),
@@ -771,6 +801,7 @@
       neighbors,
       edgeSource,
       groupPolicyView,
+      empireStats,
       softCapEnabled,
       defaultPolicy,
       plan,
