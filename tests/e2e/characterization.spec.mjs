@@ -88,8 +88,7 @@ test('a fixed command sequence produces the recorded orders, policies and rounds
   await page.getByRole('checkbox', { name: 'Pause policy this round' }).check();
   await page.getByRole('checkbox', { name: 'Pause policy this round' }).uncheck();
   await page.locator('#policyEditor').getByRole('button', { name: 'Copy' }).click();
-  await expect(inspector(page)).toBeHidden();
-  await openNode(page, 0);
+  await expect(inspector(page)).toBeVisible();
   await page.getByText('Manual investment, withdrawal and allocations').click();
   await commit(page.locator('#allocator [data-allocation="withdraw"]'), 4);
   await commit(page.locator('#allocator [data-allocation="invest"]'), 2);
@@ -113,7 +112,7 @@ test('a fixed command sequence produces the recorded orders, policies and rounds
   await openNode(page, 1);
   await page.getByText('Other policy settings').click();
   await page.locator('#policyEditor').getByRole('button', { name: 'Paste' }).click();
-  await expect(inspector(page)).toBeHidden();
+  await closeInspector(page);
   await openEdge(page, '0-2');
   await chooseSource(page, 2);
   await page.locator('#tacticalAutoTransfer').check();
