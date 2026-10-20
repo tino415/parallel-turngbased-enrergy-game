@@ -5,17 +5,17 @@ this order: `engine.js`, `store.js`, `format.js`, `game.js`, `dialogs.js`,
 `leaderboard.js`, `ux.js`, `tactical-ui.js`, `replay.js`. Later scripts build on, and in
 places replace, functions from earlier ones.
 
-| Module           | Owns                                                                    | Touches the DOM |
-| ---------------- | ----------------------------------------------------------------------- | --------------- |
-| `engine.js`      | Rules: map generation, policy evaluation, forecast, AI, `resolveRound`  | no              |
-| `store.js`       | All match and interface state, commands, selectors, subscriptions       | no              |
-| `format.js`      | Energy number formatting                                                | no              |
-| `game.js`        | The base renderer, map navigation, save and restore, the global mirrors | yes             |
-| `dialogs.js`     | The Orders and Settings dialog buttons                                  | yes             |
-| `leaderboard.js` | The Leaderboard tab: one row per player, sorted by the chosen column    | yes             |
-| `ux.js`          | Layout, dialogs, side panel, dock, camera fitting                       | yes             |
-| `tactical-ui.js` | Map selection and node groups, the inspector, pinch zoom, the ☰ menu   | yes             |
-| `replay.js`      | The replay screen, the game-over notice and the Replay menu item        | yes             |
+| Module           | Owns                                                                              | Touches the DOM |
+| ---------------- | --------------------------------------------------------------------------------- | --------------- |
+| `engine.js`      | Rules: map generation, policy evaluation, forecast, AI, `resolveRound`            | no              |
+| `store.js`       | All match and interface state, commands, selectors, subscriptions                 | no              |
+| `format.js`      | Energy number formatting                                                          | no              |
+| `game.js`        | The base renderer, map navigation, save and restore, the global mirrors           | yes             |
+| `dialogs.js`     | The Orders and Settings dialog buttons                                            | yes             |
+| `leaderboard.js` | The Leaderboard tab: one row per player, sorted by the chosen column              | yes             |
+| `ux.js`          | Layout, dialogs, side panel, dock, camera fitting                                 | yes             |
+| `tactical-ui.js` | Map selection, node and connection groups, the inspector, pinch zoom, the ☰ menu | yes             |
+| `replay.js`      | The replay screen, the game-over notice and the Replay menu item                  | yes             |
 
 ## State ownership
 
@@ -38,6 +38,7 @@ command really changes it.
 | camera (`x`, `y`, `scale`)                          | `ui.camera`          | no    | `setCamera`                         |
 | policy clipboard                                    | `ui.clipboard`       | no    | `copyPolicy`                        |
 | node group selected on the map                      | `ui.bulkSelection`   | no    | group commands, `resolve`²          |
+| connection group, each as `[source, destination]`   | `ui.bulkEdges`       | no    | group commands, `resolve`²          |
 | group mode on the map                               | `ui.groupMode`       | no    | `setGroupMode`, `leaveGroupMode`    |
 | group editor open                                   | `ui.groupEditing`    | no    | `setGroupEditing`, `leaveGroupMode` |
 | inspector target, editing, focused node             | `ui.inspector`       | no    | inspector commands                  |
@@ -47,8 +48,9 @@ command really changes it.
 ¹ `selected` stays in the save format so that old saves keep loading. ux.js
 clears it on load.
 
-² `resolve` drops the nodes Blue no longer owns, so the group survives rounds
-but never holds a lost node.
+² `resolve` drops the nodes Blue no longer owns and the connections that no
+longer touch Blue's nodes, so a group survives rounds but never holds a lost
+node. A group holds nodes or connections, never both.
 
 Gesture and render bookkeeping stays local to the code that needs it, because
 no other code reads it: drag and click suppression (`game.js`), pinch fingers
@@ -90,7 +92,7 @@ replaced in load order, and each layer calls the previous one:
    log and tab state.
 2. `ux.js` adds the camera viewBox, side panel, dock and income labels.
 3. `tactical-ui.js` adds edge hit areas, selection and group rings, the group
-   bar and the inspector for one node, one edge or the node group, which it
+   bar and the inspector for one node, one edge, the node group or the connection group, which it
    updates in place to keep drafts and focus.
 
 `renderFlows` is also replaced in load order.
