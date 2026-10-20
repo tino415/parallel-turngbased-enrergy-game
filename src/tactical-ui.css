@@ -655,3 +655,20 @@ body > header #resolve {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+.ai-debug-label {
+  stroke: #152033;
+  stroke-width: 3;
+  paint-order: stroke;
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.ai-debug-flow {
+  pointer-events: none;
+  opacity: 0.9;
+}
+.ai-debug-plan {
+  margin: 0;
+  padding-left: 18px;
+}

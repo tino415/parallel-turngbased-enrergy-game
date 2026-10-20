@@ -1,7 +1,7 @@
 'use strict';
 
 (() => {
-  const { planPolicy, forecast, resolveRound, playerName, SOFT_CAP_RULES } = GameEngine;
+  const { planPolicy, forecast, resolveRound, playerName, aiPlan, SOFT_CAP_RULES } = GameEngine;
   const HISTORY_LIMIT = 70;
   const TARGET_EPSILON = 1e-6;
   const sum = (values) => values.reduce((total, value) => total + value, 0);
@@ -281,6 +281,8 @@
       .flatMap((source) => policyOrders(match, source));
     return [...manual, ...automatic];
   }
+
+  const aiDebugPlan = (match) => aiPlan(match.state, match.map.edges);
 
   function projection(match, id) {
     const scheduled = previewOrders(match),
@@ -673,6 +675,7 @@
     view: 'map',
     leaderboardSort: DEFAULT_LEADERBOARD_SORT,
     clipboard: null,
+    aiDebug: false,
     bulkSelection: [],
     groupMode: false,
     groupEditing: false,
@@ -805,6 +808,7 @@
         setUi('bulkSelection', bulkSelectionWith(id, !snapshot.ui.bulkSelection.includes(id)));
       },
       setView: (view) => setUi('view', view),
+      setAiDebug: (on) => setUi('aiDebug', Boolean(on)),
       sortLeaderboard: (column) =>
         setUi('leaderboardSort', nextLeaderboardSort(snapshot.ui.leaderboardSort, column)),
       copyPolicy: (policy) => setUi('clipboard', { ...policy }),
@@ -874,6 +878,7 @@
       defenseStatus,
       edgePressureStatus,
       previewOrders,
+      aiDebugPlan,
       projection,
       replacedSupport,
       orderPresets,

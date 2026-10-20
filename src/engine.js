@@ -508,6 +508,14 @@
     }
   }
 
+  function aiPlan(state, links) {
+    if (isSoftCap(state)) {
+      const { orders, withdrawals } = economicAI(state.nodes, links);
+      return { orders: Object.values(orders).flat(), withdrawals };
+    }
+    return { orders: Object.values(aiOrders(state.nodes, links)).flat(), withdrawals: {} };
+  }
+
   function resolveRound({
     state,
     playerCount = state.playerCount ?? Math.max(2, ...state.nodes.map((n) => (n.owner ?? -1) + 1)),
@@ -769,6 +777,7 @@
     forecast,
     aiOrders,
     economicAI,
+    aiPlan,
     SOFT_CAP_RULES,
     applyOverflow,
     resolveRound,
