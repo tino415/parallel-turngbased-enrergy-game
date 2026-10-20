@@ -150,6 +150,30 @@
               neighbours, to invest, or kept back as defense.
             </p>
           </div>
+          <section id="leaderboardCharts" aria-labelledby="leaderboardChartsTitle">
+            <h3 id="leaderboardChartsTitle">Rounds so far</h3>
+            <div id="chartSeries" class="chart-buttons" role="group" aria-label="Chart">
+              <button type="button" data-series="invested">Invested</button>
+              <button type="button" data-series="active">Active</button>
+              <button type="button" data-series="battleLoss">Lost in battle</button>
+              <button type="button" data-series="inefficiencyLoss">Lost to inefficiency</button>
+              <button type="button" data-series="production">Production</button>
+              <button type="button" data-series="nodes">Nodes</button>
+            </div>
+            <div
+              id="chartPlayers"
+              class="chart-buttons"
+              role="group"
+              aria-label="Highlight a player"
+            ></div>
+            <div id="chartTotals" class="chart-buttons" role="group" aria-label="Count">
+              <button type="button" data-running-total="false">Per round</button>
+              <button type="button" data-running-total="true">Running total</button>
+            </div>
+            <p id="chartDescription" class="muted"></p>
+            <div id="chartFrame" class="chart-frame"></div>
+            <p id="chartEmpty" class="muted" hidden></p>
+          </section>
         </section>
         <p class="muted map-explanation">
           Blue = you · Other colors = AI players · Gray = neutral. Node label shows active energy

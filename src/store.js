@@ -575,10 +575,12 @@
   }
 
   function standingOf(match, owner) {
-    const nodes = match.state.nodes.filter((node) => node.owner === owner);
+    return { player: owner, name: playerName(owner), ...standingIn(match.state.nodes, owner) };
+  }
+
+  function standingIn(allNodes, owner) {
+    const nodes = allNodes.filter((node) => node.owner === owner);
     return {
-      player: owner,
-      name: playerName(owner),
       invested: sum(nodes.map((node) => node.invested)),
       active: sum(nodes.map((node) => node.active)),
       nodes: nodes.length,
@@ -590,6 +592,47 @@
     if (sort.column === column)
       return { column, direction: sort.direction === 'asc' ? 'desc' : 'asc' };
     return { column, direction: column === 'player' ? 'asc' : 'desc' };
+  }
+
+  const CHART_SERIES = [
+    'invested',
+    'active',
+    'battleLoss',
+    'inefficiencyLoss',
+    'production',
+    'nodes',
+  ];
+  const STOCK_SERIES = ['invested', 'active', 'nodes'];
+  const DEFAULT_LEADERBOARD_CHART = { series: 'invested', runningTotal: false, focus: null };
+
+  const isFlowSeries = (series) => !STOCK_SERIES.includes(series);
+
+  function chartLines(history, { series, runningTotal }) {
+    const playerCount = history.rounds[0]?.players.length ?? 0;
+    return Array.from({ length: playerCount }, (_, owner) => {
+      const values = roundsInGame(history, owner).map((round) => round.players[owner][series]);
+      return runningTotal && isFlowSeries(series) ? runningTotals(values) : values;
+    });
+  }
+
+  function roundsInGame(history, owner) {
+    const knockedOut = history.rounds.findIndex((round) => round.players[owner].nodes === 0);
+    return knockedOut === -1 ? history.rounds : history.rounds.slice(0, knockedOut + 1);
+  }
+
+  function runningTotals(values) {
+    let total = 0;
+    return values.map((value) => (total += value));
+  }
+
+  function nextLeaderboardChart(chart, fields, playerCount) {
+    const next = { ...chart, ...fields };
+    const valid =
+      CHART_SERIES.includes(next.series) &&
+      typeof next.runningTotal === 'boolean' &&
+      (next.focus === null ||
+        (Number.isInteger(next.focus) && next.focus >= 0 && next.focus < playerCount));
+    return valid ? next : chart;
   }
 
   function applyGroupPolicyField(match, ids, key, value) {
@@ -819,10 +862,19 @@
   }
 
   function replayFrames(match) {
-    const { start, rounds } = match.replay;
-    const frames = [];
-    let current = { ...match, state: start, policies: {} };
-    for (const round of rounds) {
+    const { rounds, next } = replayedRounds(match, replayStart(match));
+    return [
+      ...rounds.map(({ before, moves, events }) => ({ state: before, moves, events })),
+      { state: next.state, moves: [], events: [] },
+    ];
+  }
+
+  const replayStart = (match) => ({ round: 0, state: match.replay.start, policies: {} });
+
+  function replayedRounds(match, from) {
+    const rounds = [];
+    let current = { ...match, state: from.state, policies: from.policies };
+    for (const round of match.replay.rounds.slice(from.round)) {
       const input = {
         ...current,
         orders: round.orders,
@@ -830,10 +882,56 @@
         policies: withPolicyChanges(current.policies, round.policies),
       };
       const result = resolveRoundOf(input, diceOfRound(match.replay, input.state.round));
-      frames.push({ state: input.state, moves: result.moves, events: result.events });
+      rounds.push({
+        before: input.state,
+        after: result.state,
+        moves: result.moves,
+        events: result.events,
+        ledger: result.ledger,
+      });
       current = { ...current, state: result.state, policies: result.policies };
     }
-    return [...frames, { state: current.state, moves: [], events: [] }];
+    const next = {
+      round: match.replay.rounds.length,
+      state: current.state,
+      policies: current.policies,
+    };
+    return { rounds, next };
+  }
+
+  function playerHistory(match, known = null) {
+    if (!match.replay) return null;
+    const from = known && continuesReplay(known.replay, match.replay) ? known : emptyHistory(match);
+    const { rounds, next } = replayedRounds(match, from.next);
+    return {
+      replay: match.replay,
+      next,
+      rounds: [...from.rounds, ...rounds.map((round) => roundStats(round, match.map.playerCount))],
+    };
+  }
+
+  const emptyHistory = (match) => ({ replay: match.replay, next: replayStart(match), rounds: [] });
+
+  function continuesReplay(known, replay) {
+    return (
+      known.diceSeed === replay.diceSeed &&
+      known.start === replay.start &&
+      known.rounds.every((round, i) => replay.rounds[i] === round)
+    );
+  }
+
+  function roundStats({ before, after, ledger }, playerCount) {
+    return {
+      round: before.round,
+      players: Array.from({ length: playerCount }, (_, owner) => ({
+        ...standingIn(after.nodes, owner),
+        production: ledger[owner].production,
+        battleLoss:
+          ledger[owner].attackLoss + ledger[owner].defenseLoss + ledger[owner].investedCeded,
+        inefficiencyLoss:
+          ledger[owner].decay + ledger[owner].overflow + ledger[owner].withdrawalFee,
+      })),
+    };
   }
 
   function edgeSource(match, a, b) {
@@ -870,6 +968,7 @@
   const INITIAL_UI = {
     view: 'map',
     leaderboardSort: DEFAULT_LEADERBOARD_SORT,
+    leaderboardChart: DEFAULT_LEADERBOARD_CHART,
     clipboard: null,
     aiDebug: false,
     bulkSelection: [],
@@ -1052,6 +1151,15 @@
       setAiDebug: (on) => setUi('aiDebug', Boolean(on)),
       sortLeaderboard: (column) =>
         setUi('leaderboardSort', nextLeaderboardSort(snapshot.ui.leaderboardSort, column)),
+      setLeaderboardChart: (fields) =>
+        setUi(
+          'leaderboardChart',
+          nextLeaderboardChart(
+            snapshot.ui.leaderboardChart,
+            fields,
+            snapshot.match.map.playerCount,
+          ),
+        ),
       copyPolicy: (policy) => setUi('clipboard', { ...policy }),
       select: (id) => setUi('selected', id),
       setCamera: (camera) => setUi('camera', camera),
@@ -1117,6 +1225,9 @@
     }),
     selectors: Object.freeze({
       replayFrames,
+      playerHistory,
+      chartLines,
+      isFlowSeries,
       lastReplayFrame,
       neighbors,
       edgeSource,

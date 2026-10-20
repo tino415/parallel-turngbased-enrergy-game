@@ -373,6 +373,130 @@ dialog#newGameDialog::backdrop {
 .leaderboard-help p {
   margin: 6px 0 0;
 }
+#leaderboardCharts {
+  max-width: 960px;
+  margin-top: 24px;
+}
+#leaderboardCharts h3 {
+  font-size: 16px;
+  margin: 0 0 10px;
+}
+.chart-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.chart-buttons button {
+  min-height: 34px;
+  padding: 4px 12px;
+  border: 1px solid #344963;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+#chartSeries button[aria-pressed='true'],
+#chartTotals button[aria-pressed='true'] {
+  background: #285e99;
+  border-color: #80b9f5;
+}
+#chartPlayers button[aria-pressed='true'] {
+  background: #182942;
+  border-color: #80b9f5;
+}
+.line-key {
+  display: inline-block;
+  width: 16px;
+  border-top: 2px solid;
+  border-radius: 2px;
+}
+#chartDescription {
+  margin: 4px 0 8px;
+}
+.chart-frame {
+  position: relative;
+  min-height: 240px;
+  padding: 8px 0 0;
+  border: 1px solid #1e2c42;
+  border-radius: 10px;
+  background: #111b2a;
+}
+.chart-frame svg {
+  display: block;
+  max-width: 100%;
+  touch-action: pan-y;
+}
+.chart-frame svg:focus {
+  outline: none;
+}
+.chart-frame svg:focus-visible {
+  outline: 2px solid #80b9f5;
+  outline-offset: -2px;
+  border-radius: 10px;
+}
+.chart-frame text {
+  fill: #abb9ce;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.chart-grid {
+  stroke: #22324a;
+}
+.chart-baseline {
+  stroke: #344963;
+}
+.chart-line path {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.chart-line circle,
+.chart-crosshair circle {
+  stroke: #111b2a;
+  stroke-width: 2;
+}
+.chart-crosshair line {
+  stroke: #80b9f5;
+}
+.chart-readout {
+  position: absolute;
+  top: 12px;
+  min-width: 140px;
+  padding: 6px 8px;
+  border: 1px solid #344963;
+  border-radius: 8px;
+  background: #182942;
+  box-shadow: 0 4px 14px #0008;
+  font-size: 12px;
+  pointer-events: none;
+}
+.chart-readout-head {
+  color: #abb9ce;
+  margin-bottom: 2px;
+}
+.chart-readout-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.chart-readout-row b {
+  min-width: 44px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.chart-readout-row .line-key {
+  width: 12px;
+}
+.chart-readout-row.is-out {
+  color: #abb9ce;
+}
 @media (max-width: 760px) {
   #leaderboardTable {
     --cell-padding: 3px;

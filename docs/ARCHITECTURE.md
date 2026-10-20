@@ -5,17 +5,17 @@ this order: `engine.js`, `store.js`, `format.js`, `game.js`, `dialogs.js`,
 `leaderboard.js`, `ux.js`, `tactical-ui.js`, `replay.js`. Later scripts build on, and in
 places replace, functions from earlier ones.
 
-| Module           | Owns                                                                              | Touches the DOM |
-| ---------------- | --------------------------------------------------------------------------------- | --------------- |
-| `engine.js`      | Rules: map generation, policy evaluation, forecast, AI, `resolveRound`            | no              |
-| `store.js`       | All match and interface state, commands, selectors, subscriptions                 | no              |
-| `format.js`      | Energy number formatting                                                          | no              |
-| `game.js`        | The base renderer, map navigation, save and restore, the global mirrors           | yes             |
-| `dialogs.js`     | The Orders and Settings dialog buttons                                            | yes             |
-| `leaderboard.js` | The Leaderboard tab: one row per player, sorted by the chosen column              | yes             |
-| `ux.js`          | Layout, dialogs, side panel, dock, camera fitting                                 | yes             |
-| `tactical-ui.js` | Map selection, node and connection groups, the inspector, pinch zoom, the ☰ menu | yes             |
-| `replay.js`      | The replay screen, the game-over notice and the Replay menu item                  | yes             |
+| Module           | Owns                                                                                      | Touches the DOM |
+| ---------------- | ----------------------------------------------------------------------------------------- | --------------- |
+| `engine.js`      | Rules: map generation, policy evaluation, forecast, AI, `resolveRound`                    | no              |
+| `store.js`       | All match and interface state, commands, selectors, subscriptions                         | no              |
+| `format.js`      | Energy number formatting                                                                  | no              |
+| `game.js`        | The base renderer, map navigation, save and restore, the global mirrors                   | yes             |
+| `dialogs.js`     | The Orders and Settings dialog buttons                                                    | yes             |
+| `leaderboard.js` | The Leaderboard tab: one row per player, sorted by the chosen column, and the round chart | yes             |
+| `ux.js`          | Layout, dialogs, side panel, dock, camera fitting                                         | yes             |
+| `tactical-ui.js` | Map selection, node and connection groups, the inspector, pinch zoom, the ☰ menu         | yes             |
+| `replay.js`      | The replay screen, the game-over notice and the Replay menu item                          | yes             |
 
 ## State ownership
 
@@ -23,27 +23,28 @@ places replace, functions from earlier ones.
 change goes through a store command, and a slice keeps its identity until a
 command really changes it.
 
-| Value                                               | Slice                | Saved | Written by                          |
-| --------------------------------------------------- | -------------------- | ----- | ----------------------------------- |
-| `state` (round, nodes, finished, rulesVersion)      | `match.state`        | yes   | `resolve`, `replaceMatch`           |
-| manual orders per node                              | `match.orders`       | yes   | allocation and order commands       |
-| persistent policies per node                        | `match.policies`     | yes   | policy commands, `resolve`          |
-| message history                                     | `match.history`      | yes   | `resolve`, `replaceMatch`           |
-| map: `xy`, `edges`, `N`, `playerCount`, `mapSeed`   | `match.map`          | yes   | `replaceMatch`                      |
-| conquest defaults (enabled, reserve, invest)        | `match.defaults`     | yes   | `setDefaults`                       |
-| replay record: dice seed, start state, round inputs | `match.replay`       | yes   | `resolve`, `replaceMatch`           |
-| selected node                                       | `ui.selected`        | yes¹  | `select`, inspector commands        |
-| view tab                                            | `ui.view`            | no    | `setView`                           |
-| Leaderboard sort column and direction               | `ui.leaderboardSort` | no    | `sortLeaderboard`                   |
-| camera (`x`, `y`, `scale`)                          | `ui.camera`          | no    | `setCamera`                         |
-| policy clipboard                                    | `ui.clipboard`       | no    | `copyPolicy`                        |
-| node group selected on the map                      | `ui.bulkSelection`   | no    | group commands, `resolve`²          |
-| connection group, each as `[source, destination]`   | `ui.bulkEdges`       | no    | group commands, `resolve`²          |
-| group mode on the map                               | `ui.groupMode`       | no    | `setGroupMode`, `leaveGroupMode`    |
-| group editor open                                   | `ui.groupEditing`    | no    | `setGroupEditing`, `leaveGroupMode` |
-| inspector target, editing, focused node             | `ui.inspector`       | no    | inspector commands                  |
-| AI debug view (AI plans on the map and inspector)   | `ui.aiDebug`         | no    | `setAiDebug`, `?aidebug` in the URL |
-| replay frame and play state                         | `ui.replay`          | no    | replay commands                     |
+| Value                                               | Slice                 | Saved | Written by                          |
+| --------------------------------------------------- | --------------------- | ----- | ----------------------------------- |
+| `state` (round, nodes, finished, rulesVersion)      | `match.state`         | yes   | `resolve`, `replaceMatch`           |
+| manual orders per node                              | `match.orders`        | yes   | allocation and order commands       |
+| persistent policies per node                        | `match.policies`      | yes   | policy commands, `resolve`          |
+| message history                                     | `match.history`       | yes   | `resolve`, `replaceMatch`           |
+| map: `xy`, `edges`, `N`, `playerCount`, `mapSeed`   | `match.map`           | yes   | `replaceMatch`                      |
+| conquest defaults (enabled, reserve, invest)        | `match.defaults`      | yes   | `setDefaults`                       |
+| replay record: dice seed, start state, round inputs | `match.replay`        | yes   | `resolve`, `replaceMatch`           |
+| selected node                                       | `ui.selected`         | yes¹  | `select`, inspector commands        |
+| view tab                                            | `ui.view`             | no    | `setView`                           |
+| Leaderboard sort column and direction               | `ui.leaderboardSort`  | no    | `sortLeaderboard`                   |
+| Leaderboard chart: series, running total, focus     | `ui.leaderboardChart` | no    | `setLeaderboardChart`               |
+| camera (`x`, `y`, `scale`)                          | `ui.camera`           | no    | `setCamera`                         |
+| policy clipboard                                    | `ui.clipboard`        | no    | `copyPolicy`                        |
+| node group selected on the map                      | `ui.bulkSelection`    | no    | group commands, `resolve`²          |
+| connection group, each as `[source, destination]`   | `ui.bulkEdges`        | no    | group commands, `resolve`²          |
+| group mode on the map                               | `ui.groupMode`        | no    | `setGroupMode`, `leaveGroupMode`    |
+| group editor open                                   | `ui.groupEditing`     | no    | `setGroupEditing`, `leaveGroupMode` |
+| inspector target, editing, focused node             | `ui.inspector`        | no    | inspector commands                  |
+| AI debug view (AI plans on the map and inspector)   | `ui.aiDebug`          | no    | `setAiDebug`, `?aidebug` in the URL |
+| replay frame and play state                         | `ui.replay`           | no    | replay commands                     |
 
 ¹ `selected` stays in the save format so that old saves keep loading. ux.js
 clears it on load.
@@ -67,7 +68,7 @@ on submit: the new-game dialog and the group's invest-on-each amount.
   rejects an over-budget amount; the caller shows the hint.
 - **Selectors** (`GameStore.selectors.<name>(match, ...)`) derive plans,
   budgets, policy orders, previews, projections and the edge source. They never
-  call `Math.random` and never change the match. `replayFrames` is the one that
+  call `Math.random` and never change the match. `replayFrames` and `playerHistory` are the ones that
   resolves rounds: it re-runs the recorded ones with their recorded dice.
 - **Subscriptions** (`store.subscribe((snapshot, previous) => ...)`) run
   synchronously after every commit. `game.js` uses one to refresh the global
@@ -99,7 +100,7 @@ replaced in load order, and each layer calls the previous one:
 The last definition wins and is the one in use.
 
 `leaderboard.js` stays out of the chain: it subscribes to the store and redraws
-the leaderboard when the match, the sort or the view changes while the tab is
+the leaderboard when the match, the sort, the chart settings or the view changes while the tab is
 shown. `game.js` still shows and hides `#leaderboardView` with the other views.
 
 | DOM subtree                                                                                               | Rendered by      |
@@ -107,7 +108,7 @@ shown. `game.js` still shows and hides `#leaderboardView` with the other views.
 | `#map` content, `#score`, `#resolve`, `#log`, `#orders`                                                   | `game.js`        |
 | `#map` viewBox and camera transform, `#uxSide*`, `#uxDock*`                                               | `ux.js`          |
 | `#tacticalInspector`, `#tacticalGroupBar`, `#tacticalMenu`, `.tactical-edge-hit`, rings, flow edge colors | `tactical-ui.js` |
-| `#leaderboardTable` rows and header sort marks                                                            | `leaderboard.js` |
+| `#leaderboardTable` rows and header sort marks, `#leaderboardCharts`                                      | `leaderboard.js` |
 | `#replayDialog`, `#gameOverNotice`, the Replay item in `#tacticalMenu`                                    | `replay.js`      |
 
 `tactical-ui.js` builds the node and connection editors inside the inspector
