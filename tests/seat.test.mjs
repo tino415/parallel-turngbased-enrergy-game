@@ -161,3 +161,30 @@ function generatedAs(seat) {
   const map = GameEngine.buildMap({ count: 20, players: 3, density: 'normal', seed: 'seat' });
   return GameStore.generatedMatch(map, DEFAULTS, random, seat);
 }
+
+test('a colour outside the first players still plays against a single AI', () => {
+  const GREEN = 4;
+  const map = GameEngine.buildMap({ count: 20, players: 2, density: 'normal', seed: 'seat' });
+  const match = GameStore.generatedMatch(map, DEFAULTS, () => 0.5, GREEN);
+  assert.deepEqual(plain(GameStore.selectors.ownersOf(match)), [0, GREEN]);
+  assert.ok(match.state.nodes.some((n) => n.owner === GREEN));
+  assert.ok(!match.state.nodes.some((n) => n.owner === 1));
+  assert.deepEqual(
+    plain(GameStore.selectors.leaderboard(match).map((standing) => standing.player)),
+    [0, GREEN],
+  );
+
+  const store = GameStore.createStore();
+  store.replaceMatch(match);
+  store.resolve();
+  const resolved = store.getSnapshot().match;
+  assert.ok(resolved.history.some((line) => line.includes('Round 1 complete: Blue')));
+  assert.ok(resolved.history[0].includes('Green'));
+
+  const reloaded = GameStore.matchFromSave(
+    plain(GameStore.saveFromMatch(resolved, null)),
+    DEFAULTS,
+  );
+  assert.deepEqual(plain(GameStore.selectors.ownersOf(reloaded)), [0, GREEN]);
+  assert.equal(reloaded.seat, GREEN);
+});

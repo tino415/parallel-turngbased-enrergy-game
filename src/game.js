@@ -46,9 +46,9 @@ function chosenSeat() {
   return Number($('seat').value) || 0;
 }
 function offerSeats() {
-  const chosen = Math.min(chosenSeat(), Number($('playerCount').value) - 1);
+  const chosen = chosenSeat();
   $('seat').replaceChildren(
-    ...Array.from({ length: Number($('playerCount').value) }, (_, owner) => {
+    ...GameEngine.playerOwners.slice(0, -1).map((owner) => {
       const option = document.createElement('option');
       option.value = owner;
       option.textContent = playerName(owner);
@@ -60,6 +60,7 @@ function offerSeats() {
 function previewMap() {
   const options = mapOptions(),
     map = buildMap(options),
+    nodes = GameEngine.recoloured(map.nodes, GameEngine.coloursFor(chosenSeat(), options.players)),
     svg = $('newGamePreview'),
     ns = 'http://www.w3.org/2000/svg';
   svg.replaceChildren();
@@ -79,7 +80,7 @@ function previewMap() {
       'stroke-width': 3,
       opacity: '.65',
     });
-  for (const n of map.nodes) {
+  for (const n of nodes) {
     const [cx, cy] = map.positions[n.id];
     element('circle', {
       cx,
@@ -692,7 +693,6 @@ $('generate').onclick = () => {
     return;
   generate();
 };
-$('playerCount').addEventListener('input', offerSeats);
 for (const id of ['nodeCount', 'playerCount', 'density', 'seed', 'seat'])
   $(id).addEventListener('input', previewMap);
 $('cancelNewGame').onclick = () => $('newGameDialog').close();

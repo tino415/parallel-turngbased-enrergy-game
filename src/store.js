@@ -1,8 +1,18 @@
 'use strict';
 
 (() => {
-  const { planPolicy, forecast, resolveRound, seeded, playerName, aiPlan, SOFT_CAP_RULES } =
-    GameEngine;
+  const {
+    planPolicy,
+    forecast,
+    resolveRound,
+    seeded,
+    playerName,
+    aiPlan,
+    coloursFor,
+    recoloured,
+    firstOwners,
+    SOFT_CAP_RULES,
+  } = GameEngine;
   const HISTORY_LIMIT = 70;
   const TARGET_EPSILON = 1e-6;
   const sum = (values) => values.reduce((total, value) => total + value, 0);
@@ -74,9 +84,10 @@
   }
 
   function generatedMatch(map, defaults, random, seat = 0) {
+    const colours = coloursFor(seat, map.players);
     const state = {
       round: 1,
-      nodes: map.nodes,
+      nodes: recoloured(map.nodes, colours),
       finished: false,
       rulesVersion: SOFT_CAP_RULES.version,
     };
@@ -95,6 +106,7 @@
         N: map.nodes.length,
         playerCount: map.players,
         mapSeed: map.seed,
+        ...(sameValue(colours, firstOwners(map.players)) ? {} : { owners: colours }),
       },
       defaults,
       replay: newReplay(state, random, seat),
@@ -116,14 +128,14 @@
       !Array.isArray(save.edges)
     )
       return null;
-    const { state, xy, edges, N, playerCount, mapSeed } = save;
+    const { state, xy, edges, N, playerCount, mapSeed, owners } = save;
     return withOneWaySupport({
       state,
       orders: save.orders ?? {},
       policies: save.policies ?? {},
       seat: save.seat ?? 0,
       history: ['Recovered saved match from this browser.', ...(save.history ?? [])],
-      map: { xy, edges, N, playerCount, mapSeed },
+      map: { xy, edges, N, playerCount, mapSeed, ...(owners ? { owners } : {}) },
       defaults: save.defaults
         ? {
             enabled: Boolean(save.defaults.enabled),
@@ -179,6 +191,7 @@
   const neighbors = (match, id) =>
     match.map.edges.flatMap(([a, b]) => (a === id ? [b] : b === id ? [a] : []));
   const seatOf = (match) => match.seat ?? 0;
+  const ownersOf = (match) => match.map.owners ?? firstOwners(match.map.playerCount);
   const isOwn = (match, id) => match.state.nodes[id]?.owner === seatOf(match);
   const softCapEnabled = (match) => match.state?.rulesVersion === SOFT_CAP_RULES.version;
   const defaultPolicy = () => ({ enabled: true, reserve: 5, investPct: 50, dest: null });
@@ -574,9 +587,9 @@
 
   function leaderboard(match, sort = DEFAULT_LEADERBOARD_SORT) {
     const sign = sort.direction === 'asc' ? 1 : -1;
-    return Array.from({ length: match.map.playerCount }, (_, owner) =>
-      standingOf(match, owner),
-    ).sort((a, b) => sign * (a[sort.column] - b[sort.column]) || a.player - b.player);
+    return ownersOf(match)
+      .map((owner) => standingOf(match, owner))
+      .sort((a, b) => sign * (a[sort.column] - b[sort.column]) || a.player - b.player);
   }
 
   function standingOf(match, owner) {
@@ -827,6 +840,7 @@
     return resolveRound({
       state: match.state,
       playerCount: match.map.playerCount,
+      owners: ownersOf(match),
       seat: seatOf(match),
       orders: match.orders,
       policies: match.policies,
@@ -1248,6 +1262,7 @@
       leaderboard,
       isOwn,
       seatOf,
+      ownersOf,
       softCapEnabled,
       defaultPolicy,
       plan,

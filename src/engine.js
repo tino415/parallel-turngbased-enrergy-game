@@ -13,6 +13,11 @@
   const playerName = (owner) => (owner === null ? 'Neutral' : players[owner].name);
   const playerColor = (owner) => (owner === null ? '#768092' : players[owner].color);
   const playerOwners = [...players.keys(), null];
+  const firstOwners = (count) => Array.from({ length: count }, (_, owner) => owner);
+  const coloursFor = (seat, count) =>
+    seat < count ? firstOwners(count) : [...firstOwners(count - 1), seat];
+  const recoloured = (nodes, colours) =>
+    nodes.map((n) => (n.owner === null ? n : { ...n, owner: colours[n.owner] }));
 
   // Version 2 is enabled for NEW matches; legacy autosaves retain original rules.
   const SOFT_CAP_RULES = Object.freeze({
@@ -526,6 +531,7 @@
     policies,
     links,
     seat = 0,
+    owners = firstOwners(playerCount),
     defaultConquestPolicy = null,
     rng = Math.random,
     aiOrdersOverride = null,
@@ -764,7 +770,7 @@
     for (const id of Object.keys(nextPolicies)) {
       if (nodes[Number(id)].owner !== seat) delete nextPolicies[id];
     }
-    const standings = Array.from({ length: playerCount }, (_, owner) => {
+    const standings = owners.map((owner) => {
       const count = nodes.filter((n) => n.owner === owner).length;
       return playerName(owner) + ' ' + count + ' nodes';
     });
@@ -812,6 +818,9 @@
     playerName,
     playerColor,
     playerOwners,
+    coloursFor,
+    recoloured,
+    firstOwners,
     seeded,
     buildMap,
     evaluatePolicy,

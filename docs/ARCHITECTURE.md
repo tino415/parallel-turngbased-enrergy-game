@@ -136,13 +136,15 @@ a transfer, and an `I` label over a node that invests.
 
 ## Seat
 
-`match.seat` is the owner this browser plays, chosen in the New game dialog
+`match.seat` is the owner this browser plays, chosen in the New game dialog from all six colours
 (default 0, Blue). A save without the field loads as seat 0, and so does a
 replay without `replay.seat`. The store's `isOwn` compares with it, the
 interface reads it through `isMine(id)` and `mySeat()` in `game.js`, and
 `resolveRound`, `aiPlan`, `economicAI` and `aiOrders` take it as `seat`: the AI
 plans for every other owner, and a friendly target means a node with the same
-owner as the source. `replayFrames` re-runs the rounds with `replay.seat`.
+owner as the source. When the seat is outside the first N colours, the map lists
+its colours in `map.owners` (absent means the first N) and the last slot takes the
+seat's colour; standings and the leaderboard walk that list. `replayFrames` re-runs the rounds with `replay.seat`.
 
 ## Next steps
 

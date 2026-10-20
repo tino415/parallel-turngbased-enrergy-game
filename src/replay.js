@@ -170,7 +170,7 @@
   }
 
   function standings(match, state) {
-    return Array.from({ length: match.map.playerCount }, (_, owner) => {
+    return GameStore.selectors.ownersOf(match).map((owner) => {
       const count = state.nodes.filter((n) => n.owner === owner).length;
       const entry = document.createElement('span');
       entry.className = 'replay-standing' + (count ? '' : ' is-out');
