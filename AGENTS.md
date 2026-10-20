@@ -49,7 +49,8 @@ The `Dockerfile.dev` base image tag must equal the `@playwright/test` version in
 npm run check        # prettier check, syntax checks, unit tests
 npm test             # unit tests only (node --test tests/*.test.mjs)
 npm run test:ui      # Playwright suite in tests/e2e, four viewports
-npm run build        # copies index.html, _headers and src/ into dist/
+npm run build        # copies index.html, _headers, the PWA files, icons/ and src/ into dist/
+npm run icons        # renders the PNG icons from icons/icon.svg
 npm run format       # apply prettier
 npm run simulate     # AI strategy simulations, see scripts/
 ```
@@ -77,6 +78,22 @@ The Playwright suite runs Chromium only. Tests named "simulated keyboard" shrink
 the viewport to stand in for the on-screen keyboard; real Android Chrome stays
 a manual check, not a CI gate. A known defect is pinned as `test.fail()` with
 its Todoist task in the reason; remove the mark in the change that fixes it.
+
+## Installable app
+
+The game is a PWA: `manifest.webmanifest`, the icons in `icons/` and the
+service worker `sw.js`, registered by `src/service-worker-registration.js`.
+
+- `sw.js` answers every same-origin GET from the network first and falls back
+  to its cache when offline or after four seconds without an answer, so a deploy
+  reaches an installed app on its next online launch and no cache version needs
+  bumping. A new file the page loads goes into its `APP_SHELL` list;
+  `tests/app-shell.test.mjs` fails until it does.
+- The icons are rendered from `icons/icon.svg` by `npm run icons`, which needs
+  Chromium, so run it in the dev container and commit the PNGs. Keep the artwork
+  inside the central 80% circle: the maskable icons are the SVG full-bleed.
+- Playwright blocks service workers in every spec except `tests/e2e/pwa.spec.mjs`,
+  so they never answer a request another spec expects from the server.
 
 ## CI and deploy
 
