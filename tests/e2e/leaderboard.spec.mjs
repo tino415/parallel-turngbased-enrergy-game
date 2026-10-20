@@ -165,3 +165,115 @@ test('the question marks explain Invested and Active without sorting', async ({ 
   await page.locator('#leaderboardView h2').click();
   await expect(page.locator('#investedHelp')).toBeHidden();
 });
+
+const chart = (page) => page.locator('#chartFrame svg');
+const resolveRound = (page) =>
+  page.locator('#uxDockResolve:visible, #resolve:visible').first().click();
+
+function pointsPerPlayer(page) {
+  return page
+    .locator('#chartFrame .chart-line path')
+    .evaluateAll((paths) => paths.map((path) => path.getAttribute('d').match(/[ML]/g).length));
+}
+
+test('the chart has one point per round for every player', async ({ page }) => {
+  await openLeaderboard(page);
+  await expect(page.locator('#chartEmpty')).toHaveText('The graphs start after the first round.');
+  await expect(page.locator('#chartFrame')).toBeHidden();
+
+  for (let round = 1; round <= 3; round++) {
+    await resolveRound(page);
+    await expect.poll(() => page.evaluate(() => state.round)).toBe(round + 1);
+  }
+  await expect(chart(page)).toBeVisible();
+  const players = await page.evaluate(() => playerCount);
+  expect(await pointsPerPlayer(page)).toEqual(Array(players).fill(3));
+  await expect(page.locator('#chartPlayers button')).toHaveCount(players);
+});
+
+test('the chart switches series, counts flows per round or in total and reads out a round', async ({
+  page,
+}) => {
+  await openLeaderboard(page);
+  for (let round = 0; round < 4; round++) await resolveRound(page);
+  await expect.poll(() => page.evaluate(() => state.round)).toBe(5);
+
+  const totals = page.locator('#chartTotals');
+  await expect(totals).toBeHidden();
+  await page.locator('#chartSeries').getByRole('button', { name: 'Production' }).click();
+  await expect(
+    page.locator('#chartSeries').getByRole('button', { name: 'Production' }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await expect(totals).toBeVisible();
+  await totals.getByRole('button', { name: 'Running total' }).click();
+  await expect(totals.getByRole('button', { name: 'Running total' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+
+  const box = await chart(page).boundingBox();
+  await chart(page).click({ position: { x: box.width - 14, y: box.height / 2 } });
+  const readout = page.locator('.chart-readout');
+  await expect(readout).toBeVisible();
+  await expect(readout.locator('.chart-readout-head')).toHaveText('Round 4 · Production');
+  const expected = await page.evaluate(() => {
+    const { match, ui } = store.getSnapshot();
+    const lines = GameStore.selectors.chartLines(
+      GameStore.selectors.playerHistory(match),
+      ui.leaderboardChart,
+    );
+    return lines
+      .map((values, player) => ({ player, value: values[3] }))
+      .sort((a, b) => b.value - a.value)
+      .map(
+        ({ player, value }) => EnergyFormat.compactEnergy(value) + GameEngine.playerName(player),
+      );
+  });
+  const shown = await readout
+    .locator('.chart-readout-row')
+    .evaluateAll((rows) => rows.map((row) => row.textContent.replace(' (you)', '')));
+  expect(shown).toEqual(expected);
+
+  await page.locator('#chartSeries').getByRole('button', { name: 'Nodes' }).click();
+  await expect(totals).toBeHidden();
+});
+
+test('a player in the legend stands out and the others fade until tapped again', async ({
+  page,
+}) => {
+  await openLeaderboard(page);
+  await resolveRound(page);
+  await resolveRound(page);
+  await expect(chart(page)).toBeVisible();
+  const red = page.locator('#chartPlayers button[data-player="1"]');
+  await red.click();
+  await expect(red).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.chart-line[data-player="1"]')).toHaveAttribute('opacity', '1');
+  await expect(page.locator('.chart-line[data-player="0"]')).toHaveAttribute('opacity', '0.2');
+  await page.locator('#chartPlayers button[data-player="1"]').click();
+  await expect(page.locator('.chart-line[data-player="0"]')).toHaveAttribute('opacity', '1');
+});
+
+test('a match saved before the round history was kept explains why it has no graphs', async ({
+  page,
+}) => {
+  await resolveRound(page);
+  await page.evaluate(() => store.replaceMatch({ ...store.getSnapshot().match, replay: null }));
+  await openLeaderboard(page);
+  await expect(page.locator('#chartEmpty')).toContainText('saved before the game kept a history');
+  await expect(page.locator('#chartFrame')).toBeHidden();
+});
+
+test('the chart fits the screen without sideways scrolling', async ({ page }) => {
+  await openLeaderboard(page);
+  for (let round = 0; round < 3; round++) await resolveRound(page);
+  await expect(chart(page)).toBeVisible();
+  const overflow = await page.evaluate(() => {
+    const view = document.getElementById('leaderboardView');
+    return {
+      page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      view: view.scrollWidth - view.clientWidth,
+    };
+  });
+  expect(overflow).toEqual({ page: 0, view: 0 });
+});

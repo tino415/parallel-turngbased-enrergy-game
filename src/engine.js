@@ -537,6 +537,10 @@
       rnd = (a, b) => a + rng() * (b - a),
       clamp = (v) => Math.max(0, v);
     const softCap = isSoftCap(state);
+    const ledger = Array.from({ length: playerCount }, emptyLedger);
+    const book = (owner, flow, amount) => {
+      if (owner !== null) ledger[owner][flow] += amount;
+    };
     const aiPlan = softCap && aiOrdersOverride === null ? economicAI(state.nodes, links) : null;
     // Withdrawal is a start-of-round order: it can fund an action from this
     // source, but neither an incoming transfer nor a later capture can.
@@ -573,6 +577,7 @@
         const withdrawal = Math.min(amount, n.invested);
         n.invested -= withdrawal;
         n.active += withdrawal * (1 - SOFT_CAP_RULES.withdrawalFee);
+        book(n.owner, 'withdrawalFee', withdrawal * SOFT_CAP_RULES.withdrawalFee);
       }
     }
     const allocated = (p) => p.invest + Object.values(p.edges).reduce((sum, n) => sum + n, 0);
@@ -681,6 +686,8 @@
         }
         const attackerLoss = a.amount - attackerSurvived;
         const defenderLoss = defenderBefore - defenderSurvived;
+        book(a.owner, 'attackLoss', attackerLoss);
+        book(defenderOwner, 'defenseLoss', defenderLoss);
         if (a.pressure) {
           pressureResults.push(
             'Node ' +
@@ -720,7 +727,9 @@
         );
       }
       if (node.owner !== original) {
+        book(original, 'investedCeded', node.invested);
         node.invested *= rnd(0.25, 0.75);
+        book(node.owner, 'investedCaptured', node.invested);
         if (node.owner === 0 && defaultConquestPolicy) {
           nextPolicies[node.id] = { ...defaultConquestPolicy, dest: null };
         }
@@ -730,6 +739,8 @@
       log('Round ' + state.round + ' · Pressure: ' + pressureResults.join(', ') + '.');
     for (const n of nodes) {
       const income = 1 + n.invested * 0.1;
+      book(n.owner, 'production', income);
+      book(n.owner, 'decay', n.active * 0.1);
       n.active = clamp(n.active * 0.9 + income);
     }
     if (softCap) {
@@ -738,6 +749,7 @@
         const projection = applyOverflow(n);
         n.active = projection.node.active;
         n.invested = projection.node.invested;
+        book(n.owner, 'overflow', projection.loss);
         totalLoss += projection.loss;
       }
       if (totalLoss > 0.05)
@@ -762,8 +774,25 @@
           : 'No players remain.',
       );
     }
-    return { state: nextState, policies: nextPolicies, events, moves: valid.map(movedEnergy) };
+    return {
+      state: nextState,
+      policies: nextPolicies,
+      events,
+      moves: valid.map(movedEnergy),
+      ledger,
+    };
   }
+
+  const emptyLedger = () => ({
+    production: 0,
+    decay: 0,
+    overflow: 0,
+    withdrawalFee: 0,
+    attackLoss: 0,
+    defenseLoss: 0,
+    investedCeded: 0,
+    investedCaptured: 0,
+  });
 
   const movedEnergy = ({ source, dest, type, owner, amount }) => ({
     source,
