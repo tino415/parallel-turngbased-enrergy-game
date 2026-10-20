@@ -201,16 +201,6 @@
   // Keep the editor independent of the action dock. Mobile positions it above
   // the dock rather than replacing/hiding the existing Orders/Resolve buttons.
   // Its contents scroll; the document and bottom dock never do.
-  const legacyNodeDialog = byId('nodeDialog');
-
-  // Never let the superseded full-screen node editor stack over the new
-  // contextual inspector. Other dialogs (Orders, Settings, New game) are still
-  // available from their explicit commands.
-  if (legacyNodeDialog.open) legacyNodeDialog.close();
-  legacyNodeDialog.addEventListener('toggle', () => {
-    if (legacyNodeDialog.open) legacyNodeDialog.close();
-  });
-
   // One-finger drag uses the existing pointer navigation. Two fingers zoom the
   // same camera.
   const fingers = new Map();
@@ -459,11 +449,6 @@
   };
   byId('uxDockResolve').before(selectButton);
 
-  function chooseNode(id) {
-    store.inspectNode(id);
-    render();
-  }
-
   function chooseEdge(a, b) {
     store.inspectEdge(a, b);
     render();
@@ -493,14 +478,6 @@
     if (element.classList.contains('tactical-map-swap')) return '.tactical-map-swap';
     return null;
   }
-
-  // These entry points are also used by the Orders review dialog.
-  clickNode = chooseNode;
-  showNodeOnMobile = () => {
-    if (selected === null) return;
-    store.editSelectedNode();
-    render();
-  };
 
   function svgElement(name, attributes, parent) {
     const element = document.createElementNS('http://www.w3.org/2000/svg', name);
@@ -1956,11 +1933,8 @@
       .length;
   }
   byId('generate').addEventListener('click', () => store.closeInspector(), true);
-  // The legacy node dialog must remain mounted for older renderer references,
-  // but must never appear together with the contextual node inspector.
   // Hide the inspector while deliberate Orders/Settings/New game dialogs are open.
   const modalObserver = new MutationObserver(() => {
-    if (legacyNodeDialog.open) legacyNodeDialog.close();
     showInspector();
   });
   for (const dialog of document.querySelectorAll('dialog')) {

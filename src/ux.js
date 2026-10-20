@@ -4,58 +4,11 @@
   // Presentation-only enhancements. Game state and round resolution remain in game.js.
   const byId = (id) => document.getElementById(id);
   const mobile = () => window.matchMedia('(max-width:760px)').matches;
-  const fmtUX = exactEnergy;
-  const nodeDialog = byId('nodeDialog');
   // Selection exists only while inspecting/editing a node.
   store.select(null);
-  const oldHeader = nodeDialog.querySelector('.mobile-node-header');
-  const oldClose = byId('closeNodeDialog');
-  const selectedTitle = byId('selectedTitle');
-  const details = byId('details');
-  const hint = byId('hint');
-  const allocator = byId('allocator');
-  const policyEditor = byId('policyEditor');
 
   const ordersDialog = byId('uxOrdersDialog');
   const settingsDialog = byId('uxSettingsDialog');
-
-  oldHeader.replaceChildren();
-  oldHeader.append(selectedTitle, oldClose);
-  oldClose.textContent = '← Back to map';
-  oldClose.onclick = () => nodeDialog.close();
-  const scroll = document.createElement('div');
-  scroll.className = 'ux-editor-scroll';
-  const stats = document.createElement('div');
-  stats.className = 'ux-editor-stats';
-  stats.id = 'uxEditorStats';
-  const balance = document.createElement('div');
-  balance.className = 'ux-budget';
-  balance.id = 'uxBalance';
-  const jumps = document.createElement('div');
-  jumps.className = 'ux-jumps';
-  jumps.innerHTML = '<button type="button" id="uxJumpOrders">Manual orders ↓</button><button type="button" id="uxJumpPolicy">Persistent policy ↓</button>';
-  const columns = document.createElement('div');
-  columns.className = 'ux-editor-sections';
-  const manualSection = document.createElement('section');
-  manualSection.className = 'ux-editor-section';
-  manualSection.id = 'uxManualSection';
-  const policySection = document.createElement('section');
-  policySection.className = 'ux-editor-section';
-  policySection.id = 'uxPolicySection';
-  manualSection.append(allocator, hint);
-  policySection.append(policyEditor);
-  columns.append(manualSection, policySection);
-  const note = document.createElement('div');
-  note.className = 'ux-combat-note';
-  note.id = 'uxCombatNote';
-  scroll.append(details, stats, balance, jumps, columns, note);
-  const footer = document.createElement('div');
-  footer.className = 'ux-editor-footer';
-  footer.innerHTML = '<span id="uxFooterSummary" class="muted"></span><button type="button" class="primary" id="uxDone">Done ✓</button>';
-  byId('mobileNodeContent').replaceChildren(scroll, footer);
-  byId('uxDone').onclick = () => nodeDialog.close();
-  byId('uxJumpOrders').onclick = () => manualSection.scrollIntoView({block:'start',behavior:'smooth'});
-  byId('uxJumpPolicy').onclick = () => policySection.scrollIntoView({block:'start',behavior:'smooth'});
 
   const reviewHead = document.createElement('button');
   reviewHead.id = 'uxReviewHead';
@@ -171,47 +124,6 @@
       if(isFirst || state.round===1) store.setCamera(startingCamera());
     }
     redrawCamera();
-    const selectedNode=selected===null?null:state.nodes[selected];
-    const statsEl=byId('uxEditorStats'),budget=byId('uxBalance'),note=byId('uxCombatNote'),foot=byId('uxFooterSummary');
-    if(!selectedNode) {statsEl.replaceChildren();budget.hidden=true;note.textContent='';foot.textContent='';}
-    else {
-      const id=selected, p=projection(id),manual=selectedNode.owner===0?allocated(id):0;
-      const auto=selectedNode.owner===0?policyOrders(id).reduce((s,o)=>s+o.amount,0):0;
-      const defense=Math.max(0,(selectedNode.owner===0?availableEnergy(id):selectedNode.active)-manual-auto);
-      statsEl.innerHTML='';
-      for (const [label,value] of [['Active',fmtUX(selectedNode.active)],['Invested',fmtUX(selectedNode.invested)],['Defense',fmtUX(defense)],...(softCapEnabled()&&selectedNode.owner!==null?[['Total / cap',fmtUX(selectedNode.active+selectedNode.invested)+' / '+SOFT_CAP_RULES.capacity]]:[])]) {
-        const box=document.createElement('div');box.className='ux-stat';
-        const name=document.createElement('span');name.textContent=label;
-        const v=document.createElement('strong');v.textContent=value;
-        box.append(name,v);statsEl.append(box);
-      }
-      const budgetTotal=selectedNode.owner===0?availableEnergy(id):selectedNode.active;
-      const portion = n => budgetTotal>0?Math.max(0,100*n/budgetTotal):0;
-      budget.hidden=selectedNode.owner!==0;
-      budget.innerHTML='<div class="ux-budget-head"><strong>Energy budget</strong><span>'+fmtUX(budgetTotal)+' available'+(softCapEnabled()&&selectedNode.owner===0?' (withdraw '+fmtUX(withdrawal(id))+')':'')+'</span></div><div class="ux-budget-bar"><span style="background:#5398f7;width:'+portion(manual)+'%"></span><span style="background:#8b79db;width:'+portion(auto)+'%"></span><span style="background:#60d5a6;width:'+portion(defense)+'%"></span></div><div class="ux-budget-legend"><span>Manual <b>'+fmtUX(manual)+'</b></span><span>Policy <b>'+fmtUX(auto)+'</b></span><span>Defense <b>'+fmtUX(defense)+'</b></span></div>';
-      byId('uxManualSection').hidden=selectedNode.owner!==0;
-      byId('uxPolicySection').hidden=selectedNode.owner!==0;
-      jumps.hidden=selectedNode.owner!==0;
-      // Existing combat math is unchanged: show strength intervals, not win odds.
-      if (selectedNode.owner===0) {
-        allocator.querySelectorAll('.allocation-line').forEach((row,i)=>{
-          if (i<(softCapEnabled()?2:1)) return;
-          const dest=neighbors(id)[i-(softCapEnabled()?2:1)], target=state.nodes[dest];
-          if(!target || target.owner===0) return;
-          const attack=plan(id).edges[dest]||0;
-          const cap=document.createElement('small');
-          cap.style.cssText='display:block;font-size:11px;line-height:1.5;color:#adc3d9';
-          cap.textContent='Attack strength '+fmtUX(attack*.8)+'–'+fmtUX(attack*1.2)+' · Current defense '+fmtUX(target.active*.8)+'–'+fmtUX(target.active*1.2);
-          row.querySelector('label')?.append(cap);
-        });
-      }
-      note.textContent=selectedNode.owner!==0
-        ? 'Opponent and neutral energy can be inspected here. Select a friendly adjacent node to allocate an attack.'
-        : 'Attack and defense each receive independent ×0.8–1.2 strength modifiers. Targets can change during simultaneous resolution; displayed energy is not a win probability.';
-      foot.textContent=selectedNode.owner===0
-        ? 'Defense '+fmtUX(defense)+' · Next active '+fmtUX(p.next)+(softCapEnabled()?' · Overflow '+fmtUX(p.overflow):'')+' (estimate without combat)'
-        : 'No orders can be issued from this node.';
-    }
   };
   byId('zoomIn').onclick=()=>zoomUX(1.25);
   byId('zoomOut').onclick=()=>zoomUX(.8);

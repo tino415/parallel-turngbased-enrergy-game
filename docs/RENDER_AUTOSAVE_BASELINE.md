@@ -111,7 +111,7 @@ wrapper, so it records no time for them, and `drawSelection()` and
    autosave.** Zoom buttons, Ctrl+wheel, Fit, tab switches, the flow filter,
    selecting a node, and opening or closing the editor all call `render()`.
    That rebuilds the whole map SVG (about 1,000 elements removed and 1,000
-   added on 120 nodes), the allocator, the policy editor, the orders list, the
+   added on 120 nodes), the orders list, the
    log, the side panel and the inspector. It then serializes the whole match
    into `localStorage`, about 14 KB per write on 120 nodes and 16 KB in the
    mid-game state, even though no match state changed. Drag pan is already

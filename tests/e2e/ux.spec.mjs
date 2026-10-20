@@ -13,7 +13,6 @@ test('node tap highlights only and opens policy editor on second selection', asy
   const inspector = page.locator('#tacticalInspector');
   await expect(inspector).toBeHidden();
   await expect(page.locator('#map .tactical-node-selected')).toHaveCount(1);
-  await expect(page.locator('#nodeDialog')).toBeHidden();
   await node.click();
   await expect(inspector).toBeVisible();
   await expect(inspector).toContainText('Node 0');
@@ -470,7 +469,6 @@ test('Orders dialog replaces the contextual inspector instead of stacking modals
   page,
 }, testInfo) => {
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
-  await expect(page.locator('#nodeDialog')).toBeHidden();
   await expect(page.locator('#tacticalInspector')).toBeHidden();
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
   await expect(page.locator('#tacticalInspector')).toBeVisible();
@@ -486,7 +484,6 @@ test('Orders dialog replaces the contextual inspector instead of stacking modals
   // Opening Orders from outside the editor intentionally clears selection.
   // Closing Orders must not resurrect a hidden inspector.
   await expect(page.locator('#tacticalInspector')).toBeHidden();
-  await expect(page.locator('#nodeDialog')).toBeHidden();
 });
 
 test('mobile connection editor keeps original dock and closes on outside map tap', async ({
@@ -503,7 +500,6 @@ test('mobile connection editor keeps original dock and closes on outside map tap
   await edge.tap();
   await expect(inspector).toBeVisible();
   await expect(page.locator('#uxDockResolve')).toBeVisible();
-  await expect(page.locator('#nodeDialog')).toBeHidden();
   await expect(inspector.locator('.tactical-inspector-body')).toBeVisible();
 
   const layout = await page.evaluate(() => {

@@ -108,16 +108,6 @@ button:disabled {
   stroke: #f8d278;
   stroke-width: 4;
 }
-.allocation-line {
-  display: grid;
-  grid-template-columns: 1fr 100px;
-  align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-}
-.allocation-line input {
-  width: 100%;
-}
 .policy-box {
   border: 1px solid #3e6a7a;
   background: #182f3d;
@@ -136,11 +126,6 @@ button:disabled {
 }
 .policy-box input[type='checkbox'] {
   width: auto;
-}
-.policy-actions {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
 }
 #mapViewport {
   position: relative;
@@ -398,30 +383,6 @@ dialog#newGameDialog::backdrop {
   }
 }
 
-#nodeDialog {
-  border: 1px solid #526681;
-  background: #172438;
-  color: #e7eef9;
-  border-radius: 14px;
-  width: min(620px, 96vw);
-  max-height: 90dvh;
-  padding: 14px;
-}
-#nodeDialog::backdrop {
-  background: #050a13c9;
-}
-#mobileNodeContent {
-  overflow-y: auto;
-  max-height: calc(90dvh - 75px);
-}
-.mobile-node-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-
 .map-zoom-controls {
   position: absolute;
   right: 12px;
@@ -450,9 +411,6 @@ dialog#newGameDialog::backdrop {
 @media (max-width: 760px) {
   svg {
     min-height: 260px;
-  }
-  #nodeDialog {
-    width: 96vw;
   }
   #mapViewport,
   #mapViewport svg {

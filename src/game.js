@@ -102,100 +102,8 @@ const replacedSupport = (source, destination) =>
 function setAllocation(source, destination, value) {
   const before = currentMatch(),
     overBudget = store.setAllocation(source, destination, value);
-  if (overBudget !== undefined)
-    $('hint').textContent = 'Over budget: allocations cannot exceed ' + fmt(overBudget);
-  else if (currentMatch() !== before) render();
+  if (overBudget === undefined && currentMatch() !== before) render();
 }
-function numberField(value, max, onChange) {
-  const input = document.createElement('input');
-  input.type = 'number';
-  input.min = '0';
-  input.max = String(max);
-  input.step = '0.1';
-  input.value = String(Number(value.toFixed(2)));
-  input.onchange = () => {
-    const amount = Number(input.value);
-    if (!Number.isFinite(amount) || amount < 0 || amount > max + 1e-8) {
-      input.value = String(Number(value.toFixed(2)));
-      $('hint').textContent = 'Invalid amount';
-      return;
-    }
-    onChange(amount);
-  };
-  return input;
-}
-function renderAllocator() {
-  updateChildrenInPlace($('allocator'), allocatorControls());
-}
-function allocatorControls() {
-  if (selected === null || state.nodes[selected].owner !== 0) return [];
-  const container = document.createElement('div');
-  const n = state.nodes[selected],
-    p = plan(selected),
-    used = allocated(selected),
-    remain = Math.max(0, availableEnergy(selected, p) - used);
-  const summary = document.createElement('div');
-  summary.className = 'order-row';
-  summary.textContent =
-    'Allocated ' +
-    fmt(used) +
-    ' / ' +
-    fmt(availableEnergy(selected, p)) +
-    ' · Defense reserve ' +
-    fmt(remain) +
-    (softCapEnabled()
-      ? ' · Total ' + fmt(n.active + n.invested) + ' / ' + SOFT_CAP_RULES.capacity + ' capacity'
-      : '');
-  container.append(summary);
-  const fields = document.createElement('div');
-  fields.className = 'order-row';
-  const heading = document.createElement('strong');
-  heading.textContent = 'Energy allocation';
-  fields.append(heading);
-  const makeRow = (label, amount, target) => {
-    const row = document.createElement('div');
-    row.className = 'allocation-line';
-    const name = document.createElement('label');
-    name.textContent = label;
-    const max =
-      target === 'withdraw' ? n.invested : Math.max(n.active, availableEnergy(selected, p));
-    const input = numberField(amount, max, (value) => setAllocation(selected, target, value));
-    input.dataset.allocation =
-      target === null ? 'invest' : target === 'withdraw' ? 'withdraw' : 'edge-' + target;
-    input.dataset.key = selected + ':' + input.dataset.allocation;
-    row.append(name, input);
-    fields.append(row);
-  };
-  if (softCapEnabled()) {
-    makeRow('Withdraw invested → active (5% fee)', withdrawal(selected, p), 'withdraw');
-    const note = document.createElement('small');
-    note.className = 'muted';
-    note.textContent =
-      'Withdrawn energy is spendable this round; overflow above ' +
-      SOFT_CAP_RULES.capacity +
-      ' decays ' +
-      Math.round(100 * SOFT_CAP_RULES.overflowDecay) +
-      '% at round end (including invested principal).';
-    fields.append(note);
-  }
-  makeRow('Invest', p.invest, null);
-  for (const dest of neighbors(selected))
-    makeRow(
-      (state.nodes[dest].owner === 0 ? 'Transfer' : 'Attack') + ' → Node ' + dest,
-      p.edges[dest] || 0,
-      dest,
-    );
-  container.append(fields);
-  const clear = document.createElement('button');
-  clear.textContent = 'Clear node allocations';
-  clear.onclick = () => {
-    store.clearNodeOrders(selected);
-    render();
-  };
-  container.append(clear);
-  return [...container.childNodes];
-}
-
 const defaultPolicy = selectors.defaultPolicy;
 function policyOrders(source) {
   return selectors.policyOrders(currentMatch(), source);
@@ -204,86 +112,6 @@ function changePolicy(source, key, value) {
   const accepted = store.changePolicy(source, key, value);
   render();
   return accepted;
-}
-function renderPolicyEditor() {
-  updateChildrenInPlace($('policyEditor'), policyControls());
-}
-function policyControls() {
-  if (selected === null || state.nodes[selected].owner !== 0) return [];
-  const source = selected,
-    p = { ...defaultPolicy(), enabled: false, ...policies[source] },
-    box = document.createElement('div');
-  box.className = 'policy-box';
-  const heading = document.createElement('h3');
-  heading.textContent = 'Persistent policy';
-  box.append(heading);
-  const actions = document.createElement('div');
-  actions.className = 'policy-actions';
-  function button(label, fn) {
-    const b = document.createElement('button');
-    b.textContent = label;
-    b.onclick = fn;
-    actions.append(b);
-  }
-  // An unconfigured node displays default values without silently activating
-  // an automatic order. The Enabled checkbox or an edited field creates the
-  // actual policy, so there is no separate Create policy action.
-  button('Copy', () => {
-    store.copyPolicy(p);
-    render();
-  });
-  if (clipboard)
-    button('Paste', () => {
-      store.pastePolicy(source, clipboard);
-      render();
-    });
-  box.append(actions);
-  {
-    const add = (title, field) => {
-      const label = document.createElement('label');
-      label.textContent = title;
-      label.append(field);
-      box.append(label);
-    };
-    const enabled = document.createElement('input');
-    enabled.type = 'checkbox';
-    enabled.checked = p.enabled;
-    enabled.onchange = () => changePolicy(source, 'enabled', enabled.checked);
-    add(' Enabled every round ', enabled);
-    const reserve = numberField(p.reserve, 100000, (value) =>
-      changePolicy(source, 'reserve', value),
-    );
-    reserve.dataset.key = source + ':reserve';
-    add('Active defense reserve', reserve);
-    const invest = numberField(p.investPct, 100, (value) =>
-      changePolicy(source, 'investPct', value),
-    );
-    invest.dataset.key = source + ':investPct';
-    add('Invest % of surplus', invest);
-    const pause = document.createElement('input');
-    pause.type = 'checkbox';
-    pause.checked = Boolean(plan(source).hold);
-    pause.onchange = () => {
-      store.setHold(source, pause.checked);
-      render();
-    };
-    add(' Pause policy this round ', pause);
-  }
-  const automatic = policyOrders(source),
-    spent = automatic.reduce((sum, o) => sum + o.amount, 0);
-  const preview = document.createElement('p');
-  preview.className = 'muted';
-  preview.textContent =
-    'Preview: ' +
-    (automatic.length
-      ? automatic
-          .map((o) => o.type + ' ' + fmt(o.amount) + (o.dest === null ? '' : ' → ' + o.dest))
-          .join(' · ')
-      : 'No automatic spending') +
-    ' · Defense ' +
-    fmt(Math.max(0, availableEnergy(source) - allocated(source) - spent));
-  box.append(preview);
-  return [box];
 }
 function updateChildrenInPlace(parent, nextChildren) {
   let index = 0;
@@ -436,14 +264,8 @@ function renderOrders() {
   }
 }
 function clickNode(id) {
-  if (state.nodes[id].owner === 0) {
-    store.select(id);
-    render();
-    showNodeOnMobile();
-  } else if (selected !== null && neighbors(selected).includes(id)) {
-    $('hint').textContent =
-      'Set the attack amount for node ' + id + ' in the selected node allocation panel.';
-  }
+  store.inspectNode(id);
+  render();
 }
 
 function resolve() {
@@ -609,12 +431,11 @@ function attachNavigation() {
   );
 }
 
-const mobileNodeQuery = window.matchMedia('(max-width:760px)');
 function showNodeOnMobile() {
-  if (mobileNodeQuery.matches && selected !== null && !$('nodeDialog').open)
-    $('nodeDialog').showModal();
+  if (selected === null) return;
+  store.editSelectedNode();
+  render();
 }
-$('closeNodeDialog').onclick = () => $('nodeDialog').close();
 
 const SAVE_KEY = 'parallel-energy-game-v1';
 function switchView(view) {
@@ -746,26 +567,6 @@ function render() {
       clickNode(n.id);
     });
   }
-  let selectedNode = selected === null ? null : nodes[selected];
-  $('selectedTitle').textContent = selectedNode ? 'Node ' + selected : 'Select a blue node';
-  $('details').textContent = selectedNode
-    ? 'Active ' +
-      fmt(selectedNode.active) +
-      ' · Invested ' +
-      fmt(selectedNode.invested) +
-      (softCapEnabled() && selectedNode.owner !== null
-        ? ' · Total ' +
-          fmt(selectedNode.active + selectedNode.invested) +
-          ' / ' +
-          SOFT_CAP_RULES.capacity +
-          ' sustainable capacity'
-        : '')
-    : 'Choose a blue node to issue an order.';
-  $('hint').textContent = state.finished
-    ? 'Game over. Start a new game.'
-    : 'Manual allocations take priority; policies automatically use remaining energy. Unspent energy defends.';
-  renderAllocator();
-  renderPolicyEditor();
   renderOrders();
   renderFlows(svg, graph, element);
   renderViews();
