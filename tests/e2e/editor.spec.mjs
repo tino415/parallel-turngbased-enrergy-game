@@ -8,15 +8,6 @@ import {
   chooseSource,
 } from './support/game.mjs';
 
-test('policy draft and focus survive a flow filter change', async ({ page }) => {
-  await openNodeEditor(page);
-  const percent = page.locator('#tacticalPolicyPercent');
-  await percent.fill('61');
-  await page.locator('#overlay').selectOption('manual');
-  await expect(percent).toHaveValue('61');
-  await expect(percent).toBeFocused();
-});
-
 test('policy draft and focus survive a simulated keyboard shrink and restore', async ({ page }) => {
   annotateSimulatedKeyboard();
   await openNodeEditor(page);

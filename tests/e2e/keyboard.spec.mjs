@@ -16,10 +16,10 @@ async function tabUntil(page, name, limit = 30) {
   throw new Error('Tab never reached ' + name);
 }
 
-test('Tab reaches map connections after the Flows filter and Enter highlights one', async ({
+test('Tab reaches map connections after the view tabs and Enter highlights one', async ({
   page,
 }) => {
-  await page.locator('#overlay').focus();
+  await page.locator('#leaderboardTab').focus();
   await tabUntil(page, 'Select connection between node 0 and node 1');
   await page.keyboard.press('Enter');
   await expect(page.locator('#map .tactical-node-selected')).toHaveCount(2);

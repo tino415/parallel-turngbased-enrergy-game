@@ -101,8 +101,6 @@ async function measureInteractions(page, prepareMap, touch) {
   await step('camera: fit button', () => page.locator('#fit').click());
   await step('view: messages tab', () => page.locator('#messagesTab').click());
   await step('view: map tab', () => page.locator('#mapTab').click());
-  await step('view: flow filter', () => page.locator('#overlay').selectOption('manual'));
-  await page.locator('#overlay').selectOption('all');
   await step('select node (first tap)', () => blueNode.click());
   await step('open node editor (second tap)', () => blueNode.click());
   await step('policy edit: invest %', async () => {
