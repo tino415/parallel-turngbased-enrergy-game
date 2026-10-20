@@ -6,7 +6,7 @@
   const ARIA_SORT = { asc: 'ascending', desc: 'descending' };
 
   for (const header of headers)
-    header.querySelector('button').onclick = () => store.sortLeaderboard(header.dataset.column);
+    header.querySelector('.sort').onclick = () => store.sortLeaderboard(header.dataset.column);
 
   store.subscribe(({ match, ui }, previous) => {
     const shown = ui.view === 'leaderboard';
