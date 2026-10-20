@@ -40,7 +40,7 @@
       <div class="view-tabs" role="tablist" aria-label="Game views">
         <button id="mapTab" class="active" role="tab" aria-selected="true">Map</button
         ><button id="messagesTab" role="tab" aria-selected="false">Messages</button
-        ><button id="empireTab" role="tab" aria-selected="false">Empires</button>
+        ><button id="leaderboardTab" role="tab" aria-selected="false">Leaderboard</button>
       </div>
       <label
         >Overlay
@@ -117,9 +117,9 @@
           <h2>Messages / round history</h2>
           <div id="log" class="log"></div>
         </section>
-        <section id="empireView" hidden>
-          <h2>Empires</h2>
-          <table id="empireTable">
+        <section id="leaderboardView" hidden>
+          <h2>Leaderboard</h2>
+          <table id="leaderboardTable">
             <thead>
               <tr>
                 <th scope="col" data-column="player">
@@ -205,7 +205,7 @@
     <script src="./src/format.js" defer></script>
     <script src="./src/game.js" defer></script>
     <script src="./src/dialogs.js" defer></script>
-    <script src="./src/empire-view.js" defer></script>
+    <script src="./src/leaderboard.js" defer></script>
     <script src="./src/ux.js" defer></script>
     <script src="./src/tactical-ui.js" defer></script>
   </body>

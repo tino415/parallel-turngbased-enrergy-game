@@ -384,7 +384,7 @@ test('a save with support both ways keeps the net manual support and clears both
   );
 });
 
-const empireMatch = {
+const leaderboardMatch = {
   map: { playerCount: 3 },
   state: {
     nodes: [
@@ -395,40 +395,56 @@ const empireMatch = {
     ],
   },
 };
-const empireOrder = (sort) =>
+const leaderboardOrder = (sort) =>
   loadStore()
-    .selectors.empireStats(empireMatch, sort)
-    .map((empire) => empire.name);
+    .selectors.leaderboard(leaderboardMatch, sort)
+    .map((standing) => standing.name);
 
-test('empire stats total each player, keep eliminated players and skip neutral nodes', () => {
-  assertSameData(loadStore().selectors.empireStats(empireMatch), [
+test('the leaderboard totals each player, keep eliminated players and skip neutral nodes', () => {
+  assertSameData(loadStore().selectors.leaderboard(leaderboardMatch), [
     { player: 0, name: 'Blue', invested: 30, active: 15, nodes: 2 },
     { player: 1, name: 'Red', invested: 2, active: 40, nodes: 1 },
     { player: 2, name: 'Purple', invested: 0, active: 0, nodes: 0 },
   ]);
 });
 
-test('empire stats sort by any column and break ties by player order', () => {
-  assertSameData(empireOrder({ column: 'invested', direction: 'desc' }), ['Blue', 'Red', 'Purple']);
-  assertSameData(empireOrder({ column: 'active', direction: 'desc' }), ['Red', 'Blue', 'Purple']);
-  assertSameData(empireOrder({ column: 'nodes', direction: 'asc' }), ['Purple', 'Red', 'Blue']);
-  assertSameData(empireOrder({ column: 'player', direction: 'desc' }), ['Purple', 'Red', 'Blue']);
-  const tied = { ...empireMatch, map: { playerCount: 4 } };
+test('the leaderboard sorts by any column and break ties by player order', () => {
+  assertSameData(leaderboardOrder({ column: 'invested', direction: 'desc' }), [
+    'Blue',
+    'Red',
+    'Purple',
+  ]);
+  assertSameData(leaderboardOrder({ column: 'active', direction: 'desc' }), [
+    'Red',
+    'Blue',
+    'Purple',
+  ]);
+  assertSameData(leaderboardOrder({ column: 'nodes', direction: 'asc' }), [
+    'Purple',
+    'Red',
+    'Blue',
+  ]);
+  assertSameData(leaderboardOrder({ column: 'player', direction: 'desc' }), [
+    'Purple',
+    'Red',
+    'Blue',
+  ]);
+  const tied = { ...leaderboardMatch, map: { playerCount: 4 } };
   assertSameData(
     loadStore()
-      .selectors.empireStats(tied, { column: 'nodes', direction: 'desc' })
-      .map((empire) => empire.name),
+      .selectors.leaderboard(tied, { column: 'nodes', direction: 'desc' })
+      .map((standing) => standing.name),
     ['Blue', 'Red', 'Purple', 'Orange'],
   );
 });
 
-test('sorting empires starts numbers high, flips on repeat and leaves the match alone', () => {
+test('sorting the leaderboard starts numbers high, flips on repeat and leaves the match alone', () => {
   const store = newStore();
   const before = store.getSnapshot();
   const sorts = [];
   for (const column of ['invested', 'invested', 'player', 'player', 'unknown'])
-    sorts.push((store.sortEmpires(column), store.getSnapshot().ui.empireSort));
-  assertSameData(before.ui.empireSort, { column: 'player', direction: 'asc' });
+    sorts.push((store.sortLeaderboard(column), store.getSnapshot().ui.leaderboardSort));
+  assertSameData(before.ui.leaderboardSort, { column: 'player', direction: 'asc' });
   assertSameData(sorts, [
     { column: 'invested', direction: 'desc' },
     { column: 'invested', direction: 'asc' },
@@ -439,15 +455,15 @@ test('sorting empires starts numbers high, flips on repeat and leaves the match 
   assert.equal(store.getSnapshot().match, before.match);
 });
 
-test('empire stats of a played match add up to the nodes each player owns', () => {
+test('standings of a played match add up to the nodes each player owns', () => {
   const store = newStore();
   playCommands(store);
   const { match } = store.getSnapshot();
   const owned = (owner) => match.state.nodes.filter((node) => node.owner === owner);
-  for (const empire of loadStore().selectors.empireStats(match)) {
-    const nodes = owned(empire.player);
-    assert.equal(empire.nodes, nodes.length);
-    assert.ok(Math.abs(empire.active - nodes.reduce((t, n) => t + n.active, 0)) < 1e-9);
-    assert.ok(Math.abs(empire.invested - nodes.reduce((t, n) => t + n.invested, 0)) < 1e-9);
+  for (const standing of loadStore().selectors.leaderboard(match)) {
+    const nodes = owned(standing.player);
+    assert.equal(standing.nodes, nodes.length);
+    assert.ok(Math.abs(standing.active - nodes.reduce((t, n) => t + n.active, 0)) < 1e-9);
+    assert.ok(Math.abs(standing.invested - nodes.reduce((t, n) => t + n.invested, 0)) < 1e-9);
   }
 });

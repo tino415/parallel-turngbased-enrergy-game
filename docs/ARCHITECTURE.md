@@ -2,7 +2,7 @@
 
 The game is eight classic scripts loaded with `defer` into one global scope, in
 this order: `engine.js`, `store.js`, `format.js`, `game.js`, `dialogs.js`,
-`empire-view.js`, `ux.js`, `tactical-ui.js`. Later scripts build on, and in
+`leaderboard.js`, `ux.js`, `tactical-ui.js`. Later scripts build on, and in
 places replace, functions from earlier ones.
 
 | Module           | Owns                                                                    | Touches the DOM |
@@ -12,7 +12,7 @@ places replace, functions from earlier ones.
 | `format.js`      | Energy number formatting                                                | no              |
 | `game.js`        | The base renderer, map navigation, save and restore, the global mirrors | yes             |
 | `dialogs.js`     | The Orders and Settings dialog buttons                                  | yes             |
-| `empire-view.js` | The Empires tab: one row per player, sorted by the chosen column        | yes             |
+| `leaderboard.js` | The Leaderboard tab: one row per player, sorted by the chosen column    | yes             |
 | `ux.js`          | Layout, dialogs, side panel, dock, camera fitting                       | yes             |
 | `tactical-ui.js` | Map selection and node groups, the inspector, pinch zoom, the ☰ menu   | yes             |
 
@@ -22,24 +22,24 @@ places replace, functions from earlier ones.
 change goes through a store command, and a slice keeps its identity until a
 command really changes it.
 
-| Value                                                  | Slice              | Saved | Written by                          |
-| ------------------------------------------------------ | ------------------ | ----- | ----------------------------------- |
-| `state` (round, nodes, finished, rulesVersion)         | `match.state`      | yes   | `resolve`, `replaceMatch`           |
-| manual orders per node                                 | `match.orders`     | yes   | allocation and order commands       |
-| persistent policies per node                           | `match.policies`   | yes   | policy commands, `resolve`          |
-| message history                                        | `match.history`    | yes   | `resolve`, `replaceMatch`           |
-| map: `xy`, `edges`, `N`, `playerCount`, `mapSeed`      | `match.map`        | yes   | `replaceMatch`                      |
-| conquest defaults (enabled, reserve, invest)           | `match.defaults`   | yes   | `setDefaults`                       |
-| selected node                                          | `ui.selected`      | yes¹  | `select`, inspector commands        |
-| view tab                                               | `ui.view`          | no    | `setView`                           |
-| Empires table sort column and direction                | `ui.empireSort`    | no    | `sortEmpires`                       |
-| flow filter                                            | `ui.overlay`       | no    | `setOverlay`                        |
-| camera (`x`, `y`, `scale`)                             | `ui.camera`        | no    | `setCamera`                         |
-| policy clipboard                                       | `ui.clipboard`     | no    | `copyPolicy`                        |
-| node group selected on the map                         | `ui.bulkSelection` | no    | group commands, `resolve`²          |
-| group mode on the map                                  | `ui.groupMode`     | no    | `setGroupMode`, `leaveGroupMode`    |
-| group editor open                                      | `ui.groupEditing`  | no    | `setGroupEditing`, `leaveGroupMode` |
-| inspector target, editing, open sections, focused node | `ui.inspector`     | no    | inspector commands                  |
+| Value                                                  | Slice                | Saved | Written by                          |
+| ------------------------------------------------------ | -------------------- | ----- | ----------------------------------- |
+| `state` (round, nodes, finished, rulesVersion)         | `match.state`        | yes   | `resolve`, `replaceMatch`           |
+| manual orders per node                                 | `match.orders`       | yes   | allocation and order commands       |
+| persistent policies per node                           | `match.policies`     | yes   | policy commands, `resolve`          |
+| message history                                        | `match.history`      | yes   | `resolve`, `replaceMatch`           |
+| map: `xy`, `edges`, `N`, `playerCount`, `mapSeed`      | `match.map`          | yes   | `replaceMatch`                      |
+| conquest defaults (enabled, reserve, invest)           | `match.defaults`     | yes   | `setDefaults`                       |
+| selected node                                          | `ui.selected`        | yes¹  | `select`, inspector commands        |
+| view tab                                               | `ui.view`            | no    | `setView`                           |
+| Leaderboard sort column and direction                  | `ui.leaderboardSort` | no    | `sortLeaderboard`                   |
+| flow filter                                            | `ui.overlay`         | no    | `setOverlay`                        |
+| camera (`x`, `y`, `scale`)                             | `ui.camera`          | no    | `setCamera`                         |
+| policy clipboard                                       | `ui.clipboard`       | no    | `copyPolicy`                        |
+| node group selected on the map                         | `ui.bulkSelection`   | no    | group commands, `resolve`²          |
+| group mode on the map                                  | `ui.groupMode`       | no    | `setGroupMode`, `leaveGroupMode`    |
+| group editor open                                      | `ui.groupEditing`    | no    | `setGroupEditing`, `leaveGroupMode` |
+| inspector target, editing, open sections, focused node | `ui.inspector`       | no    | inspector commands                  |
 
 ¹ `selected` stays in the save format so that old saves keep loading. ux.js
 clears it on load.
@@ -97,16 +97,16 @@ before `tactical-ui.js` loaded, so changing the filter never rebuilds the inspec
 `showNodeOnMobile` and `positionNodeDetails` are also replaced in load order.
 The last definition wins and is the one in use.
 
-`empire-view.js` stays out of the chain: it subscribes to the store and redraws
-the Empires table when the match, the sort or the view changes while the tab is
-shown. `game.js` still shows and hides `#empireView` with the other views.
+`leaderboard.js` stays out of the chain: it subscribes to the store and redraws
+the leaderboard when the match, the sort or the view changes while the tab is
+shown. `game.js` still shows and hides `#leaderboardView` with the other views.
 
 | DOM subtree                                                                                               | Rendered by      |
 | --------------------------------------------------------------------------------------------------------- | ---------------- |
 | `#map` content, `#score`, `#resolve`, `#log`, `#orders`, `#allocator`, `#policyEditor`                    | `game.js`        |
 | `#map` viewBox and camera transform, `#uxSide*`, `#uxDock*`, `#uxEditorStats`, `#uxBalance`               | `ux.js`          |
 | `#tacticalInspector`, `#tacticalGroupBar`, `#tacticalMenu`, `.tactical-edge-hit`, rings, flow edge colors | `tactical-ui.js` |
-| `#empireTable` rows and header sort marks                                                                 | `empire-view.js` |
+| `#leaderboardTable` rows and header sort marks                                                            | `leaderboard.js` |
 
 `#allocator` and `#policyEditor` are built by `game.js`. `tactical-ui.js` moves
 their sections into the inspector while it edits a node and parks them in the
