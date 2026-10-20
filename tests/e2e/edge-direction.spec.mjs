@@ -33,7 +33,9 @@ test('the map arrow and rings follow the chosen support direction', async ({ pag
   await expect(arrow(page)).toHaveAttribute('data-from', '1');
   await expect(arrow(page)).toHaveAttribute('data-to', '0');
   await expect(ring(page, 1)).toHaveClass(/tactical-node-from/);
-  await expect(inspector(page)).toContainText('Support transfer · 1 → 0');
+  await expect(page.locator('#tacticalSwapDirection')).toHaveAccessibleName(
+    'From Node 1 to Node 0. Swap direction',
+  );
 });
 
 test('the editor names both nodes as on the map', async ({ page }) => {
@@ -106,7 +108,9 @@ test('the map swap button flips the direction before the editor opens', async ({
   await expect(arrow(page)).toHaveAttribute('data-from', '1');
   await expect(inspector(page)).toBeHidden();
   await edgeHit(page, '0-1').click();
-  await expect(inspector(page)).toContainText('Support transfer · 1 → 0');
+  await expect(page.locator('#tacticalSwapDirection')).toHaveAccessibleName(
+    'From Node 1 to Node 0. Swap direction',
+  );
 });
 
 test('the map swap button works from the keyboard and keeps focus', async ({ page }) => {

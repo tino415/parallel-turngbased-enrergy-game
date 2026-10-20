@@ -82,17 +82,19 @@ test('a fixed command sequence produces the recorded orders, policies and rounds
 
   await openNode(page, 0);
   await commit(page.locator('#tacticalPolicyPercent'), 40);
-  await page.getByText('Other policy settings').click();
-  await commit(page.locator('#policyEditor label:has-text("Active defense reserve") input'), 3);
+  await commit(inspector(page).getByRole('spinbutton', { name: 'Defense floor' }), 3);
   await page.getByRole('checkbox', { name: 'Pause policy this round' }).check();
   await page.getByRole('checkbox', { name: 'Pause policy this round' }).uncheck();
-  await page.locator('#policyEditor').getByRole('button', { name: 'Copy' }).click();
+  await inspector(page).getByRole('button', { name: 'Copy policy' }).click();
   await expect(inspector(page)).toBeVisible();
-  await page.getByText('Manual investment, withdrawal and allocations').click();
-  await commit(page.locator('#allocator [data-allocation="withdraw"]'), 4);
-  await commit(page.locator('#allocator [data-allocation="invest"]'), 2);
-  await commit(page.locator('#allocator [data-allocation="edge-1"]'), 12);
-  await commit(page.locator('#allocator [data-allocation="edge-2"]'), 99);
+  await commit(inspector(page).locator('[data-allocation="withdraw"]'), 4);
+  await commit(inspector(page).locator('[data-allocation="invest"]'), 2);
+  await closeInspector(page);
+  await openEdge(page, '0-1');
+  await commit(page.locator('#tacticalEdgeAmount'), 12);
+  await closeInspector(page);
+  await openEdge(page, '0-2');
+  await commit(page.locator('#tacticalEdgeAmount'), 99);
   await record('node 0 policy and allocations, over-budget attack rejected');
   await closeInspector(page);
 
@@ -109,8 +111,7 @@ test('a fixed command sequence produces the recorded orders, policies and rounds
   await record('round 1 resolved with changed conquest defaults');
 
   await openNode(page, 1);
-  await page.getByText('Other policy settings').click();
-  await page.locator('#policyEditor').getByRole('button', { name: 'Paste' }).click();
+  await inspector(page).getByRole('button', { name: 'Paste policy' }).click();
   await closeInspector(page);
   await openEdge(page, '0-2');
   await chooseSource(page, 2);
@@ -140,8 +141,7 @@ test('a fixed command sequence produces the recorded orders, policies and rounds
   await record('round 2 resolved');
 
   await openNode(page, 0);
-  await page.getByText('Manual investment, withdrawal and allocations').click();
-  await commit(page.locator('#allocator [data-allocation="invest"]'), 5);
+  await commit(inspector(page).locator('[data-allocation="invest"]'), 5);
   await closeInspector(page);
   await record('node 0 invests 5');
   await openFromMenu(page, 'Orders');
@@ -206,8 +206,9 @@ for (const name of ['save-v0.8.4', 'save-without-optional-fields']) {
 test('a new save with edits and changed defaults reloads unchanged', async ({ page }) => {
   await openNode(page, 0);
   await commit(page.locator('#tacticalPolicyPercent'), 35);
-  await page.getByText('Manual investment, withdrawal and allocations').click();
-  await commit(page.locator('#allocator [data-allocation="edge-1"]'), 8);
+  await closeInspector(page);
+  await openEdge(page, '0-1');
+  await commit(page.locator('#tacticalEdgeAmount'), 8);
   await closeInspector(page);
   await openFromMenu(page, 'Settings');
   await page.locator('#autoConquer').uncheck();

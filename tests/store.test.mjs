@@ -235,15 +235,11 @@ test('inspecting a node highlights first and edits on the second selection', () 
   assertSameData(inspector, {
     active: { kind: 'node', id: 0 },
     editing: false,
-    advancedOpen: false,
-    manualOpen: false,
     focusedNode: 0,
   });
-  store.setInspectorSection('advancedOpen', true);
   store.inspectNode(0);
   ({ inspector } = store.getSnapshot().ui);
   assert.equal(inspector.editing, true);
-  assert.equal(inspector.advancedOpen, true);
 
   store.inspectNode(13);
   ({ selected, inspector } = store.getSnapshot().ui);
@@ -251,8 +247,6 @@ test('inspecting a node highlights first and edits on the second selection', () 
   assertSameData(inspector, {
     active: { kind: 'node', id: 13 },
     editing: false,
-    advancedOpen: false,
-    manualOpen: false,
     focusedNode: 13,
   });
 });
@@ -292,19 +286,16 @@ test('an edge between friendly nodes opens in the direction of its surplus route
   assert.equal(selectors.edgeSource(store.getSnapshot().match, 0, 1), 1);
 });
 
-test('dismissing clears selection and editing but keeps focus and section state', () => {
+test('dismissing clears selection and editing but keeps focus', () => {
   const store = newStore();
   store.inspectNode(0);
   store.inspectNode(0);
-  store.setInspectorSection('manualOpen', true);
   store.dismissInspector();
   const { selected, inspector } = store.getSnapshot().ui;
   assert.equal(selected, null);
   assertSameData(inspector, {
     active: null,
     editing: false,
-    advancedOpen: false,
-    manualOpen: true,
     focusedNode: 0,
   });
   const before = store.getSnapshot();

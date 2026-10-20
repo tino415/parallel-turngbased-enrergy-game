@@ -10,8 +10,7 @@ test('new game editor shows combined capacity and can spend withdrawn reserves',
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
   await expect(page.locator('#tacticalInspector')).toContainText('Capacity');
-  await page.getByText('Manual investment, withdrawal and allocations').click();
-  const withdrawal = page.locator('#uxManualSection [data-allocation="withdraw"]');
+  const withdrawal = page.locator('#tacticalInspector [data-allocation="withdraw"]');
   await expect(withdrawal).toHaveValue('0');
   await withdrawal.fill('10');
   await withdrawal.blur();
@@ -19,7 +18,7 @@ test('new game editor shows combined capacity and can spend withdrawn reserves',
   await expect(page.locator('#uxFooterSummary')).toContainText('Next active');
 
   // An investment above starting active energy is affordable after withdrawal.
-  const invest = page.locator('#uxManualSection [data-allocation="invest"]');
+  const invest = page.locator('#tacticalInspector [data-allocation="invest"]');
   await invest.fill('30');
   await invest.blur();
   // A withdrawal raises the same-round budget and persists with its order.
@@ -68,8 +67,7 @@ test('legacy saved games do not silently switch on new gameplay rules', async ({
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
   await expect(page.locator('#tacticalInspector')).not.toContainText('Capacity');
-  await page.getByText('Manual investment, withdrawal and allocations').click();
-  await expect(page.locator('#uxManualSection')).not.toContainText('Withdraw invested');
+  await expect(page.locator('#tacticalInspector [data-allocation="withdraw"]')).toHaveCount(0);
   const storedVersion = await page.evaluate(
     () => JSON.parse(localStorage.getItem('parallel-energy-game-v1')).state.rulesVersion,
   );
@@ -81,7 +79,6 @@ test('legacy saved games do not silently switch on new gameplay rules', async ({
   await expect(page.locator('#score')).toContainText('Round 2');
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
-  await page.getByText('Manual investment, withdrawal and allocations').click();
-  await expect(page.locator('#uxManualSection')).not.toContainText('Withdraw invested');
+  await expect(page.locator('#tacticalInspector [data-allocation="withdraw"]')).toHaveCount(0);
   await expect(page.locator('#tacticalInspector')).not.toContainText('Capacity');
 });
