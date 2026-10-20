@@ -191,6 +191,7 @@
   const neighbors = (match, id) =>
     match.map.edges.flatMap(([a, b]) => (a === id ? [b] : b === id ? [a] : []));
   const seatOf = (match) => match.seat ?? 0;
+  const humansOf = (match) => match.humanSeats ?? [seatOf(match)];
   const ownersOf = (match) => match.map.owners ?? firstOwners(match.map.playerCount);
   const isOwn = (match, id) => match.state.nodes[id]?.owner === seatOf(match);
   const softCapEnabled = (match) => match.state?.rulesVersion === SOFT_CAP_RULES.version;
@@ -319,7 +320,10 @@
     return [...manual, ...automatic];
   }
 
-  const aiDebugPlan = (match) => aiPlan(match.state, match.map.edges, seatOf(match));
+  const aiDebugPlan = (match) =>
+    match.online
+      ? { orders: [], withdrawals: {} }
+      : aiPlan(match.state, match.map.edges, humansOf(match));
 
   function projection(match, id) {
     const scheduled = previewOrders(match),
@@ -835,16 +839,24 @@
     };
   }
 
+  const conquestPoliciesOf = (match) =>
+    Object.fromEntries(
+      Object.entries(match.seatDefaults ?? {})
+        .map(([owner, defaults]) => [owner, conquestPolicy(defaults)])
+        .filter(([, policy]) => policy),
+    );
+
   function resolveRoundOf(match, rng) {
     return resolveRound({
       state: match.state,
       playerCount: match.map.playerCount,
       owners: ownersOf(match),
-      seat: seatOf(match),
+      seat: humansOf(match),
       orders: match.orders,
       policies: match.policies,
       links: match.map.edges,
       defaultConquestPolicy: conquestPolicy(match.defaults),
+      conquestPolicies: conquestPoliciesOf(match),
       rng,
     });
   }
@@ -854,10 +866,11 @@
   const diceOfRound = (replay, round) => seeded(replay.diceSeed + ':' + round);
 
   function withRecordedRound(replay, match, policiesAfterRound) {
-    const { orders, defaults, policies } = match;
+    const { orders, defaults, policies, seatDefaults } = match;
     const round = {
       orders,
       defaults,
+      ...(seatDefaults ? { seatDefaults } : {}),
       policies: policyChanges(replay.policiesAfterLastRound, policies),
     };
     return {
@@ -895,6 +908,8 @@
     let current = {
       ...match,
       seat: match.replay.seat ?? 0,
+      humanSeats: match.replay.humanSeats,
+      online: false,
       state: from.state,
       policies: from.policies,
     };
@@ -903,6 +918,7 @@
         ...current,
         orders: round.orders,
         defaults: round.defaults,
+        seatDefaults: round.seatDefaults,
         policies: withPolicyChanges(current.policies, round.policies),
       };
       const result = resolveRoundOf(input, diceOfRound(match.replay, input.state.round));
@@ -1110,7 +1126,10 @@
         listeners.add(listener);
         return () => listeners.delete(listener);
       },
-      replaceMatch: (match) => commit('match', match),
+      replaceMatch(match) {
+        commit('match', match);
+        if (match.online) setUi('aiDebug', false);
+      },
       setAllocation(source, destination, value) {
         const result = setAllocation(snapshot.match, source, destination, value);
         commit('match', result.match);
@@ -1131,6 +1150,7 @@
       setEdgePressure: onMatch(setEdgePressure),
       setDefaults: onMatch(setDefaults),
       resolve() {
+        if (snapshot.match.online) return;
         commit('match', resolve(snapshot.match));
         updateUi({
           bulkSelection: ownOnly(snapshot.ui.bulkSelection),
@@ -1173,7 +1193,7 @@
         );
       },
       setView: (view) => setUi('view', view),
-      setAiDebug: (on) => setUi('aiDebug', Boolean(on)),
+      setAiDebug: (on) => setUi('aiDebug', Boolean(on) && !snapshot.match.online),
       sortLeaderboard: (column) =>
         setUi('leaderboardSort', nextLeaderboardSort(snapshot.ui.leaderboardSort, column)),
       setLeaderboardChart: (fields) =>
@@ -1217,6 +1237,7 @@
     generatedMatch,
     matchFromSave,
     saveFromMatch,
+    humansOf,
     commands: Object.freeze({
       setAllocation,
       setHold,
