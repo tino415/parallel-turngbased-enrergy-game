@@ -75,7 +75,9 @@ test('friendly edge switches direction and the new support replaces the reverse 
   const edge = page.locator('.tactical-edge-hit[data-edge="0-1"]');
   await edge.click();
   await edge.click();
-  await expect(page.locator('#tacticalInspector')).toContainText('Support transfer');
+  await expect(page.locator('#tacticalSwapDirection')).toHaveAccessibleName(
+    'From Node 0 to Node 1. Swap direction',
+  );
   await page.locator('#tacticalEdgeAmount').fill('2');
   await page.locator('#tacticalEdgeAmount').blur();
   await chooseSource(page, 1);
@@ -130,15 +132,14 @@ test('simulated mobile keyboard resize does not move focused policy input', asyn
   await expect(input).toHaveValue('62');
 });
 
-test('legacy policy and withdrawal editors remain accessible', async ({ page }) => {
+test('policy actions and this round orders show without opening a section', async ({ page }) => {
   const node = page.locator('#map .node-hit[fill="#3278c8"]').first();
   await node.click();
   await node.click();
-  await page.getByText('Other policy settings').click();
-  await expect(page.locator('#uxPolicySection button').first()).toBeVisible();
-  await page.getByText('Manual investment, withdrawal and allocations').click();
-  await expect(page.locator('#uxManualSection [data-allocation="withdraw"]')).toBeVisible();
-  await expect(page.locator('#uxManualSection [data-allocation="invest"]')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Copy policy' })).toBeVisible();
+  await expect(page.locator('#tacticalInspector [data-allocation="withdraw"]')).toBeVisible();
+  await expect(page.locator('#tacticalInspector [data-allocation="invest"]')).toBeVisible();
+  await expect(page.locator('#tacticalInspector details')).toHaveCount(0);
   await expect(page.locator('#tacticalInspector')).toContainText('Capacity');
 });
 
@@ -146,8 +147,7 @@ test('manual orders can be opened from the overflow Orders review', async ({ pag
   const node = page.locator('#map .node-hit[fill="#3278c8"]').first();
   await node.click();
   await node.click();
-  await page.getByText('Manual investment, withdrawal and allocations').click();
-  const investment = page.locator('#allocator input[data-allocation="invest"]');
+  const investment = page.locator('#tacticalInspector input[data-allocation="invest"]');
   await investment.fill('2');
   await investment.blur();
   await page.locator('#tacticalMenu summary').click();
@@ -313,7 +313,7 @@ test('mobile bottom actions stay reachable and the page itself never scrolls', a
     .boundingBox();
   expect(closeBox.width).toBeLessThanOrEqual(45);
   expect(closeBox.height).toBeLessThanOrEqual(45);
-  await expect(inspector.getByRole('button', { name: 'Orders' })).toHaveCount(0);
+  await expect(inspector.getByRole('button', { name: 'Orders', exact: true })).toHaveCount(0);
   await expect(inspector.getByRole('button', { name: 'Resolve →' })).toHaveCount(0);
   await expectLockedViewport();
 
@@ -326,13 +326,15 @@ test('mobile bottom actions stay reachable and the page itself never scrolls', a
   await expectLockedViewport();
 });
 
-test('mobile editor keeps its own scrolling without moving the map', async ({ page }, testInfo) => {
+test('a mobile editor taller than its drawer scrolls without moving the map', async ({
+  page,
+}, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('mobile'), 'Mobile drawer layout');
+  const viewport = page.viewportSize();
+  await page.setViewportSize({ width: viewport.width, height: viewport.height - 200 });
   const node = page.locator('#map .node-hit[fill="#3278c8"]').first();
   await node.tap();
   await node.tap();
-  await page.getByText('Other policy settings').click();
-  await page.getByText('Manual investment, withdrawal and allocations').click();
   const body = page.locator('#tacticalInspector .tactical-inspector-body');
   await expect(body).toBeVisible();
   const overflow = await body.evaluate((el) => ({
@@ -355,11 +357,10 @@ test('source node exposes default policy without any Create policy button', asyn
   await node.click();
   await node.click();
   await expect(page.locator('#tacticalPolicyPercent')).toHaveValue('50');
-  await page.getByText('Other policy settings').click();
   await expect(
-    page.locator('#policyEditor button').filter({ hasText: 'Create policy' }),
+    page.locator('#tacticalInspector button').filter({ hasText: 'Create policy' }),
   ).toHaveCount(0);
-  await expect(page.locator('#policyEditor input[type="number"]').first()).toHaveValue('5');
+  await expect(page.getByRole('spinbutton', { name: 'Defense floor' })).toHaveValue('5');
   expect(await page.evaluate(() => policies[0])).toBeUndefined();
   await page.locator('#tacticalPolicyPercent').fill('42');
   await page.locator('#tacticalPolicyPercent').blur();
@@ -405,10 +406,10 @@ for (const [source, destination] of [
       `From Node ${source} to Node ${destination}. Swap direction`,
     );
     await expect(inspector.locator('#tacticalAutoTransfer')).toBeChecked();
-    await expect(inspector).toContainText(
-      `Send remaining surplus to Node ${destination} each round`,
+    await expect(inspector.locator('#tacticalAutoTransfer')).toHaveAccessibleName(
+      `Automatically send remaining surplus to Node ${destination} each round`,
     );
-    await expect(inspector).toContainText('Projected surplus transfer next round:');
+    await expect(inspector.locator('.tactical-row-note')).toHaveText(/ next round$/);
 
     // Switching direction must reflect that direction's actual policy without
     // modifying or removing the policy for the opposite source.
@@ -437,8 +438,8 @@ test('connection editor sets recurring support policy directly using default sou
   await edge.click();
   await edge.click();
   await expect(page.locator('#tacticalAutoTransfer')).toBeVisible();
-  await expect(page.locator('#tacticalInspector')).toContainText(
-    'Send remaining surplus to Node 1 each round',
+  await expect(page.locator('#tacticalAutoTransfer')).toHaveAccessibleName(
+    'Automatically send remaining surplus to Node 1 each round',
   );
   expect(await page.evaluate(() => policies[0])).toBeUndefined();
   await page.locator('#tacticalAutoTransfer').check();
@@ -449,7 +450,7 @@ test('connection editor sets recurring support policy directly using default sou
     dest: 1,
   });
   await expect(page.locator('#tacticalSupportInvestPct')).toHaveCount(0);
-  await expect(page.locator('#tacticalInspector')).toContainText('invest 50% of surplus');
+  await expect(page.locator('#tacticalInspector')).toContainText('its 50% investment');
   const preview = await page.evaluate(() =>
     previewOrders().find(
       (o) => o.automatic && o.type === 'transfer' && o.source === 0 && o.dest === 1,
@@ -516,7 +517,7 @@ test('mobile connection editor keeps original dock and closes on outside map tap
   expect(layout.parent).toBe('BODY');
   expect(layout.overlap).toBeLessThanOrEqual(2);
   await expect(inspector.getByRole('button', { name: 'Resolve →' })).toHaveCount(0);
-  await expect(inspector.getByRole('button', { name: 'Orders' })).toHaveCount(0);
+  await expect(inspector.getByRole('button', { name: 'Orders', exact: true })).toHaveCount(0);
   await expect(inspector.getByRole('button', { name: 'Collapse' })).toHaveCount(0);
 
   // Tapping blank map space dismisses; the dock remains untouched.
@@ -540,7 +541,7 @@ test('clicking toolbar outside a desktop editor dismisses selection', async ({
   expect(await page.evaluate(() => selected)).toBeNull();
 });
 
-test.describe('node editor keeps the shared policy and allocator controls mounted', () => {
+test.describe('node editor stays usable when node ownership changes', () => {
   const nodeOnMap = (page, id) => page.locator('#map .node-hit').nth(id);
   const nodeOwnedBy = (page, owner) =>
     page.evaluate((owner) => state.nodes.find((node) => node.owner === owner).id, owner);
@@ -559,9 +560,8 @@ test.describe('node editor keeps the shared policy and allocator controls mounte
   async function expectAllocatorUsableOnBlueNode(page, errors) {
     expect(errors).toEqual([]);
     await openEditor(page, await nodeOwnedBy(page, 0));
-    await page.getByText('Manual investment, withdrawal and allocations').click();
-    await expect(page.locator('#allocator')).toBeVisible();
-    await expect(page.locator('#policyEditor')).toBeAttached();
+    await expect(page.locator('#tacticalInspector [data-allocation="invest"]')).toBeVisible();
+    await expect(page.getByRole('spinbutton', { name: 'Defense floor' })).toBeVisible();
     expect(errors).toEqual([]);
   }
 

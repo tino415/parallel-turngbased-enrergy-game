@@ -4,6 +4,7 @@
 (() => {
   const byId = (id) => document.getElementById(id);
   const mobile = () => matchMedia('(max-width: 760px)').matches;
+  const anOverlayIsOpen = () => Boolean(document.querySelector('dialog[open], :popover-open'));
   const numeric = (n) =>
     Number(n || 0).toLocaleString('en-US', {
       maximumFractionDigits: 1,
@@ -38,15 +39,6 @@
     menu.querySelector('.tactical-menu-content').append(button);
   }
   document.querySelector('body > header > div:last-child').append(menu);
-
-  // Keep the V2 withdrawal allocator and all existing policy controls reachable.
-  const nodeControls = document.createElement('div');
-  nodeControls.id = 'tacticalNodeControls';
-  nodeControls.hidden = true;
-  document.body.append(nodeControls);
-  const policySection = byId('uxPolicySection');
-  const manualSection = byId('uxManualSection');
-  nodeControls.append(policySection, manualSection);
 
   // Planned energy travels along the connection itself; the legacy renderer
   // supplied a second competing stroke over each connection. Retain its
@@ -92,10 +84,10 @@
     graph.querySelectorAll('line.ux-flow-overlay').forEach((line) => line.remove());
   };
 
-  let { active, editing, advancedOpen, manualOpen } = store.getSnapshot().ui.inspector;
+  let { active, editing } = store.getSnapshot().ui.inspector;
   let { groupMode, groupEditing, bulkSelection } = store.getSnapshot().ui;
   store.subscribe(({ ui }) => {
-    ({ active, editing, advancedOpen, manualOpen } = ui.inspector);
+    ({ active, editing } = ui.inspector);
     ({ groupMode, groupEditing, bulkSelection } = ui);
   });
   const groupIds = () => (groupMode ? bulkSelection : []);
@@ -280,7 +272,7 @@
   document.addEventListener(
     'keydown',
     (event) => {
-      if (event.key !== 'Escape' || !groupMode || document.querySelector('dialog[open]')) return;
+      if (event.key !== 'Escape' || !groupMode || anOverlayIsOpen()) return;
       event.stopImmediatePropagation();
       leaveGroup();
     },
@@ -634,214 +626,215 @@
     container.className = 'tactical-metrics';
     for (const [label, amount] of values) {
       const stat = document.createElement('span');
-      const bold = textElement('b', numeric(amount));
+      const bold = textElement('b', typeof amount === 'number' ? numeric(amount) : amount);
       stat.append(label + ' ', bold);
       container.append(stat);
     }
     return container;
   }
 
-  function addDetails(body, title, child, isOpen, onToggle) {
-    const details = document.createElement('details');
-    details.open = isOpen;
-    details.append(textElement('summary', title), child);
-    details.ontoggle = () => onToggle(details.open);
-    body.append(details);
-  }
-
   function showNode(body, id, isEditing = editing) {
-    const node = state.nodes[id];
-    const prediction = node.owner === 0 ? projection(id) : null;
-    body.append(
-      metrics([
-        ['Active', node.active],
-        ['Invested', node.invested],
-        ...(prediction ? [['Defense', prediction.defense]] : []),
-      ]),
-    );
-    if (softCapEnabled()) {
+    if (state.nodes[id].owner !== 0) {
       body.append(
-        textElement(
-          'p',
-          'Capacity ' +
-            numeric(node.active + node.invested) +
-            ' / ' +
-            SOFT_CAP_RULES.capacity +
-            (prediction ? ' · Projected overflow loss ' + numeric(prediction.overflow) : ''),
-          'tactical-secondary',
-        ),
+        nodeMetrics(id, null),
+        textElement('p', 'Inspect only: this node is not yours.', 'tactical-secondary'),
       );
-    }
-    if (node.owner !== 0) {
-      body.append(textElement('p', 'Inspect only: this node is not yours.', 'tactical-secondary'));
       return;
     }
     const policy = policies[id];
-    body.append(
-      textElement(
-        'p',
-        'Policy: ' +
-          (!policy ? 'Default values · off' : policy.enabled ? 'Enabled' : 'Disabled') +
-          ' · Invest ' +
-          (policy?.investPct ?? defaultPolicy().investPct) +
-          '% of surplus',
-        'tactical-secondary',
-      ),
-    );
+    body.append(nodeMetrics(id, projection(id)));
     if (!isEditing) return;
-    const primary = document.createElement('div');
-    primary.className = 'tactical-primary-control';
-    const toggle = document.createElement('label');
-    toggle.append(textElement('strong', 'Persistent investment policy'));
-    const enabled = document.createElement('input');
-    enabled.type = 'checkbox';
-    enabled.checked = Boolean(policy?.enabled);
-    enabled.setAttribute('aria-label', 'Enable policy for node ' + id);
-    enabled.onchange = () => changePolicy(id, 'enabled', enabled.checked);
-    toggle.append(enabled);
-    primary.append(toggle);
-
-    const pct = policy?.investPct ?? defaultPolicy().investPct;
-    const label = document.createElement('label');
-    label.append(textElement('span', 'Invest surplus'));
-    const percent = document.createElement('input');
-    percent.type = 'number';
-    percent.min = '0';
-    percent.max = '100';
-    percent.step = '1';
-    percent.value = String(pct);
-    percent.id = 'tacticalPolicyPercent';
-    percent.dataset.key = String(id);
-    percent.setAttribute('aria-label', 'Invest surplus percent');
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = '0';
-    slider.max = '100';
-    slider.step = '1';
-    slider.value = String(pct);
-    slider.setAttribute('aria-label', 'Investment percentage slider');
-    slider.oninput = () => {
-      byId('tacticalPolicyPercent').value = slider.value;
-    };
-    slider.onchange = () => {
-      if (!changeShare(id, 'investPct', Number(slider.value))) slider.value = String(pct);
-    };
-    percent.onchange = () => {
-      const value = Number(percent.value);
-      if (!Number.isFinite(value) || value < 0 || value > 100) {
-        percent.value = String(pct);
-        return;
-      }
-      if (!changeShare(id, 'investPct', value)) percent.value = String(pct);
-    };
-    label.append(percent);
-    primary.append(label, slider, ...investmentTargetControls(id, policy));
     body.append(
-      primary,
-      defenseControls(id, policy),
-      ...pressureControls(id, policy),
+      policyChips(id, policy),
+      ...investmentRows(id, policy),
+      ...defenseRows(id, policy),
+      ...pressureLines(id, policy),
       sharesLine(id, policy),
-    );
-    body.append(
-      textElement(
-        'p',
-        'Preview: Defense ' +
-          numeric(prediction.defense) +
-          ' · Next active ' +
-          numeric(prediction.next) +
-          ' · Invest ' +
-          numeric(prediction.invest) +
-          ' (manual orders take priority)',
-        'tactical-secondary',
-      ),
-    );
-
-    // The original policy and allocator DOM elements are reused, not copied:
-    // withdrawals, reserves, policy transfers, hold, and copy/paste still work.
-    for (const item of policySection.querySelectorAll('label')) {
-      if (item.textContent.includes('Invest % of surplus')) item.hidden = true;
-    }
-    const policyHolder = document.createElement('div');
-    policyHolder.dataset.mount = 'policy';
-    addDetails(body, 'Other policy settings', policyHolder, advancedOpen, (open) =>
-      store.setInspectorSection('advancedOpen', open),
-    );
-    const manualHolder = document.createElement('div');
-    manualHolder.dataset.mount = 'manual';
-    addDetails(
-      body,
-      'Manual investment, withdrawal and allocations',
-      manualHolder,
-      manualOpen,
-      (open) => store.setInspectorSection('manualOpen', open),
+      divider(),
+      ...thisRoundRows(id),
     );
   }
 
-  function investmentTargetControls(id, policy) {
-    const target = policy?.investTarget ?? null;
-    const controls = [
-      policyNumberField({
-        id: 'tacticalInvestTarget',
-        key: id + ':investTarget',
-        label: 'Until invested reaches',
-        value: target,
-        placeholder: 'no limit',
-        onCommit: (value) => changePolicy(id, 'investTarget', value),
+  function nodeMetrics(id, prediction) {
+    const node = state.nodes[id];
+    return metrics([
+      ['Active', node.active],
+      ['Invested', node.invested],
+      ...(prediction
+        ? [
+            ['Defense', prediction.defense],
+            ['Next', prediction.next],
+          ]
+        : []),
+      ...(softCapEnabled()
+        ? [['Capacity', numeric(node.active + node.invested) + ' / ' + SOFT_CAP_RULES.capacity]]
+        : []),
+      ...(prediction?.overflow > 0 ? [['Overflow loss', prediction.overflow]] : []),
+    ]);
+  }
+
+  function policyChips(id, policy) {
+    const row = document.createElement('div');
+    row.className = 'tactical-chips';
+    row.dataset.key = 'policy-chips';
+    row.append(
+      chipToggle({
+        id: 'tacticalPolicyEnabled',
+        label: 'Policy',
+        name: 'Enable policy for node ' + id,
+        checked: Boolean(policy?.enabled),
+        onChange: (checked) => changePolicy(id, 'enabled', checked),
       }),
-    ];
-    if (softCapEnabled())
-      controls.push(
-        policyNumberField({
-          id: 'tacticalDivestPct',
-          key: id + ':divestPct',
-          label: 'Above the target, scale down % per round',
-          value: policy?.divestPct ?? 0,
-          max: 100,
-          onCommit: (value) => changePolicy(id, 'divestPct', value ?? 0),
-        }),
+      chipToggle({
+        id: 'tacticalPolicyPause',
+        label: 'Pause round',
+        name: 'Pause policy this round',
+        checked: Boolean(plan(id).hold),
+        onChange: (checked) => {
+          store.setHold(id, checked);
+          render();
+        },
+      }),
+      chipButton('tacticalCopyPolicy', 'Copy', 'Copy policy', () =>
+        store.copyPolicy({ ...defaultPolicy(), enabled: false, ...policy }),
+      ),
+    );
+    if (clipboard)
+      row.append(
+        chipButton('tacticalPastePolicy', 'Paste', 'Paste policy', () =>
+          store.pastePolicy(id, clipboard),
+        ),
       );
+    return row;
+  }
+
+  function investmentRows(id, policy) {
+    const percent = policy?.investPct ?? defaultPolicy().investPct;
+    const target = policy?.investTarget ?? null;
+    const rows = [
+      editorRow(
+        'Invest',
+        [
+          policyNumberField({
+            id: 'tacticalPolicyPercent',
+            key: id + ':investPct',
+            label: '% surplus',
+            name: 'Invest surplus percent',
+            value: percent,
+            max: 100,
+            onCommit: (value) => value !== null && changeShare(id, 'investPct', value),
+          }),
+          policyNumberField({
+            id: 'tacticalInvestTarget',
+            key: id + ':investTarget',
+            label: 'until',
+            name: 'Until invested reaches',
+            value: target,
+            placeholder: 'none',
+            onCommit: (value) => changePolicy(id, 'investTarget', value),
+          }),
+          ...(softCapEnabled()
+            ? [
+                policyNumberField({
+                  id: 'tacticalDivestPct',
+                  key: id + ':divestPct',
+                  label: '↓ % / round',
+                  name: 'Above the target, scale down % per round',
+                  value: policy?.divestPct ?? 0,
+                  max: 100,
+                  onCommit: (value) => changePolicy(id, 'divestPct', value ?? 0),
+                }),
+              ]
+            : []),
+        ],
+        help('Invest', [
+          'Share of each round’s surplus the policy invests, until invested energy reaches “until”. Leave “until” empty for no limit.',
+          ...(softCapEnabled()
+            ? [
+                '↓ % / round: above the target, the policy withdraws that share of the excess each round, paying the withdrawal fee.',
+              ]
+            : []),
+        ]),
+      ),
+      investmentSlider(id, percent),
+    ];
     const status = investmentStatusText(id);
-    if (status) controls.push(textElement('p', status, 'tactical-secondary'));
+    if (status) rows.push(textElement('p', status, 'tactical-secondary'));
     const reserve = policy?.reserve ?? defaultPolicy().reserve;
     if (softCapEnabled() && target !== null && target + reserve > SOFT_CAP_RULES.capacity)
-      controls.push(
+      rows.push(
         textElement(
           'p',
-          'Target plus defense reserve is above the ' +
+          'Target plus defense floor is above the ' +
             SOFT_CAP_RULES.capacity +
             ' capacity: overflow decay trims invested every round and the policy refills it.',
           'tactical-warning',
         ),
       );
-    return controls;
+    return rows;
   }
 
-  function defenseControls(id, policy) {
-    const block = document.createElement('div');
-    block.className = 'tactical-primary-control';
-    block.append(
-      textElement('strong', 'Defense floor ' + numeric(policy?.reserve ?? defaultPolicy().reserve)),
-      policyNumberField({
-        id: 'tacticalDefensePct',
-        key: id + ':defensePct',
-        label: 'Grow by % of surplus',
-        value: policy?.defensePct ?? 0,
-        max: 100,
-        onCommit: (value) => changeShare(id, 'defensePct', value ?? 0),
-      }),
-      policyNumberField({
-        id: 'tacticalDefenseTarget',
-        key: id + ':defenseTarget',
-        label: 'Up to',
-        value: policy?.defenseTarget ?? null,
-        placeholder: 'fixed floor',
-        onCommit: (value) => changePolicy(id, 'defenseTarget', value),
-      }),
-    );
+  function investmentSlider(id, percent) {
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.min = '0';
+    slider.max = '100';
+    slider.step = '1';
+    slider.value = String(percent);
+    slider.className = 'tactical-slider';
+    slider.setAttribute('aria-label', 'Investment percentage slider');
+    slider.oninput = () => {
+      byId('tacticalPolicyPercent').value = slider.value;
+    };
+    slider.onchange = () => {
+      if (!changeShare(id, 'investPct', Number(slider.value))) slider.value = String(percent);
+    };
+    return slider;
+  }
+
+  function defenseRows(id, policy) {
+    const rows = [
+      editorRow(
+        'Defense',
+        [
+          policyNumberField({
+            id: 'tacticalDefenseFloor',
+            key: id + ':reserve',
+            label: 'floor',
+            name: 'Defense floor',
+            value: policy?.reserve ?? defaultPolicy().reserve,
+            step: '0.1',
+            onCommit: (value) => value !== null && changePolicy(id, 'reserve', value),
+          }),
+          policyNumberField({
+            id: 'tacticalDefensePct',
+            key: id + ':defensePct',
+            label: 'grow %',
+            name: 'Grow by % of surplus',
+            value: policy?.defensePct ?? 0,
+            max: 100,
+            onCommit: (value) => changeShare(id, 'defensePct', value ?? 0),
+          }),
+          policyNumberField({
+            id: 'tacticalDefenseTarget',
+            key: id + ':defenseTarget',
+            label: 'up to',
+            name: 'Up to',
+            value: policy?.defenseTarget ?? null,
+            placeholder: 'none',
+            onCommit: (value) => changePolicy(id, 'defenseTarget', value),
+          }),
+        ],
+        help('Defense floor', [
+          'Active energy the policy never spends. It stays on the node and defends.',
+          'grow %: share of surplus that raises the floor each round, up to “up to”. Leave “up to” empty to keep the floor fixed.',
+        ]),
+      ),
+    ];
     const status = selectors.defenseStatus(currentMatch(), id);
-    if (status) block.append(textElement('p', defenseStatusText(status), 'tactical-secondary'));
+    if (status) rows.push(textElement('p', defenseStatusText(status), 'tactical-secondary'));
     if (status && status.target > status.sustainable + 0.05)
-      block.append(
+      rows.push(
         textElement(
           'p',
           'The target is above what this node sustains: the floor stalls near ' +
@@ -850,8 +843,145 @@
           'tactical-warning',
         ),
       );
-    return block;
+    return rows;
   }
+
+  function thisRoundRows(id) {
+    const node = state.nodes[id];
+    const p = plan(id);
+    const most = Math.max(node.active, availableEnergy(id, p));
+    const error = textElement('p', '', 'tactical-warning');
+    error.id = 'tacticalRoundError';
+    const clear = chipButton('tacticalClearOrders', 'Clear', 'Clear node orders', () =>
+      store.clearNodeOrders(id),
+    );
+    return [
+      editorRow(
+        'This round',
+        [
+          ...(softCapEnabled()
+            ? [
+                allocationField(id, 'withdraw', {
+                  label: 'withdraw',
+                  name: 'Withdraw invested to active',
+                  value: withdrawal(id, p),
+                  max: node.invested,
+                }),
+              ]
+            : []),
+          allocationField(id, null, {
+            label: 'invest',
+            name: 'Invest this round',
+            value: p.invest,
+            max: most,
+          }),
+          clear,
+        ],
+        help('This round', [
+          'One-off orders for the next resolve. Manual orders go before the policy.',
+          ...(softCapEnabled()
+            ? [
+                'Withdrawn energy is spendable this round and costs a ' +
+                  Math.round(100 * SOFT_CAP_RULES.withdrawalFee) +
+                  '% fee. Energy above ' +
+                  SOFT_CAP_RULES.capacity +
+                  ' decays ' +
+                  Math.round(100 * SOFT_CAP_RULES.overflowDecay) +
+                  '% at round end, invested energy included.',
+              ]
+            : []),
+          'Attacks and transfers are set on the connection.',
+        ]),
+      ),
+      error,
+    ];
+  }
+
+  function allocationField(id, target, { label, name, value, max }) {
+    const kind = target ?? 'invest';
+    const shown = () => String(Number(value.toFixed(2)));
+    const field = textElement('label', '', 'tactical-field');
+    field.append(textElement('span', label));
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = '0';
+    input.max = String(max);
+    input.step = '0.1';
+    input.value = shown();
+    input.dataset.allocation = kind;
+    input.dataset.key = id + ':' + kind;
+    input.setAttribute('aria-label', name);
+    input.onchange = () => {
+      const amount = Number(input.value);
+      if (!Number.isFinite(amount) || amount < 0 || amount > max + 1e-8) {
+        input.value = shown();
+        byId('tacticalRoundError').textContent = 'Invalid amount';
+        return;
+      }
+      const limit = store.setAllocation(id, target, amount);
+      if (limit === undefined) render();
+      else {
+        input.value = shown();
+        byId('tacticalRoundError').textContent =
+          'Over budget: allocations cannot exceed ' + numeric(limit);
+      }
+    };
+    field.append(input);
+    return field;
+  }
+
+  function editorRow(label, controls, helpParts = []) {
+    const row = document.createElement('div');
+    row.className = 'tactical-editor-row';
+    row.dataset.key = 'row:' + label;
+    row.append(textElement('span', label, 'tactical-row-label'), ...controls, ...helpParts);
+    return row;
+  }
+
+  function help(title, paragraphs) {
+    const id = 'tacticalHelp-' + title.toLowerCase().replaceAll(/[^a-z]+/g, '-');
+    const button = textElement('button', '?', 'tactical-help');
+    button.type = 'button';
+    button.setAttribute('popovertarget', id);
+    button.setAttribute('aria-label', 'About ' + title.toLowerCase());
+    const popover = document.createElement('div');
+    popover.id = id;
+    popover.className = 'tactical-help-popover';
+    popover.setAttribute('popover', '');
+    popover.append(
+      textElement('strong', title),
+      ...paragraphs.map((text) => textElement('p', text)),
+    );
+    return [button, popover];
+  }
+
+  function chipToggle({ id, label, name, checked, onChange }) {
+    const chip = textElement('label', '', 'tactical-chip');
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.id = id;
+    box.checked = checked;
+    box.setAttribute('aria-label', name);
+    box.onchange = () => {
+      if (onChange(box.checked) === false) box.checked = checked;
+    };
+    chip.append(box, textElement('span', label));
+    return chip;
+  }
+
+  function chipButton(id, label, name, act) {
+    const button = textElement('button', label, 'tactical-chip');
+    button.type = 'button';
+    button.id = id;
+    button.setAttribute('aria-label', name);
+    button.onclick = () => {
+      act();
+      render();
+    };
+    return button;
+  }
+
+  const divider = () => textElement('hr', '', 'tactical-divider');
 
   function defenseStatusText({ floor, next, target, sustainable }) {
     const outlook = ' · sustainable ≈ ' + numeric(sustainable);
@@ -863,34 +993,22 @@
     return 'Floor ' + numeric(floor) + ' → ' + numeric(next) + ' of ' + numeric(target) + outlook;
   }
 
-  function pressureControls(id, policy) {
-    if (!neighbors(id).some((other) => state.nodes[other].owner !== 0)) return [];
-    const block = document.createElement('div');
-    block.className = 'tactical-primary-control';
-    block.append(textElement('strong', 'Border pressure'));
-    const edges = Object.keys(policy?.pressure ?? {}).map(Number);
-    if (!edges.length)
-      block.append(
-        textElement(
-          'p',
-          'Open a connection to an enemy or neutral neighbour to pressure it each round.',
-          'tactical-secondary',
-        ),
-      );
-    for (const dest of edges)
-      block.append(
-        textElement(
-          'p',
-          'Node ' +
-            dest +
-            ' · ' +
-            numeric(policy.pressure[dest].pct) +
-            '% · ' +
-            pressureStatusText(selectors.edgePressureStatus(currentMatch(), id, dest), dest),
-          'tactical-secondary',
-        ),
-      );
-    return [block];
+  function pressureLines(id, policy) {
+    return Object.entries(policy?.pressure ?? {}).map(([dest, edge]) =>
+      textElement(
+        'p',
+        'Pressure → Node ' +
+          dest +
+          ' · ' +
+          numeric(edge.pct) +
+          '% · ' +
+          pressureStatusText(
+            selectors.edgePressureStatus(currentMatch(), id, Number(dest)),
+            Number(dest),
+          ),
+        'tactical-secondary',
+      ),
+    );
   }
 
   function pressureStatusText({ bank, nextBank, minimum, pulse }, dest) {
@@ -940,19 +1058,29 @@
     return accepted;
   }
 
-  function policyNumberField({ id, key, label, value, max = Infinity, placeholder, onCommit }) {
-    const field = document.createElement('label');
+  function policyNumberField({
+    id,
+    key,
+    label,
+    name = label,
+    value,
+    max = Infinity,
+    step = '1',
+    placeholder,
+    onCommit,
+  }) {
+    const field = textElement('label', '', 'tactical-field');
     field.append(textElement('span', label));
     const input = document.createElement('input');
     input.type = 'number';
     input.min = '0';
     if (max !== Infinity) input.max = String(max);
-    input.step = '1';
+    input.step = step;
     input.id = id;
     input.dataset.key = key;
     input.value = value === null ? '' : String(value);
     if (placeholder) input.placeholder = placeholder;
-    input.setAttribute('aria-label', label);
+    input.setAttribute('aria-label', name);
     const revert = () => (input.value = value === null ? '' : String(value));
     input.onchange = () => {
       const committed = input.value.trim() === '' ? null : Number(input.value);
@@ -1264,62 +1392,65 @@
       );
       return;
     }
-    const bothFriendly = bothEndsFriendly(a, b);
-    body.append(directionRow(source, destination, bothFriendly));
-    const type = state.nodes[destination].owner === 0 ? 'Support transfer' : 'Attack';
-    const value = plan(source).edges[destination] || 0;
-    const recurring = bothFriendly
-      ? policyOrders(source).find((o) => o.type === 'transfer' && o.dest === destination)
-      : null;
-    const budget = availableEnergy(source);
-    const remaining = Math.max(
-      0,
-      budget -
-        allocated(source) -
-        policyOrders(source).reduce((sum, order) => sum + order.amount, 0),
-    );
-    body.append(
-      metrics([
-        ['Source active', state.nodes[source].active],
-        ['Planned ' + type.toLowerCase(), value],
-        ...(recurring ? [['Every round', recurring.amount]] : []),
-        ['Defense', remaining],
-      ]),
-    );
+    const support = bothEndsFriendly(a, b);
+    body.append(directionRow(source, destination, support));
     if (!editing) return;
-    const field = document.createElement('label');
-    field.className = 'tactical-primary-control';
-    field.append(textElement('strong', type + ' · ' + source + ' → ' + destination));
+    body.append(
+      ...amountRows(source, destination, support),
+      ...(support ? [] : [winChanceRow(source, destination)]),
+      ...presetReasons(source, destination),
+      divider(),
+      ...(support ? surplusRouteRows(source, destination) : pressureRows(source, destination)),
+    );
+  }
+
+  function amountRows(source, destination, support) {
+    const value = plan(source).edges[destination] || 0;
+    const limit = availableEnergy(source) - allocated(source) + value;
+    const field = textElement('label', '', 'tactical-field tactical-field-wide');
+    field.append(textElement('span', 'energy'));
     const input = document.createElement('input');
     input.type = 'number';
     input.min = '0';
     input.step = '0.1';
-    input.max = String(Math.max(0, budget - allocated(source) + value));
+    input.max = String(Math.max(0, limit));
     input.value = String(value);
     input.id = 'tacticalEdgeAmount';
     input.dataset.key = source + '-' + destination;
     input.setAttribute('aria-label', 'Order energy amount');
-    const error = textElement('small', '', 'tactical-warning');
-    error.id = 'tacticalEdgeError';
     input.onchange = () => {
       const amount = Number(input.value);
-      if (
-        !Number.isFinite(amount) ||
-        amount < 0 ||
-        amount > budget - allocated(source) + value + 1e-8
-      ) {
+      if (!Number.isFinite(amount) || amount < 0 || amount > limit + 1e-8) {
         byId('tacticalEdgeError').textContent = 'Amount exceeds the available allocation budget.';
         input.value = String(value);
         return;
       }
       setAllocation(source, destination, amount);
     };
-    field.append(input, error);
-    const replaced = bothFriendly ? replacedSupport(source, destination) : null;
+    field.append(input);
+    const error = textElement('p', '', 'tactical-warning');
+    error.id = 'tacticalEdgeError';
+    const rows = [
+      editorRow(
+        support ? 'Send' : 'Attack',
+        [field, presetGroup(source, destination, ['all', 'surplus'])],
+        softCapEnabled()
+          ? help('Withdrawn energy', [
+              'Energy withdrawn on Node ' +
+                source +
+                ' can fund this order in the same round. Withdraw it in the Node ' +
+                source +
+                ' editor.',
+            ])
+          : [],
+      ),
+      error,
+    ];
+    const replaced = support ? replacedSupport(source, destination) : null;
     if (replaced?.manual)
-      field.append(
+      rows.push(
         textElement(
-          'small',
+          'p',
           'Replaces Node ' +
             destination +
             ' → ' +
@@ -1330,166 +1461,89 @@
           'tactical-warning',
         ),
       );
-    body.append(field, orderPresetButtons(source, destination));
-    if (bothFriendly) {
-      const current = policies[source];
-      const targetsHere = Boolean(current?.enabled && current.dest === destination);
-      const policyBox = document.createElement('div');
-      policyBox.className = 'tactical-primary-control tactical-support-policy';
-      const toggle = document.createElement('label');
-      const caption = document.createElement('strong');
-      caption.textContent = 'Send remaining surplus to Node ' + destination + ' each round';
-      const autoTransfer = document.createElement('input');
-      autoTransfer.type = 'checkbox';
-      autoTransfer.id = 'tacticalAutoTransfer';
-      autoTransfer.checked = targetsHere;
-      autoTransfer.setAttribute(
-        'aria-label',
-        'Automatically send remaining surplus to Node ' + destination + ' each round',
-      );
-      autoTransfer.onchange = () => {
-        if (autoTransfer.checked) {
-          // Changing destination must never overwrite investment or reserve.
-          store.routeSurplus(source, destination, true);
-        } else {
-          // Disable only this route, leaving other policy settings intact.
-          store.routeSurplus(source, destination, false);
-        }
-        render();
-      };
-      toggle.append(caption, autoTransfer);
-      policyBox.append(toggle);
-      if (replaced.route)
-        policyBox.append(
-          textElement(
-            'p',
-            'Replaces Node ' + destination + ' → ' + source + ' surplus route.',
-            'tactical-warning',
-          ),
-        );
-      if (current?.dest !== null && current?.dest !== undefined && current.dest !== destination) {
-        policyBox.append(
-          textElement(
-            'p',
-            'Node ' +
-              source +
-              ' currently routes its surplus to Node ' +
-              current.dest +
-              '. Enabling this connection replaces that destination, not the investment policy.',
-            'tactical-secondary',
-          ),
-        );
-      }
-      if (targetsHere) {
-        policyBox.append(
-          textElement(
-            'p',
-            'Uses Node ' +
-              source +
-              ' policy: reserve ' +
-              numeric(current.reserve) +
-              ' · invest ' +
-              numeric(current.investPct) +
-              '% of surplus. To change either value, edit Node ' +
-              source +
-              '.',
-            'tactical-secondary',
-          ),
-        );
-        const nextTransfer = policyOrders(source).find(
-          (o) => o.type === 'transfer' && o.dest === destination,
-        );
-        policyBox.append(
-          textElement(
-            'p',
-            'Projected surplus transfer next round: ' +
-              numeric(nextTransfer?.amount ?? 0) +
-              ' energy · Reserve ' +
-              numeric(current.reserve) +
-              '. Manual orders take priority.',
-            'tactical-secondary',
-          ),
-        );
-        if (!nextTransfer) {
-          policyBox.append(
-            textElement(
-              'p',
-              'No surplus to send. Lower the investment percentage, reserve, or manual allocations.',
-              'tactical-warning',
-            ),
-          );
-        }
-      } else {
-        policyBox.append(
-          textElement(
-            'p',
-            "Send what remains after this source node's manual orders, reserve and investment. The amount can change each round.",
-            'tactical-secondary',
-          ),
-        );
-      }
-      body.append(policyBox);
-    }
-    if (type === 'Attack') body.append(pressureToggle(source, destination));
-    if (type === 'Attack') {
-      body.append(
-        textElement(
-          'p',
-          'Attack strength ' +
-            numeric(value * 0.8) +
-            '–' +
-            numeric(value * 1.2) +
-            ' · Current target defense ' +
-            numeric(state.nodes[destination].active * 0.8) +
-            '–' +
-            numeric(state.nodes[destination].active * 1.2) +
-            '. Simultaneous orders can change the outcome.',
-          'tactical-secondary',
-        ),
-      );
-    }
-    if (softCapEnabled()) {
-      body.append(
-        textElement(
-          'p',
-          'Withdrawn reserves (5% fee) can fund this order in the same round. ' +
-            'Use the source node editor for withdrawals.',
-          'tactical-secondary',
-        ),
-      );
-    }
+    rows.push(
+      textElement('p', edgeOutcomeText(source, destination, support), 'tactical-secondary'),
+    );
+    return rows;
   }
 
-  function orderPresetButtons(source, destination) {
-    const { limit, presets } = selectors.orderPresets(currentMatch(), source, destination);
-    const affordable = (preset) => preset.amount > 0 && preset.amount <= limit + 1e-8;
-    const box = document.createElement('div');
-    box.className = 'tactical-primary-control';
-    const row = document.createElement('div');
-    row.className = 'tactical-order-presets';
-    row.append(
-      ...presets.map((preset) => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.dataset.preset = presetKey(preset);
-        button.textContent = presetLabel(preset) + ' · ' + numeric(preset.amount);
-        button.disabled = !affordable(preset);
-        button.onclick = () => setAllocation(source, destination, preset.amount);
-        return button;
-      }),
+  function edgeOutcomeText(source, destination, support) {
+    const home =
+      availableEnergy(source) -
+      allocated(source) -
+      policyOrders(source).reduce((sum, order) => sum + order.amount, 0);
+    const staysHome = numeric(Math.max(0, home)) + ' stays home';
+    if (support) return staysHome;
+    const value = plan(source).edges[destination] || 0;
+    const defense = state.nodes[destination].active;
+    return (
+      'Strength ' +
+      numeric(value * 0.8) +
+      '–' +
+      numeric(value * 1.2) +
+      ' vs defense ' +
+      numeric(defense * 0.8) +
+      '–' +
+      numeric(defense * 1.2) +
+      ' · ' +
+      staysHome
     );
-    box.append(row);
-    const unmet = presets.filter((preset) => !affordable(preset));
-    if (unmet.length) {
-      const reasons = textElement(
-        'p',
-        unmetPresetsReason(unmet, source, limit),
-        'tactical-secondary',
-      );
-      reasons.id = 'tacticalPresetReasons';
-      box.append(reasons);
-    }
-    return box;
+  }
+
+  function winChanceRow(source, destination) {
+    const amounts = selectors
+      .orderPresets(currentMatch(), source, destination)
+      .presets.filter((preset) => preset.kind === 'chance')
+      .map((preset) => numeric(preset.amount));
+    return editorRow(
+      'Win chance',
+      [presetGroup(source, destination, ['chance'])],
+      help('Win chance', [
+        'Each button sets the smallest attack with that chance to take Node ' +
+          destination +
+          ' against its defense now: ' +
+          amounts.join(', ') +
+          '.',
+        'Attack and defense strength each roll ×0.8–1.2, and other players’ orders this round can change the outcome.',
+      ]),
+    );
+  }
+
+  function presetGroup(source, destination, kinds) {
+    const { limit, presets } = selectors.orderPresets(currentMatch(), source, destination);
+    const group = document.createElement('div');
+    group.className = 'tactical-order-presets';
+    group.dataset.key = 'presets:' + kinds.join(',');
+    group.append(
+      ...presets
+        .filter((preset) => kinds.includes(preset.kind))
+        .map((preset) => {
+          const button = textElement('button', presetLabel(preset));
+          button.type = 'button';
+          button.dataset.preset = presetKey(preset);
+          button.title = presetDescription(preset);
+          button.setAttribute('aria-label', presetDescription(preset));
+          button.disabled = !presetAffordable(preset, limit);
+          button.onclick = () => setAllocation(source, destination, preset.amount);
+          return button;
+        }),
+    );
+    return group;
+  }
+
+  const presetAffordable = (preset, limit) => preset.amount > 0 && preset.amount <= limit + 1e-8;
+
+  function presetReasons(source, destination) {
+    const { limit, presets } = selectors.orderPresets(currentMatch(), source, destination);
+    const unmet = presets.filter((preset) => !presetAffordable(preset, limit));
+    if (!unmet.length) return [];
+    const reasons = textElement(
+      'p',
+      unmetPresetsReason(unmet, source, limit),
+      'tactical-secondary',
+    );
+    reasons.id = 'tacticalPresetReasons';
+    return [reasons];
   }
 
   function unmetPresetsReason(unmet, source, limit) {
@@ -1516,60 +1570,141 @@
     preset.kind === 'chance' ? 'chance-' + Math.round(preset.chance * 100) : preset.kind;
 
   function presetLabel(preset) {
-    if (preset.kind === 'chance') return Math.round(preset.chance * 100) + '% success attack';
-    return preset.kind === 'all' ? 'Send all' : 'Send all surplus';
+    if (preset.kind === 'chance') return Math.round(preset.chance * 100) + '%';
+    return preset.kind === 'all' ? 'All' : 'Surplus';
   }
 
-  function pressureToggle(source, destination) {
-    const settings = policies[source]?.pressure?.[destination];
-    const box = document.createElement('div');
-    box.className = 'tactical-primary-control';
-    const caption = 'Pressure Node ' + destination + ' from Node ' + source + ' each round';
-    const toggle = document.createElement('label');
-    toggle.append(textElement('strong', caption));
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.id = 'tacticalAutoPressure';
-    checkbox.checked = Boolean(settings);
-    checkbox.setAttribute('aria-label', caption);
-    checkbox.onchange = () => {
-      const accepted = changeEdgePressure(source, destination, checkbox.checked ? {} : null);
-      if (!accepted) checkbox.checked = false;
-    };
-    toggle.append(checkbox);
-    const warning = textElement('p', '', 'tactical-warning');
-    warning.id = 'tacticalEdgePressureWarning';
-    box.append(toggle);
-    if (!settings) {
-      box.append(
+  function presetDescription(preset) {
+    const name =
+      preset.kind === 'chance'
+        ? Math.round(preset.chance * 100) + '% success attack'
+        : preset.kind === 'all'
+          ? 'Send all'
+          : 'Send all surplus';
+    return name + ' · ' + numeric(preset.amount);
+  }
+
+  function surplusRouteRows(source, destination) {
+    const current = { ...defaultPolicy(), ...policies[source] };
+    const targetsHere = Boolean(policies[source]?.enabled && current.dest === destination);
+    const nextTransfer = policyOrders(source).find(
+      (order) => order.type === 'transfer' && order.dest === destination,
+    );
+    const rows = [
+      editorRow(
+        'Each round',
+        [
+          chipToggle({
+            id: 'tacticalAutoTransfer',
+            label: 'Rest of surplus',
+            name: 'Automatically send remaining surplus to Node ' + destination + ' each round',
+            checked: targetsHere,
+            onChange: (checked) => {
+              store.routeSurplus(source, destination, checked);
+              render();
+            },
+          }),
+          ...(targetsHere
+            ? [
+                textElement(
+                  'span',
+                  numeric(nextTransfer?.amount ?? 0) + ' next round',
+                  'tactical-row-note',
+                ),
+              ]
+            : []),
+        ],
+        help('Rest of surplus', [
+          'Every round, Node ' +
+            source +
+            ' sends Node ' +
+            destination +
+            ' what remains after its manual orders, its defense floor of ' +
+            numeric(current.reserve) +
+            ' and its ' +
+            numeric(current.investPct) +
+            '% investment. The amount changes each round.',
+          'Change the floor or the investment in the Node ' + source + ' editor.',
+        ]),
+      ),
+    ];
+    if (replacedSupport(source, destination).route)
+      rows.push(
         textElement(
           'p',
-          'Banks a share of surplus and attacks with it once the bank reaches the minimum.',
+          'Replaces Node ' + destination + ' → ' + source + ' surplus route.',
+          'tactical-warning',
+        ),
+      );
+    if (current.dest !== null && current.dest !== destination)
+      rows.push(
+        textElement(
+          'p',
+          'Node ' +
+            source +
+            ' now sends its surplus to Node ' +
+            current.dest +
+            '. Turning this on replaces that route.',
           'tactical-secondary',
         ),
-        warning,
       );
-      return box;
-    }
-    const key = source + '-' + destination;
-    box.append(
-      policyNumberField({
-        id: 'tacticalEdgePressurePct',
-        key: key + ':pct',
-        label: 'Send % of surplus',
-        value: settings.pct,
-        max: 100,
-        onCommit: (pct) => pct !== null && changeEdgePressure(source, destination, { pct }),
-      }),
-      policyNumberField({
-        id: 'tacticalEdgePressureMin',
-        key: key + ':min',
-        label: 'Attack when at least this much is banked',
-        value: settings.min ?? 10,
-        onCommit: (min) => min !== null && changeEdgePressure(source, destination, { min }),
-      }),
+    if (targetsHere && !nextTransfer)
+      rows.push(
+        textElement(
+          'p',
+          'No surplus to send. Lower the investment, the defense floor or manual orders.',
+          'tactical-warning',
+        ),
+      );
+    return rows;
+  }
+
+  function pressureRows(source, destination) {
+    const settings = policies[source]?.pressure?.[destination];
+    const warning = textElement('p', '', 'tactical-warning');
+    warning.id = 'tacticalEdgePressureWarning';
+    const toggle = editorRow(
+      'Each round',
+      [
+        chipToggle({
+          id: 'tacticalAutoPressure',
+          label: 'Pressure Node ' + destination,
+          name: 'Pressure Node ' + destination + ' from Node ' + source + ' each round',
+          checked: Boolean(settings),
+          onChange: (checked) => changeEdgePressure(source, destination, checked ? {} : null),
+        }),
+      ],
+      help('Pressure', [
+        'Every round, banks a share of Node ' +
+          source +
+          '’s surplus for Node ' +
+          destination +
+          ' and attacks with the bank once it reaches “attack at”.',
+      ]),
     );
-    box.append(
+    if (!settings) return [toggle, warning];
+    const key = source + '-' + destination;
+    return [
+      toggle,
+      editorRow('', [
+        policyNumberField({
+          id: 'tacticalEdgePressurePct',
+          key: key + ':pct',
+          label: '% surplus',
+          name: 'Send % of surplus',
+          value: settings.pct,
+          max: 100,
+          onCommit: (pct) => pct !== null && changeEdgePressure(source, destination, { pct }),
+        }),
+        policyNumberField({
+          id: 'tacticalEdgePressureMin',
+          key: key + ':min',
+          label: 'attack at',
+          name: 'Attack when at least this much is banked',
+          value: settings.min ?? 10,
+          onCommit: (min) => min !== null && changeEdgePressure(source, destination, { min }),
+        }),
+      ]),
       textElement(
         'p',
         pressureStatusText(
@@ -1579,8 +1714,7 @@
         'tactical-secondary',
       ),
       warning,
-    );
-    return box;
+    ];
   }
 
   function changeEdgePressure(source, destination, fields) {
@@ -1662,10 +1796,7 @@
       currentView !== 'map' ||
       Boolean(document.querySelector('dialog[open]'));
     document.body.classList.toggle('tactical-selection-active', !root.hidden);
-    if (root.hidden) {
-      mountLegacyControls();
-      return;
-    }
+    if (root.hidden) return;
     root.classList.toggle('is-editing', true);
     const subject = group
       ? 'Group · ' + groupIds().length + ' nodes'
@@ -1695,19 +1826,7 @@
     // No duplicate Orders/Resolve/Collapse buttons. The original bottom dock
     // remains reachable below this editor; × and outside-click dismiss it.
     updateChildrenInPlace(root, [header, body]);
-    mountLegacyControls();
     positionInspector();
-  }
-
-  function mountLegacyControls() {
-    // A detached control breaks getElementById during the next game render.
-    for (const [section, slot] of [
-      [policySection, root.hidden ? null : root.querySelector('[data-mount="policy"]')],
-      [manualSection, root.hidden ? null : root.querySelector('[data-mount="manual"]')],
-    ]) {
-      const home = slot ?? nodeControls;
-      if (section.parentNode !== home) home.append(section);
-    }
   }
 
   const oldRender = render;
@@ -1753,7 +1872,7 @@
   window.addEventListener('resize', positionInspector);
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || !active) return;
-    if (document.querySelector('dialog[open]')) return;
+    if (anOverlayIsOpen()) return;
     dismissAndReturnFocus();
   });
   render();

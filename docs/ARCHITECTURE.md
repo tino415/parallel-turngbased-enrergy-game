@@ -22,23 +22,23 @@ places replace, functions from earlier ones.
 change goes through a store command, and a slice keeps its identity until a
 command really changes it.
 
-| Value                                                  | Slice                | Saved | Written by                          |
-| ------------------------------------------------------ | -------------------- | ----- | ----------------------------------- |
-| `state` (round, nodes, finished, rulesVersion)         | `match.state`        | yes   | `resolve`, `replaceMatch`           |
-| manual orders per node                                 | `match.orders`       | yes   | allocation and order commands       |
-| persistent policies per node                           | `match.policies`     | yes   | policy commands, `resolve`          |
-| message history                                        | `match.history`      | yes   | `resolve`, `replaceMatch`           |
-| map: `xy`, `edges`, `N`, `playerCount`, `mapSeed`      | `match.map`          | yes   | `replaceMatch`                      |
-| conquest defaults (enabled, reserve, invest)           | `match.defaults`     | yes   | `setDefaults`                       |
-| selected node                                          | `ui.selected`        | yes¹  | `select`, inspector commands        |
-| view tab                                               | `ui.view`            | no    | `setView`                           |
-| Leaderboard sort column and direction                  | `ui.leaderboardSort` | no    | `sortLeaderboard`                   |
-| camera (`x`, `y`, `scale`)                             | `ui.camera`          | no    | `setCamera`                         |
-| policy clipboard                                       | `ui.clipboard`       | no    | `copyPolicy`                        |
-| node group selected on the map                         | `ui.bulkSelection`   | no    | group commands, `resolve`²          |
-| group mode on the map                                  | `ui.groupMode`       | no    | `setGroupMode`, `leaveGroupMode`    |
-| group editor open                                      | `ui.groupEditing`    | no    | `setGroupEditing`, `leaveGroupMode` |
-| inspector target, editing, open sections, focused node | `ui.inspector`       | no    | inspector commands                  |
+| Value                                             | Slice                | Saved | Written by                          |
+| ------------------------------------------------- | -------------------- | ----- | ----------------------------------- |
+| `state` (round, nodes, finished, rulesVersion)    | `match.state`        | yes   | `resolve`, `replaceMatch`           |
+| manual orders per node                            | `match.orders`       | yes   | allocation and order commands       |
+| persistent policies per node                      | `match.policies`     | yes   | policy commands, `resolve`          |
+| message history                                   | `match.history`      | yes   | `resolve`, `replaceMatch`           |
+| map: `xy`, `edges`, `N`, `playerCount`, `mapSeed` | `match.map`          | yes   | `replaceMatch`                      |
+| conquest defaults (enabled, reserve, invest)      | `match.defaults`     | yes   | `setDefaults`                       |
+| selected node                                     | `ui.selected`        | yes¹  | `select`, inspector commands        |
+| view tab                                          | `ui.view`            | no    | `setView`                           |
+| Leaderboard sort column and direction             | `ui.leaderboardSort` | no    | `sortLeaderboard`                   |
+| camera (`x`, `y`, `scale`)                        | `ui.camera`          | no    | `setCamera`                         |
+| policy clipboard                                  | `ui.clipboard`       | no    | `copyPolicy`                        |
+| node group selected on the map                    | `ui.bulkSelection`   | no    | group commands, `resolve`²          |
+| group mode on the map                             | `ui.groupMode`       | no    | `setGroupMode`, `leaveGroupMode`    |
+| group editor open                                 | `ui.groupEditing`    | no    | `setGroupEditing`, `leaveGroupMode` |
+| inspector target, editing, focused node           | `ui.inspector`       | no    | inspector commands                  |
 
 ¹ `selected` stays in the save format so that old saves keep loading. ux.js
 clears it on load.
@@ -104,11 +104,11 @@ shown. `game.js` still shows and hides `#leaderboardView` with the other views.
 | `#tacticalInspector`, `#tacticalGroupBar`, `#tacticalMenu`, `.tactical-edge-hit`, rings, flow edge colors | `tactical-ui.js` |
 | `#leaderboardTable` rows and header sort marks                                                            | `leaderboard.js` |
 
-`#allocator` and `#policyEditor` are built by `game.js`. `tactical-ui.js` moves
-their sections into the inspector while it edits a node and parks them in the
-hidden `#tacticalNodeControls` otherwise. The legacy `#nodeDialog` never shows,
-because `tactical-ui.js` closes it whenever it opens, but `ux.js` still renders
-the editor stats, budget bar and notes into it.
+`tactical-ui.js` builds the node and connection editors inside the inspector
+from store selectors and commands. `#allocator` and `#policyEditor`, built by
+`game.js`, stay in the legacy `#nodeDialog`, which never shows, because
+`tactical-ui.js` closes it whenever it opens; `ux.js` still renders the editor
+stats, budget bar and notes into it.
 
 ## Next steps
 

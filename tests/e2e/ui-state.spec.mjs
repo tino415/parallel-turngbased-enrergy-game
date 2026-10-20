@@ -50,8 +50,8 @@ test('UI-only interactions leave game state and RNG untouched', async ({ page },
   const before = await gameSnapshot(page);
 
   await openNodeEditor(page);
-  await page.getByText('Other policy settings').click();
-  await page.getByText('Manual investment, withdrawal and allocations').click();
+  await inspector(page).getByRole('button', { name: 'About defense floor' }).click();
+  await page.keyboard.press('Escape');
   await inspector(page).getByRole('button', { name: 'Clear map selection' }).click();
   await openEdgeEditor(page, '0-1');
   await page.keyboard.press('Escape');

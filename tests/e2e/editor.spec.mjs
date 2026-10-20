@@ -66,9 +66,10 @@ test('policy slider and enable toggle commit to the node policy', async ({ page 
   await slider.fill('30');
   await expect(page.locator('#tacticalPolicyPercent')).toHaveValue('30');
   expect(await page.evaluate(() => policies[0].investPct)).toBe(30);
-  await page.getByRole('checkbox', { name: 'Enable policy for node 0' }).uncheck();
+  const enabled = page.getByRole('checkbox', { name: 'Enable policy for node 0' });
+  await enabled.uncheck();
   expect(await page.evaluate(() => policies[0])).toMatchObject({ enabled: false, investPct: 30 });
-  await expect(inspector(page)).toContainText('Policy: Disabled');
+  await expect(enabled).not.toBeChecked();
 });
 
 test('edge amount over budget shows an error and keeps the committed order', async ({ page }) => {
@@ -83,34 +84,26 @@ test('edge amount over budget shows an error and keeps the committed order', asy
   expect(await page.evaluate(() => orders[0].edges[1])).toBe(1.5);
 });
 
-test('manual allocation rejects an invalid amount and keeps valid orders', async ({ page }) => {
+test('manual investment rejects an invalid amount and keeps the valid order', async ({ page }) => {
   await openNodeEditor(page);
-  await page.getByText('Manual investment, withdrawal and allocations').click();
-  const invest = page.locator('#allocator input[data-allocation="invest"]');
+  const invest = inspector(page).getByRole('spinbutton', { name: 'Invest this round' });
   await invest.fill('3');
   await invest.blur();
   await expect(invest).toHaveValue('3');
   await invest.fill('-2');
   await invest.blur();
-  await expect(page.locator('#allocator input[data-allocation="invest"]')).toHaveValue('3');
-  const attack = page.locator('#allocator input[data-allocation="edge-1"]');
-  await attack.fill('4');
-  await attack.blur();
-  expect(await page.evaluate(() => orders[0])).toMatchObject({ invest: 3, edges: { 1: 4 } });
+  await expect(invest).toHaveValue('3');
+  expect(await page.evaluate(() => orders[0].invest)).toBe(3);
 });
 
-test('closing and reopening the editor shows committed values and section state resets', async ({
-  page,
-}) => {
+test('closing and reopening the editor shows committed values', async ({ page }) => {
   await openNodeEditor(page);
   await page.locator('#tacticalPolicyPercent').fill('44');
   await page.locator('#tacticalPolicyPercent').blur();
-  await page.getByText('Manual investment, withdrawal and allocations').click();
   await inspector(page).getByRole('button', { name: 'Clear map selection' }).click();
   await expect(inspector(page)).toBeHidden();
   await openNodeEditor(page);
   await expect(page.locator('#tacticalPolicyPercent')).toHaveValue('44');
-  await expect(inspector(page).locator('details').nth(1)).not.toHaveAttribute('open');
 });
 
 test('committed policy, manual orders and defaults persist across reload', async ({ page }) => {
