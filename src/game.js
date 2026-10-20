@@ -13,6 +13,8 @@ store.subscribe(({ match, ui }, previous) => {
 });
 const currentMatch = () => store.getSnapshot().match;
 const neighbors = (i) => selectors.neighbors(currentMatch(), i);
+const isMine = (id) => selectors.isOwn(currentMatch(), id);
+const mySeat = () => selectors.seatOf(currentMatch());
 const $ = (id) => document.getElementById(id),
   { compactEnergy, exactEnergy } = EnergyFormat,
   fmt = exactEnergy;
@@ -39,6 +41,21 @@ function mapOptions() {
     density: $('density').value,
     seed: $('seed').value || 'energy-42',
   };
+}
+function chosenSeat() {
+  return Number($('seat').value) || 0;
+}
+function offerSeats() {
+  const chosen = Math.min(chosenSeat(), Number($('playerCount').value) - 1);
+  $('seat').replaceChildren(
+    ...Array.from({ length: Number($('playerCount').value) }, (_, owner) => {
+      const option = document.createElement('option');
+      option.value = owner;
+      option.textContent = playerName(owner);
+      option.selected = owner === chosen;
+      return option;
+    }),
+  );
 }
 function previewMap() {
   const options = mapOptions(),
@@ -84,13 +101,16 @@ function previewMap() {
 }
 function generate() {
   store.select(null);
-  store.replaceMatch(GameStore.generatedMatch(buildMap(mapOptions()), domDefaults(), Math.random));
+  store.replaceMatch(
+    GameStore.generatedMatch(buildMap(mapOptions()), domDefaults(), Math.random, chosenSeat()),
+  );
   store.setCamera({ x: 0, y: 0, scale: 1 });
   store.setView('map');
   $('newGameDialog').close();
   render();
 }
 function openNewGame() {
+  offerSeats();
   previewMap();
   $('newGameDialog').showModal();
 }
@@ -197,7 +217,7 @@ function renderOrders() {
   container.replaceChildren();
   const ids = [...new Set([...Object.keys(orders), ...Object.keys(policies)])]
     .map(Number)
-    .filter((id) => state.nodes[id].owner === 0)
+    .filter(isMine)
     .sort((a, b) => a - b);
   $('orderCount').textContent = '(' + ids.length + ' nodes)';
   if (!ids.length) {
@@ -243,9 +263,7 @@ function renderOrders() {
     }
     if (p.invest > 0) parts.push('Invest ' + fmt(p.invest));
     for (const [dest, amount] of Object.entries(p.edges))
-      parts.push(
-        (state.nodes[dest].owner === 0 ? 'Transfer' : 'Attack') + ' ' + dest + ': ' + fmt(amount),
-      );
+      parts.push((isMine(dest) ? 'Transfer' : 'Attack') + ' ' + dest + ': ' + fmt(amount));
     const automatic = policyOrders(id),
       spent = automatic.reduce((sum, o) => sum + o.amount, 0);
     details.textContent =
@@ -339,7 +357,7 @@ function renderFlows(svg, graph, element) {
     label.textContent = compactEnergy(o.amount);
   }
   for (const n of state.nodes) {
-    if (n.owner !== 0) continue;
+    if (!isMine(n.id)) continue;
     const p = projection(n.id),
       [x, y] = xy[n.id];
     const t = element('text', { x, y: y + 53, 'font-size': 12, fill: '#92ebc9' }, graph);
@@ -558,10 +576,11 @@ window.addEventListener('pagehide', saveGame);
 
 function render() {
   const nodes = state.nodes,
-    blue = nodes.filter((n) => n.owner === 0).length,
-    red = nodes.filter((n) => n.owner !== null && n.owner !== 0).length;
+    mine = nodes.filter((n) => isMine(n.id)).length,
+    opponents = nodes.filter((n) => n.owner !== null && !isMine(n.id)).length;
   $('scoreRound').textContent = 'Round ' + state.round;
-  $('scoreCounts').textContent = ' · Blue ' + blue + ' · Opponents ' + red;
+  $('scoreCounts').textContent =
+    ' · ' + playerName(mySeat()) + ' ' + mine + ' · Opponents ' + opponents;
   $('resolve').disabled = state.finished;
   const svg = $('map');
   svg.innerHTML = '';
@@ -651,7 +670,7 @@ function playerBadge(name) {
 }
 function nodeTooltip(n) {
   const lines = ['Node ' + n.id, 'Active ' + fmt(n.active), 'Invested ' + fmt(n.invested)];
-  if (n.owner === 0) {
+  if (isMine(n.id)) {
     const p = projection(n.id);
     lines.push('Next round income +' + fmt(p.income), 'Next round investment ' + fmt(p.invest));
   }
@@ -673,7 +692,8 @@ $('generate').onclick = () => {
     return;
   generate();
 };
-for (const id of ['nodeCount', 'playerCount', 'density', 'seed'])
+$('playerCount').addEventListener('input', offerSeats);
+for (const id of ['nodeCount', 'playerCount', 'density', 'seed', 'seat'])
   $(id).addEventListener('input', previewMap);
 $('cancelNewGame').onclick = () => $('newGameDialog').close();
 $('mapTab').onclick = () => switchView('map');

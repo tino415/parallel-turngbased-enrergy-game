@@ -144,13 +144,13 @@
       investmentRoom(policy, node.invested + manualInvest, manualWithdraw),
     );
     const pulses = edges.map((edge, i) => {
-      const share = owners[edge.dest] === 0 ? 0 : (surplus * shares.pressure[i]) / 100;
+      const share = owners[edge.dest] === node.owner ? 0 : (surplus * shares.pressure[i]) / 100;
       const amount = banks[i] + share;
-      const fires = owners[edge.dest] !== 0 && amount >= edge.min - TARGET_EPSILON;
+      const fires = owners[edge.dest] !== node.owner && amount >= edge.min - TARGET_EPSILON;
       return { dest: edge.dest, share, amount: fires ? amount : 0, bank: fires ? 0 : amount };
     });
     const transfer =
-      policy.dest !== null && neighbors.includes(policy.dest) && owners[policy.dest] === 0
+      policy.dest !== null && neighbors.includes(policy.dest) && owners[policy.dest] === node.owner
         ? surplus - growth - invest - total(pulses.map((pulse) => pulse.share))
         : 0;
     const orders = policyOrders({ source, policy, invest, transfer, pulses });
@@ -222,7 +222,7 @@
 
   const TARGET_EPSILON = 1e-6;
   const policyApplies = (policy, node, manualHold) =>
-    Boolean(policy?.enabled && node?.owner === 0 && !manualHold);
+    Boolean(policy?.enabled && Number.isInteger(node?.owner) && !manualHold);
   const investTarget = (policy) =>
     Number.isFinite(policy.investTarget) ? policy.investTarget : Infinity;
   const divestPct = (policy) =>
@@ -314,11 +314,11 @@
       total: projection.node.active + projection.node.invested,
     };
   }
-  function aiOrders(nodes, links, includePlayerZero = false) {
+  function aiOrders(nodes, links, includeHuman = false, seat = 0) {
     const planned = {};
     const ns = nodes;
     const neighbors = (i) => links.flatMap(([a, b]) => (a === i ? [b] : b === i ? [a] : []));
-    for (const node of ns.filter((n) => n.owner !== null && (includePlayerZero || n.owner !== 0))) {
+    for (const node of ns.filter((n) => n.owner !== null && (includeHuman || n.owner !== seat))) {
       const adj = neighbors(node.id),
         foes = adj.filter((id) => ns[id].owner !== node.owner),
         friends = adj.filter((id) => ns[id].owner === node.owner);
@@ -360,7 +360,7 @@
 
   // Capacity-aware AI, separate from the legacy strategy. Players share the
   // same rules, but Blue is human-controlled in normal browser matches.
-  function economicAI(nodes, links, includePlayerZero = false) {
+  function economicAI(nodes, links, includeHuman = false, seat = 0) {
     const orders = {};
     const withdrawals = {};
     const net = 1 - SOFT_CAP_RULES.withdrawalFee;
@@ -377,7 +377,7 @@
     const committed = new Set();
 
     for (const owner of new Set(nodes.map((n) => n.owner).filter((n) => n !== null))) {
-      if (owner === 0 && !includePlayerZero) continue;
+      if (owner === seat && !includeHuman) continue;
       // Pick common targets for all adjacent allied nodes: several modest
       // attacks can defeat a single well-defended frontier position.
       const targets = nodes.filter(
@@ -508,12 +508,15 @@
     }
   }
 
-  function aiPlan(state, links) {
+  function aiPlan(state, links, seat = 0) {
     if (isSoftCap(state)) {
-      const { orders, withdrawals } = economicAI(state.nodes, links);
+      const { orders, withdrawals } = economicAI(state.nodes, links, false, seat);
       return { orders: Object.values(orders).flat(), withdrawals };
     }
-    return { orders: Object.values(aiOrders(state.nodes, links)).flat(), withdrawals: {} };
+    return {
+      orders: Object.values(aiOrders(state.nodes, links, false, seat)).flat(),
+      withdrawals: {},
+    };
   }
 
   function resolveRound({
@@ -522,6 +525,7 @@
     orders,
     policies,
     links,
+    seat = 0,
     defaultConquestPolicy = null,
     rng = Math.random,
     aiOrdersOverride = null,
@@ -541,13 +545,14 @@
     const book = (owner, flow, amount) => {
       if (owner !== null) ledger[owner][flow] += amount;
     };
-    const aiPlan = softCap && aiOrdersOverride === null ? economicAI(state.nodes, links) : null;
+    const aiPlan =
+      softCap && aiOrdersOverride === null ? economicAI(state.nodes, links, false, seat) : null;
     // Withdrawal is a start-of-round order: it can fund an action from this
     // source, but neither an incoming transfer nor a later capture can.
     if (softCap) {
       const requested = {};
       for (const [id, p] of Object.entries(orders || {})) {
-        if (state.nodes[Number(id)]?.owner === 0) requested[id] = p.withdraw ?? 0;
+        if (state.nodes[Number(id)]?.owner === seat) requested[id] = p.withdraw ?? 0;
       }
       for (const [id, policy] of Object.entries(policies)) {
         const automatic = policyWithdrawal({
@@ -561,7 +566,7 @@
       }
       const aiWithdrawals = aiWithdrawalsOverride ?? aiPlan?.withdrawals ?? {};
       for (const [id, amount] of Object.entries(aiWithdrawals)) {
-        if (state.nodes[Number(id)]?.owner !== null && state.nodes[Number(id)]?.owner !== 0)
+        if (state.nodes[Number(id)]?.owner !== null && state.nodes[Number(id)]?.owner !== seat)
           requested[id] = amount;
       }
       for (const [source, amount] of Object.entries(requested)) {
@@ -589,12 +594,13 @@
         .filter(([, amount]) => amount > 0)
         .map(([dest, amount]) => ({
           source: Number(source),
-          type: nodes[Number(dest)].owner === 0 ? 'transfer' : 'attack',
+          type: nodes[Number(dest)].owner === seat ? 'transfer' : 'attack',
           amount,
           dest: Number(dest),
         })),
     ]);
     const policyPlans = Object.keys(policies)
+      .filter((id) => state.nodes[Number(id)]?.owner === seat)
       .map(Number)
       .map((source) => ({
         source,
@@ -613,7 +619,7 @@
     const automatic = policyPlans.flatMap((plan) => plan.orders);
     const ai =
       aiOrdersOverride === null
-        ? Object.values(aiPlan ? aiPlan.orders : aiOrders(nodes, links)).flat()
+        ? Object.values(aiPlan ? aiPlan.orders : aiOrders(nodes, links, false, seat)).flat()
         : aiOrdersOverride;
     const all = [...manual, ...automatic, ...ai];
     const valid = [],
@@ -730,7 +736,7 @@
         book(original, 'investedCeded', node.invested);
         node.invested *= rnd(0.25, 0.75);
         book(node.owner, 'investedCaptured', node.invested);
-        if (node.owner === 0 && defaultConquestPolicy) {
+        if (node.owner === seat && defaultConquestPolicy) {
           nextPolicies[node.id] = { ...defaultConquestPolicy, dest: null };
         }
       }
@@ -756,7 +762,7 @@
         log('Round ' + state.round + ' · Overflow decay destroyed ' + fmt(totalLoss) + ' energy.');
     }
     for (const id of Object.keys(nextPolicies)) {
-      if (nodes[Number(id)].owner !== 0) delete nextPolicies[id];
+      if (nodes[Number(id)].owner !== seat) delete nextPolicies[id];
     }
     const standings = Array.from({ length: playerCount }, (_, owner) => {
       const count = nodes.filter((n) => n.owner === owner).length;

@@ -31,6 +31,7 @@ command really changes it.
 | message history                                     | `match.history`       | yes   | `resolve`, `replaceMatch`           |
 | map: `xy`, `edges`, `N`, `playerCount`, `mapSeed`   | `match.map`           | yes   | `replaceMatch`                      |
 | conquest defaults (enabled, reserve, invest)        | `match.defaults`      | yes   | `setDefaults`                       |
+| seat: the owner this browser plays                  | `match.seat`          | yes   | `classicMatch`, `generatedMatch`    |
 | replay record: dice seed, start state, round inputs | `match.replay`        | yes   | `resolve`, `replaceMatch`           |
 | selected node                                       | `ui.selected`         | yes¹  | `select`, inspector commands        |
 | view tab                                            | `ui.view`             | no    | `setView`                           |
@@ -49,8 +50,8 @@ command really changes it.
 ¹ `selected` stays in the save format so that old saves keep loading. ux.js
 clears it on load.
 
-² `resolve` drops the nodes Blue no longer owns and the connections that no
-longer touch Blue's nodes, so a group survives rounds but never holds a lost
+² `resolve` drops the nodes the player no longer owns and the connections that no
+longer touch the player's nodes, so a group survives rounds but never holds a lost
 node. A group holds nodes or connections, never both.
 
 Gesture and render bookkeeping stays local to the code that needs it, because
@@ -132,6 +133,16 @@ inspected node and the dismissed game-over notice to itself.
 It draws each move with `drawPlayerMove` from `game.js`, the arrow the AI debug
 view draws: the mover's colour, solid with ⚔ for an attack, dotted with → for
 a transfer, and an `I` label over a node that invests.
+
+## Seat
+
+`match.seat` is the owner this browser plays, chosen in the New game dialog
+(default 0, Blue). A save without the field loads as seat 0, and so does a
+replay without `replay.seat`. The store's `isOwn` compares with it, the
+interface reads it through `isMine(id)` and `mySeat()` in `game.js`, and
+`resolveRound`, `aiPlan`, `economicAI` and `aiOrders` take it as `seat`: the AI
+plans for every other owner, and a friendly target means a node with the same
+owner as the source. `replayFrames` re-runs the rounds with `replay.seat`.
 
 ## Next steps
 

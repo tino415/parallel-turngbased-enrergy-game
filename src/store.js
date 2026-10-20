@@ -46,7 +46,7 @@
     [735, 415],
   ];
 
-  function classicMatch(random, defaults) {
+  function classicMatch(random, defaults, seat = 0) {
     const N = CLASSIC_XY.length,
       playerCount = 2;
     const nodes = Array.from({ length: N }, (_, id) => ({
@@ -65,14 +65,15 @@
       state,
       orders: {},
       policies: {},
-      history: ['New match started. You are Blue.'],
+      history: ['New match started. You are ' + playerName(seat) + '.'],
+      seat,
       map: { xy: CLASSIC_XY, edges: CLASSIC_EDGES, N, playerCount, mapSeed: 'classic' },
       defaults,
-      replay: newReplay(state, random),
+      replay: newReplay(state, random, seat),
     };
   }
 
-  function generatedMatch(map, defaults, random) {
+  function generatedMatch(map, defaults, random, seat = 0) {
     const state = {
       round: 1,
       nodes: map.nodes,
@@ -84,8 +85,10 @@
       orders: {},
       policies: {},
       history: [
+        'You are ' + playerName(seat) + '.',
         'Generated ' + map.nodes.length + ' nodes, ' + map.players + ' players, seed ' + map.seed,
       ],
+      seat,
       map: {
         xy: map.positions,
         edges: map.links,
@@ -94,12 +97,12 @@
         mapSeed: map.seed,
       },
       defaults,
-      replay: newReplay(state, random),
+      replay: newReplay(state, random, seat),
     };
   }
 
-  function newReplay(start, random) {
-    return { diceSeed: diceSeed(random), start, rounds: [], policiesAfterLastRound: {} };
+  function newReplay(start, random, seat) {
+    return { diceSeed: diceSeed(random), seat, start, rounds: [], policiesAfterLastRound: {} };
   }
 
   const diceSeed = (random) =>
@@ -118,6 +121,7 @@
       state,
       orders: save.orders ?? {},
       policies: save.policies ?? {},
+      seat: save.seat ?? 0,
       history: ['Recovered saved match from this browser.', ...(save.history ?? [])],
       map: { xy, edges, N, playerCount, mapSeed },
       defaults: save.defaults
@@ -167,13 +171,15 @@
   }
 
   function saveFromMatch(match, selected) {
-    const { state, orders, policies, history, map, defaults, replay } = match;
-    return { state, orders, policies, ...map, history, selected, defaults, replay };
+    const { state, orders, policies, history, map, defaults, replay, seat } = match;
+    const saved = { state, orders, policies, ...map, history, selected, defaults, replay };
+    return seatOf(match) === 0 ? saved : { ...saved, seat };
   }
 
   const neighbors = (match, id) =>
     match.map.edges.flatMap(([a, b]) => (a === id ? [b] : b === id ? [a] : []));
-  const isOwn = (match, id) => match.state.nodes[id]?.owner === 0;
+  const seatOf = (match) => match.seat ?? 0;
+  const isOwn = (match, id) => match.state.nodes[id]?.owner === seatOf(match);
   const softCapEnabled = (match) => match.state?.rulesVersion === SOFT_CAP_RULES.version;
   const defaultPolicy = () => ({ enabled: true, reserve: 5, investPct: 50, dest: null });
   const plan = (match, source) => match.orders[source] ?? { invest: 0, withdraw: 0, edges: {} };
@@ -300,7 +306,7 @@
     return [...manual, ...automatic];
   }
 
-  const aiDebugPlan = (match) => aiPlan(match.state, match.map.edges);
+  const aiDebugPlan = (match) => aiPlan(match.state, match.map.edges, seatOf(match));
 
   function projection(match, id) {
     const scheduled = previewOrders(match),
@@ -345,14 +351,13 @@
   function orderPresets(match, source, destination) {
     const limit = edgeLimit(match, source, destination);
     const defense = match.state.nodes[destination].active;
-    const attacks =
-      match.state.nodes[destination].owner === 0
-        ? []
-        : [0.7, 0.9, 1].map((chance) => ({
-            kind: 'chance',
-            chance,
-            amount: attackForChance(defense, chance),
-          }));
+    const attacks = isOwn(match, destination)
+      ? []
+      : [0.7, 0.9, 1].map((chance) => ({
+          kind: 'chance',
+          chance,
+          amount: attackForChance(defense, chance),
+        }));
     return {
       limit,
       presets: [
@@ -822,6 +827,7 @@
     return resolveRound({
       state: match.state,
       playerCount: match.map.playerCount,
+      seat: seatOf(match),
       orders: match.orders,
       policies: match.policies,
       links: match.map.edges,
@@ -873,7 +879,12 @@
 
   function replayedRounds(match, from) {
     const rounds = [];
-    let current = { ...match, state: from.state, policies: from.policies };
+    let current = {
+      ...match,
+      seat: match.replay.seat ?? 0,
+      state: from.state,
+      policies: from.policies,
+    };
     for (const round of match.replay.rounds.slice(from.round)) {
       const input = {
         ...current,
@@ -1235,6 +1246,8 @@
       groupEdgeView,
       pressuredEdges,
       leaderboard,
+      isOwn,
+      seatOf,
       softCapEnabled,
       defaultPolicy,
       plan,
