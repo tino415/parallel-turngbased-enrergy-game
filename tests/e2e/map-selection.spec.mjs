@@ -39,7 +39,6 @@ test('desktop map pans and wheel zoom remains modifier-only', async ({ page }, t
   await page.mouse.move(box.x + 80, top + 50, { steps: 10 });
   await page.mouse.up();
   await expect(graph).not.toHaveAttribute('transform', before);
-  await expect(page.locator('#nodeDialog')).toBeHidden();
   const scale = await page.evaluate(() => camera.scale);
   await page.mouse.wheel(0, 100);
   await page.waitForTimeout(150);

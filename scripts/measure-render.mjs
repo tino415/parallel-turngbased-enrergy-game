@@ -110,7 +110,7 @@ async function measureInteractions(page, prepareMap, touch) {
   });
   await page.getByText('Manual investment, withdrawal and allocations').click();
   await step('order edit: manual invest', async () => {
-    const invest = page.locator('#uxManualSection [data-allocation="invest"]');
+    const invest = page.locator('#tacticalInspector [data-allocation="invest"]');
     await invest.fill('2');
     await invest.blur();
   });
@@ -166,8 +166,6 @@ function installStorageAndMutationCounters() {
 function installRenderCounters() {
   const counted = [
     'render',
-    'renderAllocator',
-    'renderPolicyEditor',
     'renderOrders',
     'renderFlows',
     'renderViews',

@@ -18,14 +18,7 @@ test('game JavaScript parses', () => {
 });
 
 test('planning, automation, procedural generation and combat still exist', () => {
-  for (const fn of [
-    'resolve',
-    'policyOrders',
-    'generate',
-    'renderFlows',
-    'renderViews',
-    'renderPolicyEditor',
-  ]) {
+  for (const fn of ['resolve', 'policyOrders', 'generate', 'renderFlows', 'renderViews']) {
     assert.match(js, new RegExp('function\\s+' + fn + '\\s*\\('));
   }
 });

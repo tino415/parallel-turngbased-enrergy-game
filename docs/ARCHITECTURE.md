@@ -81,16 +81,14 @@ Rendering is still the explicit `render()` call each interaction made before
 the store existed, so no render runs that did not run before. `render` is
 replaced in load order, and each layer calls the previous one:
 
-1. `game.js` draws the SVG map, score, allocator, policy editor, order list,
+1. `game.js` draws the SVG map, score, order list,
    log and tab state.
-2. `ux.js` adds the camera viewBox, side panel, dock, editor stats,
-   budget bar and income labels.
+2. `ux.js` adds the camera viewBox, side panel, dock and income labels.
 3. `tactical-ui.js` adds edge hit areas, selection and group rings, the group
    bar and the inspector for one node, one edge or the node group, which it
    updates in place to keep drafts and focus.
 
-`renderFlows`, `renderOrders`, `clickNode`,
-`showNodeOnMobile` and `positionNodeDetails` are also replaced in load order.
+`renderFlows` is also replaced in load order.
 The last definition wins and is the one in use.
 
 `leaderboard.js` stays out of the chain: it subscribes to the store and redraws
@@ -99,22 +97,17 @@ shown. `game.js` still shows and hides `#leaderboardView` with the other views.
 
 | DOM subtree                                                                                               | Rendered by      |
 | --------------------------------------------------------------------------------------------------------- | ---------------- |
-| `#map` content, `#score`, `#resolve`, `#log`, `#orders`, `#allocator`, `#policyEditor`                    | `game.js`        |
-| `#map` viewBox and camera transform, `#uxSide*`, `#uxDock*`, `#uxEditorStats`, `#uxBalance`               | `ux.js`          |
+| `#map` content, `#score`, `#resolve`, `#log`, `#orders`                                                   | `game.js`        |
+| `#map` viewBox and camera transform, `#uxSide*`, `#uxDock*`                                               | `ux.js`          |
 | `#tacticalInspector`, `#tacticalGroupBar`, `#tacticalMenu`, `.tactical-edge-hit`, rings, flow edge colors | `tactical-ui.js` |
 | `#leaderboardTable` rows and header sort marks                                                            | `leaderboard.js` |
 
 `tactical-ui.js` builds the node and connection editors inside the inspector
-from store selectors and commands. `#allocator` and `#policyEditor`, built by
-`game.js`, stay in the legacy `#nodeDialog`, which never shows, because
-`tactical-ui.js` closes it whenever it opens; `ux.js` still renders the editor
-stats, budget bar and notes into it.
+from store selectors and commands.
 
 ## Next steps
 
 - Let renderers subscribe to the slices they draw instead of being called
   explicitly, one subtree each, and retire the `render = function` chain. The
   order of the three layers has to survive this; `docs/RENDER_AUTOSAVE_BASELINE.md` has the numbers to compare.
-- Remove the legacy `#nodeDialog` and the `ux.js` editor stats, budget bar and
-  notes that render into it unseen.
 - Retire the read-only mirrors as their readers move to the snapshot.
