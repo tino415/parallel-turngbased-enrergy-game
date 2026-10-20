@@ -82,7 +82,88 @@
       connection.classList.add('tactical-flow-connection');
     }
     graph.querySelectorAll('line.ux-flow-overlay').forEach((line) => line.remove());
+    if (store.getSnapshot().ui.aiDebug) drawAiPlans(graph, element);
   };
+
+  const aiPlanOrders = () =>
+    selectors.aiDebugPlan(currentMatch()).orders.filter((order) => order.amount > 0.01);
+
+  function drawAiPlans(graph, element) {
+    const layer = element('g', { class: 'ai-debug-flows' }, graph);
+    for (const order of aiPlanOrders()) {
+      const [ax, ay] = xy[order.source];
+      const color = GameEngine.playerColor(state.nodes[order.source].owner);
+      if (order.dest === null || order.dest === undefined) {
+        const label = element(
+          'text',
+          { x: ax, y: ay - 40, class: 'ai-debug-label', 'data-source': order.source },
+          layer,
+        );
+        label.textContent = 'I ' + compactEnergy(order.amount);
+        continue;
+      }
+      const [bx, by] = xy[order.dest];
+      const dx = bx - ax,
+        dy = by - ay,
+        length = Math.hypot(dx, dy) || 1;
+      const shiftX = (-dy / length) * 7,
+        shiftY = (dx / length) * 7;
+      element(
+        'line',
+        {
+          x1: ax + (dx / length) * 36 + shiftX,
+          y1: ay + (dy / length) * 36 + shiftY,
+          x2: bx - (dx / length) * 40 + shiftX,
+          y2: by - (dy / length) * 40 + shiftY,
+          stroke: color,
+          'stroke-width': 4,
+          'stroke-dasharray': order.type === 'attack' ? 'none' : '3 5',
+          class: 'ai-debug-flow',
+          'data-source': order.source,
+          'data-dest': order.dest,
+          'data-type': order.type,
+        },
+        layer,
+      );
+      const label = element(
+        'text',
+        {
+          x: ax + dx * 0.35 + shiftX * 2,
+          y: ay + dy * 0.35 + shiftY * 2,
+          class: 'ai-debug-label',
+          fill: color,
+          'data-source': order.source,
+          'data-dest': order.dest,
+        },
+        layer,
+      );
+      label.textContent = (order.type === 'attack' ? '⚔ ' : '→ ') + compactEnergy(order.amount);
+    }
+  }
+
+  function aiPlanLines(id) {
+    const { orders, withdrawals } = selectors.aiDebugPlan(currentMatch());
+    const describe = (order) =>
+      order.type === 'invest'
+        ? 'Invest ' + compactEnergy(order.amount)
+        : (order.type === 'attack' ? 'Attack node ' : 'Transfer to node ') +
+          order.dest +
+          ': ' +
+          compactEnergy(order.amount);
+    const lines = [
+      ...(withdrawals[id] > 0.01 ? ['Withdraw ' + compactEnergy(withdrawals[id])] : []),
+      ...orders.filter((order) => order.source === id && order.amount > 0.01).map(describe),
+    ];
+    const list = document.createElement('ul');
+    list.className = 'ai-debug-plan';
+    list.dataset.key = 'ai-debug-plan';
+    list.append(
+      ...(lines.length ? lines : ['Holds: no orders this round']).map((text) =>
+        textElement('li', text),
+      ),
+    );
+    return list;
+  }
 
   let { active, editing } = store.getSnapshot().ui.inspector;
   let { groupMode, groupEditing, bulkSelection } = store.getSnapshot().ui;
@@ -638,6 +719,9 @@
       body.append(
         nodeMetrics(id, null),
         textElement('p', 'Inspect only: this node is not yours.', 'tactical-secondary'),
+        ...(store.getSnapshot().ui.aiDebug && state.nodes[id].owner !== null
+          ? [textElement('h4', 'AI plan this round'), aiPlanLines(id)]
+          : []),
       );
       return;
     }
