@@ -1345,7 +1345,7 @@
           'tactical-warning',
         ),
       );
-    body.append(field);
+    body.append(field, orderPresetButtons(source, destination));
     if (bothFriendly) {
       const current = policies[source];
       const targetsHere = Boolean(current?.enabled && current.dest === destination);
@@ -1473,6 +1473,66 @@
         ),
       );
     }
+  }
+
+  function orderPresetButtons(source, destination) {
+    const { limit, presets } = selectors.orderPresets(currentMatch(), source, destination);
+    const affordable = (preset) => preset.amount > 0 && preset.amount <= limit + 1e-8;
+    const box = document.createElement('div');
+    box.className = 'tactical-primary-control';
+    const row = document.createElement('div');
+    row.className = 'tactical-order-presets';
+    row.append(
+      ...presets.map((preset) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.preset = presetKey(preset);
+        button.textContent = presetLabel(preset) + ' · ' + numeric(preset.amount);
+        button.disabled = !affordable(preset);
+        button.onclick = () => setAllocation(source, destination, preset.amount);
+        return button;
+      }),
+    );
+    box.append(row);
+    const unmet = presets.filter((preset) => !affordable(preset));
+    if (unmet.length) {
+      const reasons = textElement(
+        'p',
+        unmetPresetsReason(unmet, source, limit),
+        'tactical-secondary',
+      );
+      reasons.id = 'tacticalPresetReasons';
+      box.append(reasons);
+    }
+    return box;
+  }
+
+  function unmetPresetsReason(unmet, source, limit) {
+    if (limit <= 0) return 'Node ' + source + ' has no energy left to send.';
+    const attacks = unmet.filter((preset) => preset.kind === 'chance');
+    const attackReason = attacks.length
+      ? 'Node ' +
+        source +
+        ' can send ' +
+        numeric(limit) +
+        ', not enough for ' +
+        attacks
+          .map((preset) => Math.round(preset.chance * 100) + '% (' + numeric(preset.amount) + ')')
+          .join(' or ') +
+        ' success.'
+      : '';
+    const surplusReason = unmet.some((preset) => preset.kind === 'surplus')
+      ? 'Node ' + source + ' has no energy above its reserve.'
+      : '';
+    return [attackReason, surplusReason].filter(Boolean).join(' ');
+  }
+
+  const presetKey = (preset) =>
+    preset.kind === 'chance' ? 'chance-' + Math.round(preset.chance * 100) : preset.kind;
+
+  function presetLabel(preset) {
+    if (preset.kind === 'chance') return Math.round(preset.chance * 100) + '% success attack';
+    return preset.kind === 'all' ? 'Send all' : 'Send all surplus';
   }
 
   function pressureToggle(source, destination) {

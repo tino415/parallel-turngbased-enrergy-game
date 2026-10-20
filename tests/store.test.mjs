@@ -478,3 +478,75 @@ test('standings of a played match add up to the nodes each player owns', () => {
     assert.ok(Math.abs(standing.invested - nodes.reduce((t, n) => t + n.invested, 0)) < 1e-9);
   }
 });
+
+function storeWithBlueAttacker({ defense, policy = null }) {
+  const store = newStore(),
+    match = store.getSnapshot().match,
+    nodes = match.state.nodes.map((n) => {
+      if (n.id === 0) return { ...n, owner: 0, active: 20, invested: 0 };
+      if (n.id === 1) return { ...n, owner: 1, active: defense };
+      return n;
+    });
+  store.replaceMatch({ ...match, state: { ...match.state, nodes }, policies: { 0: policy } });
+  return store;
+}
+
+const orderPresets = (store, destination = 1) =>
+  loadStore().selectors.orderPresets(store.getSnapshot().match, 0, destination);
+
+const presetAmounts = (store, destination) =>
+  Object.fromEntries(
+    orderPresets(store, destination).presets.map((p) => [
+      p.kind === 'chance' ? p.chance : p.kind,
+      p.amount,
+    ]),
+  );
+
+function engineWinRate(attack, defense) {
+  const random = seededRandom(11),
+    roll = () => 0.8 + random() * 0.4,
+    battles = 200000;
+  let wins = 0;
+  for (let i = 0; i < battles; i++) if (attack * roll() > defense * roll()) wins++;
+  return wins / battles;
+}
+
+test('success presets send the smallest attack that wins that often under the combat rolls', () => {
+  const amounts = presetAmounts(storeWithBlueAttacker({ defense: 10 }));
+  assert.equal(amounts[1], 15);
+  for (const chance of [0.7, 0.9]) {
+    assert.ok(engineWinRate(amounts[chance], 10) >= chance - 0.005, `${chance} reaches its odds`);
+    assert.ok(engineWinRate(amounts[chance] - 0.2, 10) < chance, `${chance} is the smallest`);
+  }
+  assert.ok(amounts[0.7] < amounts[0.9]);
+});
+
+test('send all fills the source budget and send all surplus keeps the policy reserve', () => {
+  const store = storeWithBlueAttacker({
+    defense: 10,
+    policy: { enabled: true, reserve: 5, investPct: 0, dest: null },
+  });
+  store.setAllocation(0, null, 3);
+  assert.equal(orderPresets(store).limit, 17);
+  const amounts = presetAmounts(store);
+  assert.equal(amounts.all, 17);
+  assert.equal(amounts.surplus, 12);
+});
+
+test('an empty defense still needs a positive attack', () => {
+  assertSameData(presetAmounts(storeWithBlueAttacker({ defense: 0 })), {
+    0.7: 0.1,
+    0.9: 0.1,
+    1: 0.1,
+    all: 20,
+    surplus: 20,
+  });
+});
+
+test('a support transfer offers only send all and send all surplus', () => {
+  const store = storeWithBlueNodes([0, 1]);
+  assertSameData(
+    orderPresets(store).presets.map((p) => p.kind),
+    ['all', 'surplus'],
+  );
+});
