@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { visibleMapTop } from './support/game.mjs';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -32,9 +33,10 @@ test('desktop map pans and wheel zoom remains modifier-only', async ({ page }, t
   const graph = page.locator('#map > g').first();
   const box = await page.locator('#map').boundingBox();
   const before = await graph.getAttribute('transform');
-  await page.mouse.move(box.x + 10, box.y + 10);
+  const top = await visibleMapTop(page);
+  await page.mouse.move(box.x + 10, top + 10);
   await page.mouse.down();
-  await page.mouse.move(box.x + 80, box.y + 50, { steps: 10 });
+  await page.mouse.move(box.x + 80, top + 50, { steps: 10 });
   await page.mouse.up();
   await expect(graph).not.toHaveAttribute('transform', before);
   await expect(page.locator('#nodeDialog')).toBeHidden();

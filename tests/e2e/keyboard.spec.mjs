@@ -4,7 +4,6 @@ import {
   inspector,
   edgeHit,
   openNodeEditor,
-  isMobileLayout,
   activeElementName,
 } from './support/game.mjs';
 
@@ -77,16 +76,17 @@ test('Escape in a dialog opened from the ☰ menu returns focus to the menu', as
   await expect(page.locator('#tacticalMenu summary')).toBeFocused({ timeout: 1000 });
 });
 
-test('Escape in Orders opened from the mobile dock returns focus to the dock', async ({
+test('Orders opens from the ☰ menu by keyboard and Escape returns focus to the menu', async ({
   page,
-}, testInfo) => {
-  test.skip(!isMobileLayout(testInfo), 'The Orders dock exists only in the mobile layout');
-  await page.locator('#uxDockOrders').focus();
+}) => {
+  await page.locator('#tacticalMenu summary').focus();
+  await page.keyboard.press('Enter');
+  await page.locator('#tacticalMenu button').filter({ hasText: 'Orders' }).focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('#uxOrdersDialog')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.locator('#uxOrdersDialog')).toBeHidden();
-  await expect(page.locator('#uxDockOrders')).toBeFocused();
+  await expect(page.locator('#tacticalMenu summary')).toBeFocused({ timeout: 1000 });
 });
 
 test('zoom and Fit buttons work from the keyboard', async ({ page }) => {

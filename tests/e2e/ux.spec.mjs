@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { chooseSource } from './support/game.mjs';
+import { chooseSource, offsetFromVisibleMapCenter, visibleMapTop } from './support/game.mjs';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -100,15 +100,12 @@ test('closing selection keeps Focus on the last inspected node', async ({ page }
   await expect(page.locator('#tacticalInspector')).toBeHidden();
   expect(await page.evaluate(() => selected)).toBeNull();
   await page.locator('#focusMap').click();
-  const centered = await page.evaluate(() => {
-    const svg = document.getElementById('map').viewBox.baseVal;
-    return {
-      dx: camera.x + xy[0][0] * camera.scale - svg.width / 2,
-      dy: camera.y + xy[0][1] * camera.scale - svg.height / 2,
-    };
-  });
-  expect(Math.abs(centered.dx)).toBeLessThan(2);
-  expect(Math.abs(centered.dy)).toBeLessThan(2);
+  const centered = await offsetFromVisibleMapCenter(
+    page,
+    page.locator('#map .node-hit[fill="#3278c8"]').first(),
+  );
+  expect(Math.abs(centered.dx)).toBeLessThan(3);
+  expect(Math.abs(centered.dy)).toBeLessThan(3);
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
   await page.keyboard.press('Escape');
   await expect(page.locator('#tacticalInspector')).toBeHidden();
@@ -479,11 +476,9 @@ test('Orders dialog replaces the contextual inspector instead of stacking modals
   if (testInfo.project.name.startsWith('mobile')) {
     await expect(page.locator('.ux-dock')).toBeVisible();
     await expect(page.locator('#uxDockResolve')).toBeVisible();
-    await page.locator('#uxDockOrders').click();
-  } else {
-    await page.locator('#tacticalMenu summary').click();
-    await page.locator('#tacticalMenu button').filter({ hasText: 'Orders' }).click();
   }
+  await page.locator('#tacticalMenu summary').click();
+  await page.locator('#tacticalMenu button').filter({ hasText: 'Orders' }).click();
   await expect(page.locator('#uxOrdersDialog')).toBeVisible();
   await expect(page.locator('#tacticalInspector')).toBeHidden();
   await page.locator('#uxOrdersDialog .ux-dialog-close').click();
@@ -507,7 +502,6 @@ test('mobile connection editor keeps original dock and closes on outside map tap
   await edge.tap();
   await expect(inspector).toBeVisible();
   await expect(page.locator('#uxDockResolve')).toBeVisible();
-  await expect(page.locator('#uxDockOrders')).toBeVisible();
   await expect(page.locator('#nodeDialog')).toBeHidden();
   await expect(inspector.locator('.tactical-inspector-body')).toBeVisible();
 
@@ -527,7 +521,7 @@ test('mobile connection editor keeps original dock and closes on outside map tap
 
   // Tapping blank map space dismisses; the dock remains untouched.
   const box = await page.locator('#map').boundingBox();
-  await page.mouse.click(box.x + box.width * 0.13, box.y + 8);
+  await page.mouse.click(box.x + box.width * 0.13, (await visibleMapTop(page)) + 8);
   await expect(inspector).toBeHidden();
   await expect(dock).toBeVisible();
   await expect(page.locator('#uxDockResolve')).toBeVisible();

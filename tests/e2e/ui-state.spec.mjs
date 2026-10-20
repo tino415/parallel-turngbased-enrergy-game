@@ -8,7 +8,6 @@ import {
   openEdgeEditor,
   gameSnapshot,
   isTouchProject,
-  isMobileLayout,
   seedMathRandom,
 } from './support/game.mjs';
 
@@ -71,10 +70,6 @@ test('UI-only interactions leave game state and RNG untouched', async ({ page },
   await page.keyboard.press('Escape');
   await openFromMenu(page, 'Settings');
   await page.locator('#uxSettingsDialog .ux-dialog-close').click();
-  if (isMobileLayout(testInfo)) {
-    await page.locator('#uxDockOrders').click();
-    await page.locator('#uxOrdersDialog .ux-dialog-close').click();
-  }
 
   const viewport = page.viewportSize();
   await page.setViewportSize({ width: viewport.width, height: viewport.height - 200 });

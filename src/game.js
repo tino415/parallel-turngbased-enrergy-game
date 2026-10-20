@@ -694,7 +694,8 @@ function render() {
   const nodes = state.nodes,
     blue = nodes.filter((n) => n.owner === 0).length,
     red = nodes.filter((n) => n.owner !== null && n.owner !== 0).length;
-  $('score').textContent = 'Round ' + state.round + ' · Blue ' + blue + ' · Opponents ' + red;
+  $('scoreRound').textContent = 'Round ' + state.round;
+  $('scoreCounts').textContent = ' · Blue ' + blue + ' · Opponents ' + red;
   $('resolve').disabled = state.finished;
   const svg = $('map');
   svg.innerHTML = '';
