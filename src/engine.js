@@ -527,7 +527,7 @@
     aiOrdersOverride = null,
     aiWithdrawalsOverride = null,
   }) {
-    if (state.finished) return { state, policies, events: [] };
+    if (state.finished) return { state, policies, events: [], moves: [] };
     const nodes = state.nodes.map((n) => ({ ...n })),
       nextPolicies = { ...policies },
       events = [];
@@ -762,8 +762,16 @@
           : 'No players remain.',
       );
     }
-    return { state: nextState, policies: nextPolicies, events };
+    return { state: nextState, policies: nextPolicies, events, moves: valid.map(movedEnergy) };
   }
+
+  const movedEnergy = ({ source, dest, type, owner, amount }) => ({
+    source,
+    dest,
+    type,
+    owner,
+    amount,
+  });
 
   globalThis.GameEngine = Object.freeze({
     playerName,

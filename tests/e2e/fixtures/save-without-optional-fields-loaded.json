@@ -430,6 +430,7 @@
       "enabled": true,
       "reserve": "5",
       "invest": "70"
-    }
+    },
+    "replay": null
   }
 }

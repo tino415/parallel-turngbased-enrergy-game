@@ -46,12 +46,12 @@ function playCommands(store) {
   store.setAllocation(0, 1, 12);
   store.setAllocation(0, 2, 10);
   store.setDefaults({ reserve: '2', invest: '60' });
-  store.resolve(seededRandom(11));
+  store.resolve();
   store.applyGroupPolicyField([0, 1, 2], 'reserve', 4);
   store.applyGroupPolicyField([0, 1, 2], 'investPct', 55);
   store.investOnEach([0, 1], 1);
   store.routeSurplus(2, 0, true);
-  store.resolve(seededRandom(12));
+  store.resolve();
 }
 
 test('identical command sequences produce identical matches', () => {
@@ -69,7 +69,7 @@ test('a resolve command equals a direct engine call with the same inputs', () =>
   store.setAllocation(0, 1, 12);
   store.changePolicy(0, 'investPct', 40);
   const before = store.getSnapshot().match;
-  store.resolve(seededRandom(3));
+  store.resolve();
   const direct = GameEngine.resolveRound({
     state: before.state,
     playerCount: 2,
@@ -77,7 +77,7 @@ test('a resolve command equals a direct engine call with the same inputs', () =>
     policies: before.policies,
     links: before.map.edges,
     defaultConquestPolicy: { enabled: true, reserve: 5, investPct: 70 },
-    rng: seededRandom(3),
+    rng: GameEngine.seeded(before.replay.diceSeed + ':1'),
   });
   const after = store.getSnapshot().match;
   assertSameData(after.state, direct.state);

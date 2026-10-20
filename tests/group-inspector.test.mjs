@@ -99,7 +99,7 @@ test('group selection commands keep only own nodes and survive a round', () => {
   const match = store.getSnapshot().match;
   const nodes = match.state.nodes.map((n) => (n.id === 1 ? { ...n, owner: 1 } : n));
   store.replaceMatch({ ...match, state: { ...match.state, nodes } });
-  store.resolve(() => 0.5);
+  store.resolve();
   assert.deepEqual(plain(store.getSnapshot().ui.bulkSelection), [0]);
   assert.equal(store.getSnapshot().ui.groupMode, true);
   store.setGroupEditing(true);

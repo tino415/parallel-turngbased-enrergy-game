@@ -1,0 +1,132 @@
+#replayDialog {
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: #0e1625;
+  color: #e7eef9;
+}
+#replayDialog[open] {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+#replayDialog .replay-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 10px 14px;
+  background: #101d30;
+  border-bottom: 1px solid #40536d;
+}
+#replayClose {
+  margin-left: auto;
+}
+.replay-standings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  font-size: 13px;
+}
+.replay-standing.is-out {
+  opacity: 0.45;
+}
+.replay-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  min-height: 0;
+}
+#replayMap {
+  width: 100%;
+  height: 100%;
+  touch-action: manipulation;
+}
+.replay-edge {
+  stroke: #71849d;
+  stroke-width: 3;
+  opacity: 0.55;
+}
+.replay-node {
+  cursor: pointer;
+}
+.replay-node circle {
+  stroke: #e0e9fa;
+  stroke-width: 2;
+}
+.replay-log {
+  overflow-y: auto;
+  padding: 10px 14px;
+  border-left: 1px solid #40536d;
+  background: #101d30;
+}
+.replay-log p {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+#replayLog {
+  max-height: none;
+  font-size: 13px;
+}
+.replay-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px calc(10px + env(safe-area-inset-bottom));
+  background: #101d30;
+  border-top: 1px solid #40536d;
+}
+.replay-bar button {
+  min-width: 44px;
+  min-height: 44px;
+}
+#replayScrubber {
+  flex: 1;
+  min-width: 80px;
+  height: 44px;
+}
+#gameOverNotice {
+  position: fixed;
+  top: 72px;
+  left: 50%;
+  z-index: 60;
+  width: min(440px, calc(100vw - 24px));
+  transform: translateX(-50%);
+  padding: 14px 16px;
+  background: #14243b;
+  border: 1px solid #526681;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px #030912aa;
+}
+#gameOverNotice p {
+  margin: 0 0 12px;
+}
+.game-over-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 760px) {
+  .replay-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(90px, 30dvh);
+  }
+  .replay-log {
+    border-left: 0;
+    border-top: 1px solid #40536d;
+  }
+  #replayFirst,
+  #replayLast {
+    display: none;
+  }
+  .replay-standings {
+    order: 3;
+    flex-basis: 100%;
+  }
+  #gameOverNotice {
+    top: auto;
+    bottom: calc(84px + env(safe-area-inset-bottom));
+  }
+}

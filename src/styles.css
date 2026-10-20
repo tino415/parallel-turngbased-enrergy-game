@@ -151,6 +151,19 @@ button:disabled {
   font-size: 13px;
   pointer-events: none;
 }
+.move-label {
+  stroke: #152033;
+  stroke-width: 3;
+  paint-order: stroke;
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.move-flow,
+.move-arrow {
+  pointer-events: none;
+  opacity: 0.9;
+}
 .ux-income-label {
   fill: #92ebc9;
   stroke: #152033;

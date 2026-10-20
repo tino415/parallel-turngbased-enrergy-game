@@ -1,8 +1,8 @@
 # Architecture: state, commands and rendering
 
-The game is eight classic scripts loaded with `defer` into one global scope, in
+The game is nine classic scripts loaded with `defer` into one global scope, in
 this order: `engine.js`, `store.js`, `format.js`, `game.js`, `dialogs.js`,
-`leaderboard.js`, `ux.js`, `tactical-ui.js`. Later scripts build on, and in
+`leaderboard.js`, `ux.js`, `tactical-ui.js`, `replay.js`. Later scripts build on, and in
 places replace, functions from earlier ones.
 
 | Module           | Owns                                                                    | Touches the DOM |
@@ -15,6 +15,7 @@ places replace, functions from earlier ones.
 | `leaderboard.js` | The Leaderboard tab: one row per player, sorted by the chosen column    | yes             |
 | `ux.js`          | Layout, dialogs, side panel, dock, camera fitting                       | yes             |
 | `tactical-ui.js` | Map selection and node groups, the inspector, pinch zoom, the ☰ menu   | yes             |
+| `replay.js`      | The replay screen, the game-over notice and the Replay menu item        | yes             |
 
 ## State ownership
 
@@ -22,24 +23,26 @@ places replace, functions from earlier ones.
 change goes through a store command, and a slice keeps its identity until a
 command really changes it.
 
-| Value                                             | Slice                | Saved | Written by                          |
-| ------------------------------------------------- | -------------------- | ----- | ----------------------------------- |
-| `state` (round, nodes, finished, rulesVersion)    | `match.state`        | yes   | `resolve`, `replaceMatch`           |
-| manual orders per node                            | `match.orders`       | yes   | allocation and order commands       |
-| persistent policies per node                      | `match.policies`     | yes   | policy commands, `resolve`          |
-| message history                                   | `match.history`      | yes   | `resolve`, `replaceMatch`           |
-| map: `xy`, `edges`, `N`, `playerCount`, `mapSeed` | `match.map`          | yes   | `replaceMatch`                      |
-| conquest defaults (enabled, reserve, invest)      | `match.defaults`     | yes   | `setDefaults`                       |
-| selected node                                     | `ui.selected`        | yes¹  | `select`, inspector commands        |
-| view tab                                          | `ui.view`            | no    | `setView`                           |
-| Leaderboard sort column and direction             | `ui.leaderboardSort` | no    | `sortLeaderboard`                   |
-| camera (`x`, `y`, `scale`)                        | `ui.camera`          | no    | `setCamera`                         |
-| policy clipboard                                  | `ui.clipboard`       | no    | `copyPolicy`                        |
-| node group selected on the map                    | `ui.bulkSelection`   | no    | group commands, `resolve`²          |
-| group mode on the map                             | `ui.groupMode`       | no    | `setGroupMode`, `leaveGroupMode`    |
-| group editor open                                 | `ui.groupEditing`    | no    | `setGroupEditing`, `leaveGroupMode` |
-| inspector target, editing, focused node           | `ui.inspector`       | no    | inspector commands                  |
-| AI debug view (AI plans on the map and inspector) | `ui.aiDebug`         | no    | `setAiDebug`, `?aidebug` in the URL |
+| Value                                               | Slice                | Saved | Written by                          |
+| --------------------------------------------------- | -------------------- | ----- | ----------------------------------- |
+| `state` (round, nodes, finished, rulesVersion)      | `match.state`        | yes   | `resolve`, `replaceMatch`           |
+| manual orders per node                              | `match.orders`       | yes   | allocation and order commands       |
+| persistent policies per node                        | `match.policies`     | yes   | policy commands, `resolve`          |
+| message history                                     | `match.history`      | yes   | `resolve`, `replaceMatch`           |
+| map: `xy`, `edges`, `N`, `playerCount`, `mapSeed`   | `match.map`          | yes   | `replaceMatch`                      |
+| conquest defaults (enabled, reserve, invest)        | `match.defaults`     | yes   | `setDefaults`                       |
+| replay record: dice seed, start state, round inputs | `match.replay`       | yes   | `resolve`, `replaceMatch`           |
+| selected node                                       | `ui.selected`        | yes¹  | `select`, inspector commands        |
+| view tab                                            | `ui.view`            | no    | `setView`                           |
+| Leaderboard sort column and direction               | `ui.leaderboardSort` | no    | `sortLeaderboard`                   |
+| camera (`x`, `y`, `scale`)                          | `ui.camera`          | no    | `setCamera`                         |
+| policy clipboard                                    | `ui.clipboard`       | no    | `copyPolicy`                        |
+| node group selected on the map                      | `ui.bulkSelection`   | no    | group commands, `resolve`²          |
+| group mode on the map                               | `ui.groupMode`       | no    | `setGroupMode`, `leaveGroupMode`    |
+| group editor open                                   | `ui.groupEditing`    | no    | `setGroupEditing`, `leaveGroupMode` |
+| inspector target, editing, focused node             | `ui.inspector`       | no    | inspector commands                  |
+| AI debug view (AI plans on the map and inspector)   | `ui.aiDebug`         | no    | `setAiDebug`, `?aidebug` in the URL |
+| replay frame and play state                         | `ui.replay`          | no    | replay commands                     |
 
 ¹ `selected` stays in the save format so that old saves keep loading. ux.js
 clears it on load.
@@ -62,7 +65,8 @@ on submit: the new-game dialog and the group's invest-on-each amount.
   rejects an over-budget amount; the caller shows the hint.
 - **Selectors** (`GameStore.selectors.<name>(match, ...)`) derive plans,
   budgets, policy orders, previews, projections and the edge source. They never
-  draw random numbers and never resolve a round.
+  call `Math.random` and never change the match. `replayFrames` is the one that
+  resolves rounds: it re-runs the recorded ones with their recorded dice.
 - **Subscriptions** (`store.subscribe((snapshot, previous) => ...)`) run
   synchronously after every commit. `game.js` uses one to refresh the global
   mirrors and to autosave when `match` changed; `tactical-ui.js` uses one to
@@ -102,9 +106,29 @@ shown. `game.js` still shows and hides `#leaderboardView` with the other views.
 | `#map` viewBox and camera transform, `#uxSide*`, `#uxDock*`                                               | `ux.js`          |
 | `#tacticalInspector`, `#tacticalGroupBar`, `#tacticalMenu`, `.tactical-edge-hit`, rings, flow edge colors | `tactical-ui.js` |
 | `#leaderboardTable` rows and header sort marks                                                            | `leaderboard.js` |
+| `#replayDialog`, `#gameOverNotice`, the Replay item in `#tacticalMenu`                                    | `replay.js`      |
 
 `tactical-ui.js` builds the node and connection editors inside the inspector
 from store selectors and commands.
+
+## Replay
+
+A round is a pure function of the state, the orders, the policies, the conquest
+defaults and the dice; the AI is computed inside it. A new match draws a
+`diceSeed`, round _r_ resolves with `seeded(diceSeed + ':' + r)`, and `resolve`
+appends the round's inputs to `match.replay.rounds`: the orders, the defaults and
+the policies that differ from what the previous round left behind
+(`policiesAfterLastRound`). `replayFrames` rebuilds every round from
+`match.replay.start`, with its state, its log and the moves carried out. A match
+loaded from a save without `replay` keeps `replay: null`, resolves with
+`Math.random` and offers no replay. When the replay does not fit in
+localStorage, `game.js` saves the match without it.
+
+`replay.js` caches the frames per `match.replay` and keeps the play timer, the
+inspected node and the dismissed game-over notice to itself.
+It draws each move with `drawPlayerMove` from `game.js`, the arrow the AI debug
+view draws: the mover's colour, solid with ⚔ for an attack, dotted with → for
+a transfer, and an `I` label over a node that invests.
 
 ## Next steps
 

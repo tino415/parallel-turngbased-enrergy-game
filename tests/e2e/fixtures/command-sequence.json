@@ -95,7 +95,7 @@
     "orders": {},
     "policies": {},
     "history": ["New match started. You are Blue."],
-    "randomCalls": 14,
+    "randomCalls": 18,
     "defaults": [true, "5", "70"]
   },
   {
@@ -210,7 +210,7 @@
       }
     },
     "history": ["New match started. You are Blue."],
-    "randomCalls": 14,
+    "randomCalls": 18,
     "defaults": [true, "5", "70"]
   },
   {
@@ -326,7 +326,7 @@
       }
     },
     "history": ["New match started. You are Blue."],
-    "randomCalls": 14,
+    "randomCalls": 18,
     "defaults": [true, "5", "70"]
   },
   {
@@ -343,13 +343,13 @@
         {
           "id": 1,
           "owner": 0,
-          "active": 6.617508176015495,
+          "active": 6.7332103228185165,
           "invested": 0
         },
         {
           "id": 2,
           "owner": 0,
-          "active": 3.16110866936735,
+          "active": 4.307835066596323,
           "invested": 0
         },
         {
@@ -403,7 +403,7 @@
         {
           "id": 11,
           "owner": 1,
-          "active": 4.845586962760781,
+          "active": 3.6522490822365072,
           "invested": 0
         },
         {
@@ -446,12 +446,12 @@
     },
     "history": [
       "Round 1 complete: Blue 3 nodes / Red 2 nodes.",
-      "Round 1 · Node 11: Red attacks Neutral with 6.9 vs 3.8. Captured! Attacker lost 2.6, defender lost 3.8. Remaining 4.3.",
-      "Round 1 · Node 2: Blue attacks Neutral with 10.0 vs 6.4. Captured! Attacker lost 7.6, defender lost 6.4. Remaining 2.4.",
-      "Round 1 · Node 1: Blue attacks Neutral with 12.0 vs 6.5. Captured! Attacker lost 5.8, defender lost 6.5. Remaining 6.2.",
+      "Round 1 · Node 11: Red attacks Neutral with 6.9 vs 3.8. Captured! Attacker lost 4.0, defender lost 3.8. Remaining 2.9.",
+      "Round 1 · Node 2: Blue attacks Neutral with 10.0 vs 6.4. Captured! Attacker lost 6.3, defender lost 6.4. Remaining 3.7.",
+      "Round 1 · Node 1: Blue attacks Neutral with 12.0 vs 6.5. Captured! Attacker lost 5.6, defender lost 6.5. Remaining 6.4.",
       "New match started. You are Blue."
     ],
-    "randomCalls": 23,
+    "randomCalls": 18,
     "defaults": [true, "2", "60"]
   },
   {
@@ -468,13 +468,13 @@
         {
           "id": 1,
           "owner": 0,
-          "active": 6.617508176015495,
+          "active": 6.7332103228185165,
           "invested": 0
         },
         {
           "id": 2,
           "owner": 0,
-          "active": 3.16110866936735,
+          "active": 4.307835066596323,
           "invested": 0
         },
         {
@@ -528,7 +528,7 @@
         {
           "id": 11,
           "owner": 1,
-          "active": 4.845586962760781,
+          "active": 3.6522490822365072,
           "invested": 0
         },
         {
@@ -580,12 +580,12 @@
     },
     "history": [
       "Round 1 complete: Blue 3 nodes / Red 2 nodes.",
-      "Round 1 · Node 11: Red attacks Neutral with 6.9 vs 3.8. Captured! Attacker lost 2.6, defender lost 3.8. Remaining 4.3.",
-      "Round 1 · Node 2: Blue attacks Neutral with 10.0 vs 6.4. Captured! Attacker lost 7.6, defender lost 6.4. Remaining 2.4.",
-      "Round 1 · Node 1: Blue attacks Neutral with 12.0 vs 6.5. Captured! Attacker lost 5.8, defender lost 6.5. Remaining 6.2.",
+      "Round 1 · Node 11: Red attacks Neutral with 6.9 vs 3.8. Captured! Attacker lost 4.0, defender lost 3.8. Remaining 2.9.",
+      "Round 1 · Node 2: Blue attacks Neutral with 10.0 vs 6.4. Captured! Attacker lost 6.3, defender lost 6.4. Remaining 3.7.",
+      "Round 1 · Node 1: Blue attacks Neutral with 12.0 vs 6.5. Captured! Attacker lost 5.6, defender lost 6.5. Remaining 6.4.",
       "New match started. You are Blue."
     ],
-    "randomCalls": 23,
+    "randomCalls": 18,
     "defaults": [true, "2", "60"]
   },
   {
@@ -602,13 +602,13 @@
         {
           "id": 1,
           "owner": 0,
-          "active": 6.617508176015495,
+          "active": 6.7332103228185165,
           "invested": 0
         },
         {
           "id": 2,
           "owner": 0,
-          "active": 3.16110866936735,
+          "active": 4.307835066596323,
           "invested": 0
         },
         {
@@ -662,7 +662,7 @@
         {
           "id": 11,
           "owner": 1,
-          "active": 4.845586962760781,
+          "active": 3.6522490822365072,
           "invested": 0
         },
         {
@@ -724,12 +724,12 @@
     },
     "history": [
       "Round 1 complete: Blue 3 nodes / Red 2 nodes.",
-      "Round 1 · Node 11: Red attacks Neutral with 6.9 vs 3.8. Captured! Attacker lost 2.6, defender lost 3.8. Remaining 4.3.",
-      "Round 1 · Node 2: Blue attacks Neutral with 10.0 vs 6.4. Captured! Attacker lost 7.6, defender lost 6.4. Remaining 2.4.",
-      "Round 1 · Node 1: Blue attacks Neutral with 12.0 vs 6.5. Captured! Attacker lost 5.8, defender lost 6.5. Remaining 6.2.",
+      "Round 1 · Node 11: Red attacks Neutral with 6.9 vs 3.8. Captured! Attacker lost 4.0, defender lost 3.8. Remaining 2.9.",
+      "Round 1 · Node 2: Blue attacks Neutral with 10.0 vs 6.4. Captured! Attacker lost 6.3, defender lost 6.4. Remaining 3.7.",
+      "Round 1 · Node 1: Blue attacks Neutral with 12.0 vs 6.5. Captured! Attacker lost 5.6, defender lost 6.5. Remaining 6.4.",
       "New match started. You are Blue."
     ],
-    "randomCalls": 23,
+    "randomCalls": 18,
     "defaults": [true, "2", "60"]
   },
   {
@@ -746,13 +746,13 @@
         {
           "id": 1,
           "owner": 0,
-          "active": 6.617508176015495,
+          "active": 6.7332103228185165,
           "invested": 0
         },
         {
           "id": 2,
           "owner": 0,
-          "active": 3.16110866936735,
+          "active": 4.307835066596323,
           "invested": 0
         },
         {
@@ -806,7 +806,7 @@
         {
           "id": 11,
           "owner": 1,
-          "active": 4.845586962760781,
+          "active": 3.6522490822365072,
           "invested": 0
         },
         {
@@ -863,12 +863,12 @@
     },
     "history": [
       "Round 1 complete: Blue 3 nodes / Red 2 nodes.",
-      "Round 1 · Node 11: Red attacks Neutral with 6.9 vs 3.8. Captured! Attacker lost 2.6, defender lost 3.8. Remaining 4.3.",
-      "Round 1 · Node 2: Blue attacks Neutral with 10.0 vs 6.4. Captured! Attacker lost 7.6, defender lost 6.4. Remaining 2.4.",
-      "Round 1 · Node 1: Blue attacks Neutral with 12.0 vs 6.5. Captured! Attacker lost 5.8, defender lost 6.5. Remaining 6.2.",
+      "Round 1 · Node 11: Red attacks Neutral with 6.9 vs 3.8. Captured! Attacker lost 4.0, defender lost 3.8. Remaining 2.9.",
+      "Round 1 · Node 2: Blue attacks Neutral with 10.0 vs 6.4. Captured! Attacker lost 6.3, defender lost 6.4. Remaining 3.7.",
+      "Round 1 · Node 1: Blue attacks Neutral with 12.0 vs 6.5. Captured! Attacker lost 5.6, defender lost 6.5. Remaining 6.4.",
       "New match started. You are Blue."
     ],
-    "randomCalls": 23,
+    "randomCalls": 18,
     "defaults": [true, "2", "60"]
   },
   {
@@ -879,20 +879,20 @@
         {
           "id": 0,
           "owner": 0,
-          "active": 7.449440000000001,
+          "active": 7.740260623974677,
           "invested": 13.5202
         },
         {
           "id": 1,
           "owner": 0,
-          "active": 5.804053760967127,
-          "invested": 1.4396294968085221
+          "active": 5.857276748496519,
+          "invested": 1.503265677550184
         },
         {
           "id": 2,
           "owner": 0,
-          "active": 2.494997802430615,
-          "invested": 0
+          "active": 2.8484701039957794,
+          "invested": 0.48470103995779384
         },
         {
           "id": 3,
@@ -945,13 +945,13 @@
         {
           "id": 11,
           "owner": 1,
-          "active": 4.179852610317804,
-          "invested": 1.476469570208625
+          "active": 3.8695847613814918,
+          "invested": 0.5217992657892058
         },
         {
           "id": 12,
           "owner": 1,
-          "active": 4.2567318221632915,
+          "active": 4.238832995953242,
           "invested": 0
         },
         {
@@ -990,12 +990,12 @@
       "Round 2 complete: Blue 3 nodes / Red 3 nodes.",
       "Round 2 · Node 12: Red attacks Neutral with 8.0 vs 4.6. Captured! Attacker lost 4.4, defender lost 4.6. Remaining 3.6.",
       "Round 1 complete: Blue 3 nodes / Red 2 nodes.",
-      "Round 1 · Node 11: Red attacks Neutral with 6.9 vs 3.8. Captured! Attacker lost 2.6, defender lost 3.8. Remaining 4.3.",
-      "Round 1 · Node 2: Blue attacks Neutral with 10.0 vs 6.4. Captured! Attacker lost 7.6, defender lost 6.4. Remaining 2.4.",
-      "Round 1 · Node 1: Blue attacks Neutral with 12.0 vs 6.5. Captured! Attacker lost 5.8, defender lost 6.5. Remaining 6.2.",
+      "Round 1 · Node 11: Red attacks Neutral with 6.9 vs 3.8. Captured! Attacker lost 4.0, defender lost 3.8. Remaining 2.9.",
+      "Round 1 · Node 2: Blue attacks Neutral with 10.0 vs 6.4. Captured! Attacker lost 6.3, defender lost 6.4. Remaining 3.7.",
+      "Round 1 · Node 1: Blue attacks Neutral with 12.0 vs 6.5. Captured! Attacker lost 5.6, defender lost 6.5. Remaining 6.4.",
       "New match started. You are Blue."
     ],
-    "randomCalls": 26,
+    "randomCalls": 18,
     "defaults": [true, "2", "60"]
   },
   {
@@ -1006,20 +1006,20 @@
         {
           "id": 0,
           "owner": 0,
-          "active": 7.449440000000001,
+          "active": 7.740260623974677,
           "invested": 13.5202
         },
         {
           "id": 1,
           "owner": 0,
-          "active": 5.804053760967127,
-          "invested": 1.4396294968085221
+          "active": 5.857276748496519,
+          "invested": 1.503265677550184
         },
         {
           "id": 2,
           "owner": 0,
-          "active": 2.494997802430615,
-          "invested": 0
+          "active": 2.8484701039957794,
+          "invested": 0.48470103995779384
         },
         {
           "id": 3,
@@ -1072,13 +1072,13 @@
         {
           "id": 11,
           "owner": 1,
-          "active": 4.179852610317804,
-          "invested": 1.476469570208625
+          "active": 3.8695847613814918,
+          "invested": 0.5217992657892058
         },
         {
           "id": 12,
           "owner": 1,
-          "active": 4.2567318221632915,
+          "active": 4.238832995953242,
           "invested": 0
         },
         {
@@ -1124,12 +1124,12 @@
       "Round 2 complete: Blue 3 nodes / Red 3 nodes.",
       "Round 2 · Node 12: Red attacks Neutral with 8.0 vs 4.6. Captured! Attacker lost 4.4, defender lost 4.6. Remaining 3.6.",
       "Round 1 complete: Blue 3 nodes / Red 2 nodes.",
-      "Round 1 · Node 11: Red attacks Neutral with 6.9 vs 3.8. Captured! Attacker lost 2.6, defender lost 3.8. Remaining 4.3.",
-      "Round 1 · Node 2: Blue attacks Neutral with 10.0 vs 6.4. Captured! Attacker lost 7.6, defender lost 6.4. Remaining 2.4.",
-      "Round 1 · Node 1: Blue attacks Neutral with 12.0 vs 6.5. Captured! Attacker lost 5.8, defender lost 6.5. Remaining 6.2.",
+      "Round 1 · Node 11: Red attacks Neutral with 6.9 vs 3.8. Captured! Attacker lost 4.0, defender lost 3.8. Remaining 2.9.",
+      "Round 1 · Node 2: Blue attacks Neutral with 10.0 vs 6.4. Captured! Attacker lost 6.3, defender lost 6.4. Remaining 3.7.",
+      "Round 1 · Node 1: Blue attacks Neutral with 12.0 vs 6.5. Captured! Attacker lost 5.6, defender lost 6.5. Remaining 6.4.",
       "New match started. You are Blue."
     ],
-    "randomCalls": 26,
+    "randomCalls": 18,
     "defaults": [true, "2", "60"]
   },
   {
@@ -1140,20 +1140,20 @@
         {
           "id": 0,
           "owner": 0,
-          "active": 7.449440000000001,
+          "active": 7.740260623974677,
           "invested": 13.5202
         },
         {
           "id": 1,
           "owner": 0,
-          "active": 5.804053760967127,
-          "invested": 1.4396294968085221
+          "active": 5.857276748496519,
+          "invested": 1.503265677550184
         },
         {
           "id": 2,
           "owner": 0,
-          "active": 2.494997802430615,
-          "invested": 0
+          "active": 2.8484701039957794,
+          "invested": 0.48470103995779384
         },
         {
           "id": 3,
@@ -1206,13 +1206,13 @@
         {
           "id": 11,
           "owner": 1,
-          "active": 4.179852610317804,
-          "invested": 1.476469570208625
+          "active": 3.8695847613814918,
+          "invested": 0.5217992657892058
         },
         {
           "id": 12,
           "owner": 1,
-          "active": 4.2567318221632915,
+          "active": 4.238832995953242,
           "invested": 0
         },
         {
@@ -1251,12 +1251,12 @@
       "Round 2 complete: Blue 3 nodes / Red 3 nodes.",
       "Round 2 · Node 12: Red attacks Neutral with 8.0 vs 4.6. Captured! Attacker lost 4.4, defender lost 4.6. Remaining 3.6.",
       "Round 1 complete: Blue 3 nodes / Red 2 nodes.",
-      "Round 1 · Node 11: Red attacks Neutral with 6.9 vs 3.8. Captured! Attacker lost 2.6, defender lost 3.8. Remaining 4.3.",
-      "Round 1 · Node 2: Blue attacks Neutral with 10.0 vs 6.4. Captured! Attacker lost 7.6, defender lost 6.4. Remaining 2.4.",
-      "Round 1 · Node 1: Blue attacks Neutral with 12.0 vs 6.5. Captured! Attacker lost 5.8, defender lost 6.5. Remaining 6.2.",
+      "Round 1 · Node 11: Red attacks Neutral with 6.9 vs 3.8. Captured! Attacker lost 4.0, defender lost 3.8. Remaining 2.9.",
+      "Round 1 · Node 2: Blue attacks Neutral with 10.0 vs 6.4. Captured! Attacker lost 6.3, defender lost 6.4. Remaining 3.7.",
+      "Round 1 · Node 1: Blue attacks Neutral with 12.0 vs 6.5. Captured! Attacker lost 5.6, defender lost 6.5. Remaining 6.4.",
       "New match started. You are Blue."
     ],
-    "randomCalls": 26,
+    "randomCalls": 18,
     "defaults": [true, "2", "60"]
   },
   {
@@ -1267,20 +1267,20 @@
         {
           "id": 0,
           "owner": 0,
-          "active": 7.716961608875022,
-          "invested": 15.417392000000001
+          "active": 7.977989124466832,
+          "invested": 15.577343343186072
         },
         {
           "id": 1,
           "owner": 0,
-          "active": 6.367611334551267,
-          "invested": 1.4396294968085221
+          "active": 6.4218756414018845,
+          "invested": 1.503265677550184
         },
         {
           "id": 2,
           "owner": 0,
-          "active": 2.8296998681458367,
-          "invested": 0.296998681458369
+          "active": 2.899378310235526,
+          "invested": 0.9937831023552615
         },
         {
           "id": 3,
@@ -1333,14 +1333,14 @@
         {
           "id": 11,
           "owner": 1,
-          "active": 4.154408635703492,
-          "invested": 2.420351658462868
+          "active": 3.9782719645381084,
+          "invested": 1.2174670748943992
         },
         {
           "id": 12,
           "owner": 1,
-          "active": 9.201847731867247,
-          "invested": 1.0053854577306331
+          "active": 9.197194037052633,
+          "invested": 0.9910663967625937
         },
         {
           "id": 13,
@@ -1379,12 +1379,12 @@
       "Round 2 complete: Blue 3 nodes / Red 3 nodes.",
       "Round 2 · Node 12: Red attacks Neutral with 8.0 vs 4.6. Captured! Attacker lost 4.4, defender lost 4.6. Remaining 3.6.",
       "Round 1 complete: Blue 3 nodes / Red 2 nodes.",
-      "Round 1 · Node 11: Red attacks Neutral with 6.9 vs 3.8. Captured! Attacker lost 2.6, defender lost 3.8. Remaining 4.3.",
-      "Round 1 · Node 2: Blue attacks Neutral with 10.0 vs 6.4. Captured! Attacker lost 7.6, defender lost 6.4. Remaining 2.4.",
-      "Round 1 · Node 1: Blue attacks Neutral with 12.0 vs 6.5. Captured! Attacker lost 5.8, defender lost 6.5. Remaining 6.2.",
+      "Round 1 · Node 11: Red attacks Neutral with 6.9 vs 3.8. Captured! Attacker lost 4.0, defender lost 3.8. Remaining 2.9.",
+      "Round 1 · Node 2: Blue attacks Neutral with 10.0 vs 6.4. Captured! Attacker lost 6.3, defender lost 6.4. Remaining 3.7.",
+      "Round 1 · Node 1: Blue attacks Neutral with 12.0 vs 6.5. Captured! Attacker lost 5.6, defender lost 6.5. Remaining 6.4.",
       "New match started. You are Blue."
     ],
-    "randomCalls": 26,
+    "randomCalls": 18,
     "defaults": [true, "2", "60"]
   }
 ]
