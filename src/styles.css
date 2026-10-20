@@ -283,6 +283,66 @@ dialog#newGameDialog::backdrop {
   font-size: 14px;
   line-height: 1.85;
 }
+#empireView h2 {
+  font-size: 18px;
+}
+#empireTable {
+  width: 100%;
+  max-width: 760px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+#empireTable th,
+#empireTable td {
+  padding: 8px 6px;
+  border-bottom: 1px solid #344963;
+  text-align: right;
+}
+#empireTable th:first-child {
+  text-align: left;
+}
+#empireTable thead button {
+  font: inherit;
+  font-weight: 700;
+  min-height: 40px;
+  padding: 6px 8px;
+}
+#empireTable th[aria-sort='ascending'] button::after {
+  content: ' ▲';
+}
+#empireTable th[aria-sort='descending'] button::after {
+  content: ' ▼';
+}
+#empireTable tbody th {
+  font-weight: 400;
+  white-space: nowrap;
+}
+#empireTable tr.is-you {
+  background: #182942;
+}
+#empireTable tr.is-you th {
+  font-weight: 700;
+}
+.empire-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 8px;
+  border-radius: 50%;
+  vertical-align: -1px;
+}
+@media (max-width: 760px) {
+  #empireTable {
+    font-size: 13px;
+  }
+  #empireTable th,
+  #empireTable td {
+    padding: 6px 3px;
+  }
+  #empireTable thead button {
+    padding: 6px 4px;
+  }
+}
 #messagesView[hidden],
 #mapViewport[hidden],
 [hidden] {

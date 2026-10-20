@@ -1,9 +1,9 @@
 # Architecture: state, commands and rendering
 
-The game is six classic scripts loaded with `defer` into one global scope, in
-this order: `engine.js`, `store.js`, `format.js`, `game.js`, `ux.js`,
-`tactical-ui.js`. Later scripts build on, and in places replace, functions from
-earlier ones.
+The game is eight classic scripts loaded with `defer` into one global scope, in
+this order: `engine.js`, `store.js`, `format.js`, `game.js`, `dialogs.js`,
+`empire-view.js`, `ux.js`, `tactical-ui.js`. Later scripts build on, and in
+places replace, functions from earlier ones.
 
 | Module           | Owns                                                                    | Touches the DOM |
 | ---------------- | ----------------------------------------------------------------------- | --------------- |
@@ -11,6 +11,8 @@ earlier ones.
 | `store.js`       | All match and interface state, commands, selectors, subscriptions       | no              |
 | `format.js`      | Energy number formatting                                                | no              |
 | `game.js`        | The base renderer, map navigation, save and restore, the global mirrors | yes             |
+| `dialogs.js`     | The Orders and Settings dialog buttons                                  | yes             |
+| `empire-view.js` | The Empires tab: one row per player, sorted by the chosen column        | yes             |
 | `ux.js`          | Layout, dialogs, side panel, dock, camera fitting                       | yes             |
 | `tactical-ui.js` | Map selection and node groups, the inspector, pinch zoom, the ☰ menu   | yes             |
 
@@ -30,6 +32,7 @@ command really changes it.
 | conquest defaults (enabled, reserve, invest)           | `match.defaults`   | yes   | `setDefaults`                       |
 | selected node                                          | `ui.selected`      | yes¹  | `select`, inspector commands        |
 | view tab                                               | `ui.view`          | no    | `setView`                           |
+| Empires table sort column and direction                | `ui.empireSort`    | no    | `sortEmpires`                       |
 | flow filter                                            | `ui.overlay`       | no    | `setOverlay`                        |
 | camera (`x`, `y`, `scale`)                             | `ui.camera`        | no    | `setCamera`                         |
 | policy clipboard                                       | `ui.clipboard`     | no    | `copyPolicy`                        |
@@ -94,11 +97,16 @@ before `tactical-ui.js` loaded, so changing the filter never rebuilds the inspec
 `showNodeOnMobile` and `positionNodeDetails` are also replaced in load order.
 The last definition wins and is the one in use.
 
+`empire-view.js` stays out of the chain: it subscribes to the store and redraws
+the Empires table when the match, the sort or the view changes while the tab is
+shown. `game.js` still shows and hides `#empireView` with the other views.
+
 | DOM subtree                                                                                               | Rendered by      |
 | --------------------------------------------------------------------------------------------------------- | ---------------- |
 | `#map` content, `#score`, `#resolve`, `#log`, `#orders`, `#allocator`, `#policyEditor`                    | `game.js`        |
 | `#map` viewBox and camera transform, `#uxSide*`, `#uxDock*`, `#uxEditorStats`, `#uxBalance`               | `ux.js`          |
 | `#tacticalInspector`, `#tacticalGroupBar`, `#tacticalMenu`, `.tactical-edge-hit`, rings, flow edge colors | `tactical-ui.js` |
+| `#empireTable` rows and header sort marks                                                                 | `empire-view.js` |
 
 `#allocator` and `#policyEditor` are built by `game.js`. `tactical-ui.js` moves
 their sections into the inspector while it edits a node and parks them in the

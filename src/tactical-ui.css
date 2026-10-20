@@ -314,7 +314,8 @@ body > header #resolve {
     min-height: 39px;
   }
 
-  #messagesView {
+  #messagesView,
+  #empireView {
     flex: 1 1 auto;
     min-height: 0;
     max-height: none;

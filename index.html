@@ -39,7 +39,8 @@
     <div class="toolbar">
       <div class="view-tabs" role="tablist" aria-label="Game views">
         <button id="mapTab" class="active" role="tab" aria-selected="true">Map</button
-        ><button id="messagesTab" role="tab" aria-selected="false">Messages</button>
+        ><button id="messagesTab" role="tab" aria-selected="false">Messages</button
+        ><button id="empireTab" role="tab" aria-selected="false">Empires</button>
       </div>
       <label
         >Overlay
@@ -116,6 +117,28 @@
           <h2>Messages / round history</h2>
           <div id="log" class="log"></div>
         </section>
+        <section id="empireView" hidden>
+          <h2>Empires</h2>
+          <table id="empireTable">
+            <thead>
+              <tr>
+                <th scope="col" data-column="player">
+                  <button type="button">Player</button>
+                </th>
+                <th scope="col" data-column="invested">
+                  <button type="button">Total invested</button>
+                </th>
+                <th scope="col" data-column="active">
+                  <button type="button">Total active energy</button>
+                </th>
+                <th scope="col" data-column="nodes">
+                  <button type="button">Nodes</button>
+                </th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </section>
         <p class="muted map-explanation">
           Blue = you · Other colors = AI players · Gray = neutral. Node label shows active energy
           and invested energy (I). Select a blue node to withdraw invested reserves or allocate
@@ -182,6 +205,7 @@
     <script src="./src/format.js" defer></script>
     <script src="./src/game.js" defer></script>
     <script src="./src/dialogs.js" defer></script>
+    <script src="./src/empire-view.js" defer></script>
     <script src="./src/ux.js" defer></script>
     <script src="./src/tactical-ui.js" defer></script>
   </body>
