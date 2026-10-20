@@ -113,8 +113,8 @@
         {
           x1: ax + (dx / length) * 36 + shiftX,
           y1: ay + (dy / length) * 36 + shiftY,
-          x2: bx - (dx / length) * 40 + shiftX,
-          y2: by - (dy / length) * 40 + shiftY,
+          x2: bx - (dx / length) * 48 + shiftX,
+          y2: by - (dy / length) * 48 + shiftY,
           stroke: color,
           'stroke-width': 4,
           'stroke-dasharray': order.type === 'attack' ? 'none' : '3 5',
@@ -122,6 +122,25 @@
           'data-source': order.source,
           'data-dest': order.dest,
           'data-type': order.type,
+        },
+        layer,
+      );
+      const tipX = bx - (dx / length) * 33 + shiftX,
+        tipY = by - (dy / length) * 33 + shiftY;
+      const baseX = tipX - (dx / length) * 15,
+        baseY = tipY - (dy / length) * 15;
+      element(
+        'polygon',
+        {
+          points: [
+            [tipX, tipY],
+            [baseX - (dy / length) * 7, baseY + (dx / length) * 7],
+            [baseX + (dy / length) * 7, baseY - (dx / length) * 7],
+          ].join(' '),
+          fill: color,
+          class: 'ai-debug-arrow',
+          'data-source': order.source,
+          'data-dest': order.dest,
         },
         layer,
       );

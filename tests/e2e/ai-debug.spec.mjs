@@ -1,6 +1,7 @@
 import { test, expect, gameSnapshot, inspector } from './support/game.mjs';
 
 const aiFlows = (page) => page.locator('#map .ai-debug-flow');
+const aiArrows = (page) => page.locator('#map .ai-debug-arrow');
 const aiLabels = (page) => page.locator('#map .ai-debug-label');
 const aiDebugSwitch = (page) => page.locator('#aiDebug');
 
@@ -28,6 +29,8 @@ test('the switch shows AI flows and an AI node plan, and hides them again', asyn
   await setAiDebug(page, true);
 
   await expect(aiFlows(page).first()).toBeVisible();
+  await expect(aiArrows(page)).toHaveCount(await aiFlows(page).count());
+  await expect(aiArrows(page).first()).toBeVisible();
   await expect(aiLabels(page).first()).toBeVisible();
   const source = await firstAiSource(page);
   expect(source).not.toBeNull();
@@ -48,6 +51,7 @@ test('the switch shows AI flows and an AI node plan, and hides them again', asyn
 
   await setAiDebug(page, false);
   await expect(aiFlows(page)).toHaveCount(0);
+  await expect(aiArrows(page)).toHaveCount(0);
   await expect(aiLabels(page)).toHaveCount(0);
   await expect(inspector(page)).not.toContainText('AI plan this round');
   expect(await gameSnapshot(page)).toBe(before);
