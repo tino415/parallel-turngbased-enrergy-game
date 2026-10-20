@@ -289,6 +289,7 @@ function clickNode(id) {
 
 function resolve() {
   if (state.finished) return;
+  if (currentMatch().online) return GameOnline.endTurn();
   store.resolve();
   render();
 }
@@ -526,7 +527,7 @@ function setActiveTab() {
   for (const id of ['fit', 'zoomIn', 'zoomOut']) $(id).hidden = currentView !== 'map';
 }
 function saveGame() {
-  if (!state) return;
+  if (!state || currentMatch().online) return;
   const save = GameStore.saveFromMatch(currentMatch(), store.getSnapshot().ui.selected);
   try {
     writeSave(save);
@@ -568,7 +569,7 @@ function restoreGame() {
 for (const id of ['autoConquer', 'defaultReserve', 'defaultInvest'])
   $(id).addEventListener('change', () => store.setDefaults(domDefaults()));
 window.addEventListener('beforeunload', (event) => {
-  if (!state || state.finished) return;
+  if (!state || state.finished || currentMatch().online) return;
   saveGame();
   event.preventDefault();
   event.returnValue = '';

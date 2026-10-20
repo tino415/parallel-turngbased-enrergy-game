@@ -553,7 +553,11 @@
     const softCap = isSoftCap(state);
     const conquered = new Set();
     const conquestPolicyOf = (owner) =>
-      conquestPolicies[owner] ?? (owner === [].concat(seat)[0] ? defaultConquestPolicy : null);
+      owner in conquestPolicies
+        ? conquestPolicies[owner]
+        : owner === [].concat(seat)[0]
+          ? defaultConquestPolicy
+          : null;
     const ledger = Array.from(
       { length: Math.max(playerCount, ...owners.map((o) => o + 1)) },
       emptyLedger,

@@ -841,9 +841,10 @@
 
   const conquestPoliciesOf = (match) =>
     Object.fromEntries(
-      Object.entries(match.seatDefaults ?? {})
-        .map(([owner, defaults]) => [owner, conquestPolicy(defaults)])
-        .filter(([, policy]) => policy),
+      Object.entries(match.seatDefaults ?? {}).map(([owner, defaults]) => [
+        owner,
+        conquestPolicy(defaults),
+      ]),
     );
 
   function resolveRoundOf(match, rng) {
@@ -909,7 +910,6 @@
       ...match,
       seat: match.replay.seat ?? 0,
       humanSeats: match.replay.humanSeats,
-      online: false,
       state: from.state,
       policies: from.policies,
     };

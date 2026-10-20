@@ -1,8 +1,8 @@
 # Architecture: state, commands and rendering
 
-The game is nine classic scripts loaded with `defer` into one global scope, in
+The game is ten classic scripts loaded with `defer` into one global scope, in
 this order: `engine.js`, `store.js`, `format.js`, `game.js`, `dialogs.js`,
-`leaderboard.js`, `ux.js`, `tactical-ui.js`, `replay.js`. Later scripts build on, and in
+`leaderboard.js`, `ux.js`, `tactical-ui.js`, `replay.js`, `online.js`. Later scripts build on, and in
 places replace, functions from earlier ones.
 
 | Module           | Owns                                                                                      | Touches the DOM |
@@ -16,6 +16,7 @@ places replace, functions from earlier ones.
 | `ux.js`          | Layout, dialogs, side panel, dock, camera fitting                                         | yes             |
 | `tactical-ui.js` | Map selection, node and connection groups, the inspector, pinch zoom, the ☰ menu         | yes             |
 | `replay.js`      | The replay screen, the game-over notice and the Replay menu item                          | yes             |
+| `online.js`      | The online lobby, the status bar, End turn, polling the server                            | yes             |
 
 ## State ownership
 
@@ -145,6 +146,32 @@ plans for every other owner, and a friendly target means a node with the same
 owner as the source. When the seat is outside the first N colours, the map lists
 its colours in `map.owners` (absent means the first N) and the last slot takes the
 seat's colour; standings and the leaderboard walk that list. `replayFrames` re-runs the rounds with `replay.seat`.
+
+## Online matches
+
+An online match runs on a Cloudflare Worker (`server/worker.mjs`) with one Durable
+Object per match; `wrangler.toml` binds it as `MATCHES` and routes only `/api/*`
+to the Worker, the rest is static assets. The Durable Object is a thin shell:
+it hashes the bearer token, loads the record, calls one function of
+`server/match.mjs` and stores the result. Those functions are plain and
+tested with `node --test`; they load `engine.js` and `store.js` as side-effect
+imports and resolve rounds with the store's own `resolve`.
+
+- The record holds the store's match (map, state, policies, history, replay) plus the
+  seats, each seat's token hash, conquest defaults and the turn submitted for the
+  round. The dice seed is the replay's `diceSeed`, generated on the server.
+- `match.humanSeats` lists the colours people play; the engine plans the AI for every
+  other owner, and a policy is dropped when its node changes owner. `match.seat` is
+  still the colour this browser plays, `isMine` still reads it.
+- The server keeps only the orders of nodes the sender owns, cleans every number,
+  and shows a seat only its own policies and submitted turn. The replay (orders and
+  dice seed) is sent when the match is finished, which is also when the Leaderboard
+  charts and the Replay become available online.
+- `online.js` keeps the seat token in localStorage under `parallel-energy-online:<id>`,
+  polls `GET /api/matches/<id>` every four seconds while the tab is visible, and puts
+  the result into the store with `replaceMatch`, marked `match.online`. An online match
+  is never autosaved, `store.resolve` does nothing in it, and the AI debug view is off,
+  because it would show hidden orders. `sw.js` leaves `/api/` to the network.
 
 ## Next steps
 

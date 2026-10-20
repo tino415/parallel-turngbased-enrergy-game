@@ -94,3 +94,8 @@ test('a single seat as a number keeps working', () => {
   const result = resolveFor(0, { policies: { 0: policy(50), 1: policy(50) } });
   assert.deepEqual(Object.keys(result.policies), ['0']);
 });
+
+test('a human seat that switched its conquest default off gets no policy on a capture', () => {
+  const result = capturedByZero({ 0: null });
+  assert.equal(result.policies[1], undefined);
+});

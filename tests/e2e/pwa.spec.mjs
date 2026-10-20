@@ -39,6 +39,21 @@ test('the service worker serves the game offline and keeps the save', async ({ p
   expect(await page.evaluate(() => state.round)).toBe(2);
 });
 
+test('the service worker never answers /api/ from its cache', async ({ page, context }) => {
+  await controlledByServiceWorker(page);
+  const fetchRound = () =>
+    page.evaluate(() =>
+      fetch('/api/matches/abcdefghjk').then(
+        (r) => r.status,
+        () => 'offline',
+      ),
+    );
+  await expect.poll(fetchRound).toBe(404);
+
+  await context.setOffline(true);
+  expect(await fetchRound()).toBe('offline');
+});
+
 async function controlledByServiceWorker(page) {
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);

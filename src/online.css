@@ -1,0 +1,78 @@
+.online-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 8px 22px;
+  background: var(--ux-panel);
+  border-bottom: 1px solid var(--ux-border);
+}
+.online-status[hidden],
+.online-lobby[hidden] {
+  display: none;
+}
+.online-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.online-chip {
+  padding: 2px 9px;
+  border: 1px solid var(--ux-border);
+  border-radius: 999px;
+  background: var(--ux-card);
+}
+.online-chip.ready {
+  border-color: var(--ux-green);
+}
+.online-swatch {
+  margin-right: 6px;
+}
+.online-lobby {
+  max-width: 560px;
+  margin: 18px auto;
+  padding: 16px 20px;
+  background: var(--ux-panel);
+  border: 1px solid var(--ux-border);
+  border-radius: 12px;
+}
+.online-link {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0;
+}
+.online-link input {
+  flex: 1;
+  min-width: 0;
+}
+.online-seats {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.online-seat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--ux-card);
+  border: 1px solid var(--ux-border);
+  border-radius: 9px;
+}
+.online-seat.mine {
+  border-color: var(--ux-green);
+}
+.online-seat-player {
+  flex: 1;
+  color: var(--ux-muted);
+}
+@media (max-width: 760px) {
+  .online-status {
+    padding: 8px 12px;
+  }
+  .online-lobby {
+    margin: 10px;
+  }
+}
