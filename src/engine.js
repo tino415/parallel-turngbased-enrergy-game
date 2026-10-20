@@ -370,6 +370,9 @@
       adjacent[b].push(a);
     }
     const power = (n) => n.active + n.invested * net;
+    const load = (n) => n.active + n.invested;
+    const weakerAlly = (ally, node) =>
+      load(ally) < load(node) || (load(ally) === load(node) && ally.id > node.id);
     const garrison = (n) => Math.min(12, Math.max(2, power(n) * 0.08));
     const committed = new Set();
 
@@ -453,7 +456,8 @@
         const frontier = near
           .filter((id) => nodes[id].owner === owner)
           .filter((id) => adjacent[id].some((other) => nodes[other].owner !== owner))
-          .filter((id) => nodes[id].active + nodes[id].invested < SOFT_CAP_RULES.capacity * 0.8)
+          .filter((id) => distance[n.id] > 0 || weakerAlly(nodes[id], n))
+          .filter((id) => load(nodes[id]) < SOFT_CAP_RULES.capacity * 0.8)
           .sort(
             (a, b) =>
               nodes[a].active + nodes[a].invested - nodes[b].active - nodes[b].invested || a - b,

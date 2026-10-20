@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { planStrategyOrders } from './support/strategies.mjs';
+import { roundOrdersFromPlan } from './support/live-economy.mjs';
 
 const engine = runInNewContext(
   readFileSync(new URL('../src/engine.js', import.meta.url), 'utf8') + '\n;GameEngine',
@@ -244,6 +245,60 @@ test('AI forwards back-line energy it cannot invest toward the frontier', () => 
   assert.ok(transfers.some((o) => o.source === 2 && o.dest === 1 && o.amount > 40));
   assert.ok(transfers.some((o) => o.source === 3 && o.dest === 2 && o.amount > 40));
 });
+
+test('of two allied frontier nodes the AI reinforces only the weaker one', () => {
+  const nodes = [node(0, 1, 150), node(1, 1, 148), node(2, 0, 220)];
+  const links = [
+    [0, 1],
+    [0, 2],
+    [1, 2],
+  ];
+  const transfers = plannedTransfers(engine.economicAI(nodes, links).orders);
+  assert.deepEqual(transfers, ['0>1']);
+});
+
+test('no all-AI round sends support both ways along one connection', () => {
+  for (const index of [0, 1, 2]) {
+    const map = engine.buildMap({
+      count: 30,
+      players: 3,
+      density: 'normal',
+      seed: 'one-way-support:' + index,
+    });
+    const rng = engine.seeded('one-way-support:combat:' + index);
+    let state = { round: 1, nodes: map.nodes, finished: false, rulesVersion: 2 };
+    while (!state.finished && state.round <= 150) {
+      const plan = engine.economicAI(state.nodes, map.links, true);
+      const transfers = plannedTransfers(plan.orders);
+      const reciprocal = transfers.filter((t) =>
+        transfers.includes(t.split('>').reverse().join('>')),
+      );
+      assert.deepEqual(reciprocal, [], 'map ' + index + ' round ' + state.round);
+      const { orders, aiOrdersOverride, aiWithdrawalsOverride } = roundOrdersFromPlan(
+        plan,
+        state.nodes,
+      );
+      state = engine.resolveRound({
+        state,
+        playerCount: 3,
+        links: map.links,
+        orders,
+        policies: {},
+        rng,
+        aiOrdersOverride,
+        aiWithdrawalsOverride,
+      }).state;
+    }
+  }
+});
+
+function plannedTransfers(orders) {
+  return Object.values(orders)
+    .flat()
+    .filter((o) => o.type === 'transfer')
+    .map((o) => o.source + '>' + o.dest)
+    .sort();
+}
 
 function superTurtleDuel(index) {
   const seed = 'siege-logistics-duel:' + index;
