@@ -42,13 +42,13 @@
   const policySection = document.createElement('section');
   policySection.className = 'ux-editor-section';
   policySection.id = 'uxPolicySection';
-  manualSection.append(allocator);
+  manualSection.append(allocator, hint);
   policySection.append(policyEditor);
   columns.append(manualSection, policySection);
   const note = document.createElement('div');
   note.className = 'ux-combat-note';
   note.id = 'uxCombatNote';
-  scroll.append(details, stats, balance, jumps, columns, note, hint);
+  scroll.append(details, stats, balance, jumps, columns, note);
   const footer = document.createElement('div');
   footer.className = 'ux-editor-footer';
   footer.innerHTML = '<span id="uxFooterSummary" class="muted"></span><button type="button" class="primary" id="uxDone">Done ✓</button>';
