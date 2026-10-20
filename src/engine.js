@@ -12,6 +12,7 @@
   ];
   const playerName = (owner) => (owner === null ? 'Neutral' : players[owner].name);
   const playerColor = (owner) => (owner === null ? '#768092' : players[owner].color);
+  const playerOwners = [...players.keys(), null];
 
   // Version 2 is enabled for NEW matches; legacy autosaves retain original rules.
   const SOFT_CAP_RULES = Object.freeze({
@@ -755,6 +756,7 @@
   globalThis.GameEngine = Object.freeze({
     playerName,
     playerColor,
+    playerOwners,
     seeded,
     buildMap,
     evaluatePolicy,
