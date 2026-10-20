@@ -321,7 +321,6 @@ header .primary {
   color: #e0eaf7;
 }
 #allocator .allocation-line input {
-  min-height: 36px;
   width: 100%;
 }
 #allocator > button {
@@ -350,7 +349,6 @@ header .primary {
 #policyEditor .policy-box label select {
   display: block;
   margin-top: 5px;
-  min-height: 39px;
 }
 #policyEditor .policy-actions {
   gap: 6px;
