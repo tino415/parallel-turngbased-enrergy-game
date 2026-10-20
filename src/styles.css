@@ -343,18 +343,19 @@ dialog#newGameDialog::backdrop {
   visibility: visible;
 }
 #leaderboardTable .help {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   min-height: 0;
   padding: 0;
-  margin-right: 4px;
+  margin-right: 3px;
   border: 1px solid #80b9f5;
   border-radius: 50%;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1;
 }
 #leaderboardTable tbody th {
   font-weight: 400;
+  white-space: normal;
 }
 #leaderboardTable tr.is-you {
   background: #182942;
