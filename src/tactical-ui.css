@@ -188,32 +188,104 @@ body > header #resolve {
 .tactical-primary-control input[type='number'] {
   width: 85px;
 }
-.tactical-primary-control select {
-  width: 100%;
+.tactical-inspector-body p {
+  margin: 2px 0;
 }
-.tactical-inspector-body details {
-  border-top: 1px solid #3c526e;
-  margin-top: 9px;
-  padding-top: 9px;
+.tactical-editor-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 6px 0 2px;
 }
-.tactical-inspector-body details > summary {
-  cursor: pointer;
+.tactical-row-label {
+  flex: 0 0 66px;
+  align-self: center;
   font-size: 13px;
   font-weight: 700;
-  padding: 7px 0;
 }
-#tacticalInspector #uxManualSection,
-#tacticalInspector #uxPolicySection {
+.tactical-row-note {
+  align-self: center;
+  color: #b5c7de;
+  font-size: 12px;
+}
+.tactical-editor-row .tactical-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: #b5c7de;
+  font-size: 11px;
+}
+.tactical-editor-row .tactical-field input {
+  width: 62px;
+}
+.tactical-editor-row .tactical-field-wide input {
+  width: 78px;
+}
+.tactical-slider {
+  display: block;
+  width: calc(100% - 74px);
+  margin: 6px 0 2px 74px;
+}
+.tactical-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 0;
+}
+.tactical-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 11px;
+  border: 1px solid #637891;
+  border-radius: 999px;
+  background: #263a56;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tactical-chip:has(input:checked) {
+  background: #285e99;
+  border-color: #80b9f5;
+}
+.tactical-chip input {
+  width: auto;
+  margin: 0;
+}
+.tactical-editor-row > button.tactical-chip {
+  height: 40px;
+}
+.tactical-help {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  align-self: center;
+  padding: 0;
+  border: 1px solid #80b9f5;
+  border-radius: 50%;
   background: transparent;
+  font-size: 12px;
+  line-height: 1;
+}
+.tactical-help-popover {
+  max-width: min(320px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border: 1px solid #344963;
+  border-radius: 10px;
+  background: #182942;
+  color: #e7eef9;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.tactical-help-popover p {
+  margin: 6px 0 0;
+}
+.tactical-divider {
   border: 0;
-  padding: 8px 0;
-}
-#tacticalInspector .allocation-line {
-  grid-template-columns: minmax(0, 1fr) 90px;
-}
-#tacticalInspector .policy-box h3,
-#tacticalInspector #allocator .order-row:first-child {
-  display: none;
+  border-top: 1px solid #3c526e;
+  margin: 8px 0 2px;
 }
 .tactical-secondary {
   color: #b5c7de;
@@ -538,12 +610,13 @@ body > header #resolve {
 }
 .tactical-order-presets {
   display: flex;
-  flex-wrap: wrap;
+  flex: 1 1 auto;
   gap: 6px;
 }
 .tactical-order-presets button {
-  min-height: 36px;
-  padding: 6px 10px;
+  flex: 1 1 0;
+  height: 40px;
+  padding: 0 4px;
 }
 .tactical-order-presets button:disabled {
   opacity: 0.45;

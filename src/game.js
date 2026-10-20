@@ -260,22 +260,6 @@ function policyControls() {
     );
     invest.dataset.key = source + ':investPct';
     add('Invest % of surplus', invest);
-    const dest = document.createElement('select');
-    for (const [value, title] of [
-      ['', 'Keep remaining surplus'],
-      ...neighbors(source)
-        .filter((id) => state.nodes[id].owner === 0)
-        .map((id) => [String(id), 'Transfer → Node ' + id]),
-    ]) {
-      const opt = document.createElement('option');
-      opt.value = value;
-      opt.textContent = title;
-      opt.selected = (value === '' ? null : Number(value)) === p.dest;
-      dest.append(opt);
-    }
-    dest.onchange = () =>
-      changePolicy(source, 'dest', dest.value === '' ? null : Number(dest.value));
-    add('Transfer destination', dest);
     const pause = document.createElement('input');
     pause.type = 'checkbox';
     pause.checked = Boolean(plan(source).hold);

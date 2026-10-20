@@ -8,22 +8,9 @@ import {
   annotateSimulatedKeyboard,
 } from './support/game.mjs';
 
-const manualInvest = (page) => page.locator('#allocator input[data-allocation="invest"]');
-const policyReserve = (page) =>
-  page
-    .locator('#policyEditor label')
-    .filter({ hasText: 'Active defense reserve' })
-    .locator('input');
-
-async function openManualAllocations(page) {
-  await openNodeEditor(page);
-  await page.getByText('Manual investment, withdrawal and allocations').click();
-}
-
-async function openOtherPolicySettings(page) {
-  await openNodeEditor(page);
-  await page.getByText('Other policy settings').click();
-}
+const manualInvest = (page) =>
+  inspector(page).getByRole('spinbutton', { name: 'Invest this round' });
+const policyReserve = (page) => inspector(page).getByRole('spinbutton', { name: 'Defense floor' });
 
 async function track(field) {
   await field.evaluate((element) => {
@@ -89,7 +76,7 @@ test('an empty edge draft is not coerced while focused and commits as before on 
 });
 
 test('a manual allocation draft survives map and camera updates', async ({ page }) => {
-  await openManualAllocations(page);
+  await openNodeEditor(page);
   const invest = manualInvest(page);
   await typeInto(invest, '3');
   await track(invest);
@@ -109,7 +96,7 @@ test('a manual allocation draft stays in the inspector through a simulated keybo
   page,
 }) => {
   annotateSimulatedKeyboard();
-  await openManualAllocations(page);
+  await openNodeEditor(page);
   const invest = manualInvest(page);
   await typeInto(invest, '4');
   await track(invest);
@@ -121,7 +108,7 @@ test('a manual allocation draft stays in the inspector through a simulated keybo
 test('a manual allocation draft keeps its element across the mobile breakpoint', async ({
   page,
 }) => {
-  await openManualAllocations(page);
+  await openNodeEditor(page);
   const invest = manualInvest(page);
   await typeInto(invest, '2');
   await track(invest);
@@ -135,7 +122,7 @@ test('a manual allocation draft keeps its element across the mobile breakpoint',
 
 test('a policy reserve draft survives a render and a simulated keyboard', async ({ page }) => {
   annotateSimulatedKeyboard();
-  await openOtherPolicySettings(page);
+  await openNodeEditor(page);
   const reserve = policyReserve(page);
   await typeInto(reserve, '7.');
   await track(reserve);
@@ -150,7 +137,7 @@ test('a policy reserve draft survives a render and a simulated keyboard', async 
 test('committing a policy field keeps focus on it and updates the other controls', async ({
   page,
 }) => {
-  await openOtherPolicySettings(page);
+  await openNodeEditor(page);
   const reserve = policyReserve(page);
   await typeInto(reserve, '9');
   await track(reserve);

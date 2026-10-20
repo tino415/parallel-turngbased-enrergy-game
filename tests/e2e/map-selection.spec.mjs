@@ -54,8 +54,7 @@ test('node clicks and editor input and text selection remain usable', async ({ p
   await expect(page.locator('#tacticalInspector')).toBeHidden();
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
   await expect(page.locator('#tacticalInspector')).toBeVisible();
-  await page.getByText('Manual investment, withdrawal and allocations').click();
-  const input = page.locator('#allocator input[type="number"]').first();
+  const input = page.locator('#tacticalInspector input[data-allocation="invest"]');
   await input.fill('2');
   await expect(input).toHaveValue('2');
   // Native double-click selection outside the map must still work.

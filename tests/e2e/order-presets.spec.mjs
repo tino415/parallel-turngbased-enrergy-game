@@ -29,7 +29,8 @@ const amount = (page) => page.evaluate(() => orders[0]?.edges[1]);
 
 test('preset buttons fill the attack amount', async ({ page }) => {
   await setUpAttack(page, 10);
-  await expect(preset(page, 'chance-100')).toHaveText('100% success attack · 15');
+  await expect(preset(page, 'chance-100')).toHaveText('100%');
+  await expect(preset(page, 'chance-100')).toHaveAccessibleName('100% success attack · 15');
 
   await preset(page, 'chance-90').click();
   const ninety = await amount(page);
@@ -87,4 +88,14 @@ test('a source with no energy disables every preset', async ({ page }) => {
   await expect(page.locator('#tacticalPresetReasons')).toHaveText(
     'Node 0 has no energy left to send.',
   );
+});
+
+test('the win chance presets share one row and show only the percentage', async ({ page }) => {
+  await setUpAttack(page, 10);
+  const keys = ['chance-70', 'chance-90', 'chance-100'];
+  const boxes = await Promise.all(keys.map((key) => preset(page, key).boundingBox()));
+  for (const box of boxes) expect(Math.abs(box.y - boxes[0].y)).toBeLessThan(1);
+  for (const key of keys) await expect(preset(page, key)).toHaveText(/^\d+%$/);
+  await expect(preset(page, 'all')).toHaveText('All');
+  await expect(preset(page, 'surplus')).toHaveText('Surplus');
 });

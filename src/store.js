@@ -668,7 +668,7 @@
     return keys.length === Object.keys(b).length && keys.every((key) => sameValue(a[key], b[key]));
   }
 
-  const CLOSED_INSPECTOR = { active: null, editing: false, advancedOpen: false, manualOpen: false };
+  const CLOSED_INSPECTOR = { active: null, editing: false };
   const INITIAL_UI = {
     view: 'map',
     leaderboardSort: DEFAULT_LEADERBOARD_SORT,
@@ -826,8 +826,6 @@
             active: { ...snapshot.ui.inspector.active, source },
           },
         }),
-      setInspectorSection: (section, open) =>
-        updateUi({ inspector: { ...snapshot.ui.inspector, [section]: open } }),
       focusNode: (id) => updateUi({ inspector: { ...snapshot.ui.inspector, focusedNode: id } }),
     };
   }
