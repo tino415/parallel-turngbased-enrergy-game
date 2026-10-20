@@ -13,13 +13,12 @@ test.beforeEach(async ({ page }) => {
 
 const saveWrites = (page) => page.evaluate(() => window.saveWrites);
 
-test('camera, view, flow filter and inspector changes do not write the save', async ({ page }) => {
+test('camera, view and inspector changes do not write the save', async ({ page }) => {
   await openNodeEditor(page);
   await inspector(page).getByRole('button', { name: 'Clear map selection' }).click();
   await page.locator('#zoomIn').click();
   await page.locator('#fit').click();
   await page.locator('#focusMap').click();
-  await page.locator('#overlay').selectOption('manual');
   await page.locator('#messagesTab').click();
   await page.locator('#mapTab').click();
   expect(await saveWrites(page)).toBe(0);

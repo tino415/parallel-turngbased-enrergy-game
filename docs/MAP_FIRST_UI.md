@@ -15,7 +15,7 @@
 
 ## Flow visualization
 
-Planned attack and transfer flows recolor the **existing connection stroke**, rather than drawing a second coincident line. Direction arrowheads, flow amounts, manual-vs-policy dash styling and optional overlay filtering remain visible. When multiple flows share a connection, the stroke uses a mixed-flow color while directional arrows retain their order-specific colors. Node income/investment previews are independent of the flow filter.
+Planned attack and transfer flows recolor the **existing connection stroke**, rather than drawing a second coincident line. Direction arrowheads, flow amounts and manual-vs-policy dash styling remain visible, and every planned flow is always shown. When multiple flows share a connection, the stroke uses a mixed-flow color while directional arrows retain their order-specific colors.
 
 ## Rules compatibility
 

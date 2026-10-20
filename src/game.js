@@ -3,9 +3,9 @@ const { buildMap, playerColor, playerName, playerOwners, SOFT_CAP_RULES } = Game
 const { selectors } = GameStore;
 const store = GameStore.createStore();
 let state, orders, policies, history, xy, edges, N, playerCount, mapSeed;
-let { view: currentView, overlay, clipboard, selected, camera } = store.getSnapshot().ui;
+let { view: currentView, clipboard, selected, camera } = store.getSnapshot().ui;
 store.subscribe(({ match, ui }, previous) => {
-  ({ view: currentView, overlay, clipboard, selected, camera } = ui);
+  ({ view: currentView, clipboard, selected, camera } = ui);
   if (match === previous.match) return;
   ({ state, orders, policies, history } = match);
   ({ xy, edges, N, playerCount, mapSeed } = match.map);
@@ -475,17 +475,8 @@ function projection(id) {
   return selectors.projection(currentMatch(), id);
 }
 function renderFlows(svg, graph, element) {
-  const filter = overlay;
-  if (filter === 'none') return;
   for (const o of previewOrders()) {
-    if (
-      (filter === 'manual' && o.automatic) ||
-      (filter === 'policy' && !o.automatic) ||
-      o.dest === undefined ||
-      o.dest === null ||
-      o.amount <= 0.01
-    )
-      continue;
+    if (o.dest === undefined || o.dest === null || o.amount <= 0.01) continue;
     const [ax, ay] = xy[o.source],
       [bx, by] = xy[o.dest],
       dx = bx - ax,
@@ -656,7 +647,6 @@ function setActiveTab() {
     button.classList.toggle('active', view === currentView);
     button.setAttribute('aria-selected', String(view === currentView));
   }
-  $('overlay').closest('label').hidden = currentView !== 'map';
   for (const id of ['fit', 'zoomIn', 'zoomOut']) $(id).hidden = currentView !== 'map';
 }
 function saveGame() {
@@ -842,11 +832,6 @@ $('cancelNewGame').onclick = () => $('newGameDialog').close();
 $('mapTab').onclick = () => switchView('map');
 $('messagesTab').onclick = () => switchView('messages');
 $('leaderboardTab').onclick = () => switchView('leaderboard');
-$('overlay').value = overlay;
-$('overlay').onchange = () => {
-  store.setOverlay($('overlay').value);
-  render();
-};
 $('zoomIn').onclick = () => {
   store.setCamera({ ...camera, scale: Math.min(5, camera.scale * 1.25) });
   render();

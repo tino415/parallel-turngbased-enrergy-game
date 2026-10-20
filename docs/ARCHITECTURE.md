@@ -33,7 +33,6 @@ command really changes it.
 | selected node                                          | `ui.selected`        | yes¹  | `select`, inspector commands        |
 | view tab                                               | `ui.view`            | no    | `setView`                           |
 | Leaderboard sort column and direction                  | `ui.leaderboardSort` | no    | `sortLeaderboard`                   |
-| flow filter                                            | `ui.overlay`         | no    | `setOverlay`                        |
 | camera (`x`, `y`, `scale`)                             | `ui.camera`          | no    | `setCamera`                         |
 | policy clipboard                                       | `ui.clipboard`       | no    | `copyPolicy`                        |
 | node group selected on the map                         | `ui.bulkSelection`   | no    | group commands, `resolve`²          |
@@ -68,10 +67,10 @@ on submit: the new-game dialog and the group's invest-on-each amount.
   mirrors and to autosave when `match` changed; `tactical-ui.js` uses one to
   mirror `ui.inspector`.
 - **Autosave** writes once per committed match change, plus on `pagehide` and
-  `beforeunload`. Camera, view, filter and inspector changes never write.
+  `beforeunload`. Camera, view and inspector changes never write.
 - **Globals** `state`, `orders`, `policies`, `history`, `xy`, `edges`, `N`,
-  `playerCount`, `mapSeed`, `currentView`, `overlay`, `clipboard`, `selected`
-  and `camera` are read-only mirrors of the snapshot, kept for the existing
+  `playerCount`, `mapSeed`, `currentView`, `clipboard`, `selected` and
+  `camera` are read-only mirrors of the snapshot, kept for the existing
   readers, the specs and the console. Never assign them: the next commit
   overwrites the assignment, and nothing saves it. Use a command, or
   `store.replaceMatch` in test setup.
@@ -89,9 +88,6 @@ replaced in load order, and each layer calls the previous one:
 3. `tactical-ui.js` adds edge hit areas, selection and group rings, the group
    bar and the inspector for one node, one edge or the node group, which it
    updates in place to keep drafts and focus.
-
-The flow filter (`#overlay`) calls the `ux.js`-level render that `ux.js` captured
-before `tactical-ui.js` loaded, so changing the filter never rebuilds the inspector.
 
 `renderFlows`, `renderOrders`, `clickNode`,
 `showNodeOnMobile` and `positionNodeDetails` are also replaced in load order.
@@ -118,8 +114,7 @@ the editor stats, budget bar and notes into it.
 
 - Let renderers subscribe to the slices they draw instead of being called
   explicitly, one subtree each, and retire the `render = function` chain. The
-  order of the three layers and the pre-inspector filter path have to
-  survive this; `docs/RENDER_AUTOSAVE_BASELINE.md` has the numbers to compare.
+  order of the three layers has to survive this; `docs/RENDER_AUTOSAVE_BASELINE.md` has the numbers to compare.
 - Remove the legacy `#nodeDialog` and the `ux.js` editor stats, budget bar and
   notes that render into it unseen.
 - Retire the read-only mirrors as their readers move to the snapshot.

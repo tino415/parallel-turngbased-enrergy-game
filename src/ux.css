@@ -120,16 +120,6 @@ header .primary {
   font-size: 12px;
   margin: 3px 0 0;
 }
-.ux-map-heading label {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12px;
-  color: #afc2d9;
-}
-.ux-map-heading select {
-  width: 145px;
-}
 #map .ux-flow-overlay {
   pointer-events: none;
 }
@@ -523,14 +513,6 @@ header .primary {
   }
   .ux-map-heading .muted {
     font-size: 10px;
-  }
-  .ux-map-heading label {
-    font-size: 11px;
-  }
-  .ux-map-heading select {
-    width: 118px;
-    max-width: 118px;
-    font-size: 12px;
   }
   #mapViewport {
     height: calc(100dvh - 240px);
