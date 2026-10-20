@@ -552,7 +552,7 @@ function renderFlows(svg, graph, element) {
 function renderViews() {
   $('mapViewport').hidden = currentView !== 'map';
   $('messagesView').hidden = currentView !== 'messages';
-  $('empireView').hidden = currentView !== 'empires';
+  $('leaderboardView').hidden = currentView !== 'leaderboard';
 }
 function attachNavigation() {
   const svg = $('map');
@@ -650,7 +650,7 @@ function setActiveTab() {
   for (const [id, view] of [
     ['mapTab', 'map'],
     ['messagesTab', 'messages'],
-    ['empireTab', 'empires'],
+    ['leaderboardTab', 'leaderboard'],
   ]) {
     const button = $(id);
     button.classList.toggle('active', view === currentView);
@@ -841,7 +841,7 @@ for (const id of ['nodeCount', 'playerCount', 'density', 'seed'])
 $('cancelNewGame').onclick = () => $('newGameDialog').close();
 $('mapTab').onclick = () => switchView('map');
 $('messagesTab').onclick = () => switchView('messages');
-$('empireTab').onclick = () => switchView('empires');
+$('leaderboardTab').onclick = () => switchView('leaderboard');
 $('overlay').value = overlay;
 $('overlay').onchange = () => {
   store.setOverlay($('overlay').value);

@@ -40,7 +40,7 @@
       <div class="view-tabs" role="tablist" aria-label="Game views">
         <button id="mapTab" class="active" role="tab" aria-selected="true">Map</button
         ><button id="messagesTab" role="tab" aria-selected="false">Messages</button
-        ><button id="empireTab" role="tab" aria-selected="false">Empires</button>
+        ><button id="leaderboardTab" role="tab" aria-selected="false">Leaderboard</button>
       </div>
       <label
         >Overlay
@@ -117,27 +117,55 @@
           <h2>Messages / round history</h2>
           <div id="log" class="log"></div>
         </section>
-        <section id="empireView" hidden>
-          <h2>Empires</h2>
-          <table id="empireTable">
+        <section id="leaderboardView" hidden>
+          <h2>Leaderboard</h2>
+          <table id="leaderboardTable">
             <thead>
               <tr>
                 <th scope="col" data-column="player">
-                  <button type="button">Player</button>
+                  <button type="button" class="sort">Player</button>
                 </th>
                 <th scope="col" data-column="invested">
-                  <button type="button">Total invested</button>
+                  <button
+                    type="button"
+                    class="help"
+                    popovertarget="investedHelp"
+                    aria-label="What is Invested?"
+                  >
+                    ?</button
+                  ><button type="button" class="sort">Invested</button>
                 </th>
                 <th scope="col" data-column="active">
-                  <button type="button">Total active energy</button>
+                  <button
+                    type="button"
+                    class="help"
+                    popovertarget="activeHelp"
+                    aria-label="What is Active?"
+                  >
+                    ?</button
+                  ><button type="button" class="sort">Active</button>
                 </th>
                 <th scope="col" data-column="nodes">
-                  <button type="button">Nodes</button>
+                  <button type="button" class="sort">Nodes</button>
                 </th>
               </tr>
             </thead>
             <tbody></tbody>
           </table>
+          <div id="investedHelp" class="leaderboard-help" popover>
+            <strong>Invested</strong>
+            <p>
+              Energy the player has invested, summed over all their nodes. Each invested point earns
+              0.1 active energy every round. Withdrawing it costs a 5% fee.
+            </p>
+          </div>
+          <div id="activeHelp" class="leaderboard-help" popover>
+            <strong>Active</strong>
+            <p>
+              Energy the player can spend now, summed over all their nodes: to attack, to support
+              neighbours, to invest, or kept back as defense.
+            </p>
+          </div>
         </section>
         <p class="muted map-explanation">
           Blue = you · Other colors = AI players · Gray = neutral. Node label shows active energy
@@ -205,7 +233,7 @@
     <script src="./src/format.js" defer></script>
     <script src="./src/game.js" defer></script>
     <script src="./src/dialogs.js" defer></script>
-    <script src="./src/empire-view.js" defer></script>
+    <script src="./src/leaderboard.js" defer></script>
     <script src="./src/ux.js" defer></script>
     <script src="./src/tactical-ui.js" defer></script>
   </body>
