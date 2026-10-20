@@ -536,3 +536,16 @@ body > header #resolve {
   stroke: #fff;
   stroke-width: 3;
 }
+.tactical-order-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tactical-order-presets button {
+  min-height: 36px;
+  padding: 6px 10px;
+}
+.tactical-order-presets button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

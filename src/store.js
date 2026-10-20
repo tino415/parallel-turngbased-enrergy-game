@@ -322,6 +322,69 @@
     route: match.policies[destination]?.dest === source,
   });
 
+  function orderPresets(match, source, destination) {
+    const limit = edgeLimit(match, source, destination);
+    const defense = match.state.nodes[destination].active;
+    const attacks =
+      match.state.nodes[destination].owner === 0
+        ? []
+        : [0.7, 0.9, 1].map((chance) => ({
+            kind: 'chance',
+            chance,
+            amount: attackForChance(defense, chance),
+          }));
+    return {
+      limit,
+      presets: [
+        ...attacks,
+        { kind: 'all', amount: limit },
+        { kind: 'surplus', amount: Math.max(0, limit - policyReserve(match, source)) },
+      ],
+    };
+  }
+
+  const edgeLimit = (match, source, destination) => {
+    const p = plan(match, source);
+    return Math.max(
+      0,
+      availableEnergy(match, source, p) - allocated(match, source, p) + (p.edges[destination] || 0),
+    );
+  };
+
+  const policyReserve = (match, source) =>
+    match.policies[source]?.enabled ? Number(match.policies[source].reserve) || 0 : 0;
+
+  const [WEAKEST_ROLL, STRONGEST_ROLL] = [0.8, 1.2];
+
+  function attackForChance(defense, chance) {
+    const smallestOrder = 0.1;
+    const roundedUp = Math.ceil(defense * strengthRatioForChance(chance) * 10 - 1e-9) / 10;
+    return Math.max(smallestOrder, roundedUp);
+  }
+
+  function strengthRatioForChance(chance) {
+    let [low, high] = [WEAKEST_ROLL / STRONGEST_ROLL, STRONGEST_ROLL / WEAKEST_ROLL];
+    if (chance >= 1) return high;
+    for (let step = 0; step < 40; step++) {
+      const middle = (low + high) / 2;
+      if (winChance(middle) < chance) low = middle;
+      else high = middle;
+    }
+    return high;
+  }
+
+  function winChance(strengthRatio) {
+    const samples = 1000,
+      spread = STRONGEST_ROLL - WEAKEST_ROLL;
+    let wins = 0;
+    for (let i = 0; i < samples; i++) {
+      const attackRoll = WEAKEST_ROLL + (spread * (i + 0.5)) / samples;
+      const beatenDefenseRolls = (strengthRatio * attackRoll - WEAKEST_ROLL) / spread;
+      wins += Math.min(1, Math.max(0, beatenDefenseRolls));
+    }
+    return wins / samples;
+  }
+
   function setAllocation(match, source, destination, value) {
     if (match.state.finished || !isOwn(match, source)) return { match };
     const amount = Number(value),
@@ -817,6 +880,7 @@
       previewOrders,
       projection,
       replacedSupport,
+      orderPresets,
     }),
   });
 })();
