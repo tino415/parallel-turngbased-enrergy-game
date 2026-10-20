@@ -68,18 +68,10 @@
 
   const dock = document.createElement('div');
   dock.className = 'ux-dock';
-  dock.innerHTML = '<button type="button" id="uxDockOrders">☷ Orders <span id="uxDockCount"></span></button><button type="button" class="primary" id="uxDockResolve">Resolve round →</button>';
+  dock.innerHTML = '<button type="button" class="primary" id="uxDockResolve">Resolve round →</button>';
   document.body.append(dock);
-  byId('uxDockOrders').onclick = () => ordersDialog.showModal();
   byId('uxDockResolve').onclick = () => byId('resolve').click();
 
-  const heading = document.createElement('div');
-  heading.className = 'ux-map-heading';
-  heading.innerHTML = '<div><h2>Tactical map</h2><p class="muted">Select a node to inspect or issue orders</p></div>';
-  byId('mapViewport').before(heading);
-  const toolbar = document.querySelector('.toolbar');
-  const hintZoom = toolbar.querySelector('.desktop-zoom-hint');
-  if (hintZoom) hintZoom.remove();
   const focusButton = document.createElement('button');
   focusButton.id = 'focusMap';
   focusButton.type = 'button';
@@ -131,19 +123,36 @@
     if (g) g.setAttribute('transform','translate('+camera.x+' '+camera.y+') scale('+camera.scale+')');
   }
   function fitCameraUX() {
-    if (!mobile()) { store.setCamera({x:0,y:0,scale:1}); render(); return; }
-    const [vw,vh,bw,bh]=viewBounds();
-    const scale=Math.min((vw-100)/bw,(vh-120)/bh);
-    store.setCamera({x:(vw-bw*scale)/2,y:(vh-bh*scale)/2,scale:scale});
+    store.setCamera(fittedCamera());
     render();
   }
   function focusCameraUX(id) {
-    const n=state.nodes[id];
-    if (!n || !xy[id]) return;
-    const [vw,vh]=viewBounds();
-    const scale=mobile()?2.35:1.75;
-    store.setCamera({x:vw/2-xy[id][0]*scale,y:vh/2-xy[id][1]*scale,scale});
+    if (!state.nodes[id] || !xy[id]) return;
+    store.setCamera(cameraFocusedOn(id));
     render();
+  }
+  function startingCamera() {
+    const mine=state.nodes.find(n=>n.owner===0);
+    return mobile()&&mine?cameraFocusedOn(mine.id):fittedCamera();
+  }
+  function fittedCamera() {
+    const [vw,vh,bw,bh]=viewBounds(),top=headerOverlap();
+    if (!mobile()) {
+      const scale=Math.min(1,(vh-top)/bh);
+      return {x:(vw-bw*scale)/2,y:top,scale};
+    }
+    const scale=Math.min((vw-100)/bw,(vh-top-120)/bh);
+    return {x:(vw-bw*scale)/2,y:top+(vh-top-bh*scale)/2,scale};
+  }
+  function cameraFocusedOn(id) {
+    const [vw,vh]=viewBounds(),top=headerOverlap();
+    const scale=mobile()?2.35:1.75;
+    return {x:vw/2-xy[id][0]*scale,y:(top+vh)/2-xy[id][1]*scale,scale};
+  }
+  function headerOverlap() {
+    const viewport=byId('mapViewport'),[vw]=viewBounds();
+    const covered=document.querySelector('body > header').getBoundingClientRect().bottom-viewport.getBoundingClientRect().top;
+    return Math.max(0,covered)*vw/Math.max(260,viewport.clientWidth||window.innerWidth);
   }
   function zoomUX(factor) {
     const [vw,vh]=viewBounds();
@@ -154,21 +163,14 @@
   }
   render = function() {
     originalRender();
-    heading.hidden=currentView!=='map';
     document.querySelector('.layout').classList.toggle('ux-wide-view',currentView!=='map');
     const key=mapSeed+'/'+N+'/'+edges.length+'/'+state.round;
     if(key!==lastMap) {
       const isFirst=lastMap==='';
       lastMap=key;
-      if(mobile() && (isFirst || state.round===1)) {
-        const mine=state.nodes.find(n=>n.owner===0);
-        if(mine){const [vw,vh]=viewBounds(),scale=2.35;store.setCamera({x:vw/2-xy[mine.id][0]*scale,y:vh/2-xy[mine.id][1]*scale,scale});}
-      }
+      if(isFirst || state.round===1) store.setCamera(startingCamera());
     }
     redrawCamera();
-    const own=state.nodes.filter(n=>n.owner===0);
-    const present=own.filter(n=>orders[n.id]||policies[n.id]).length;
-    byId('uxDockCount').textContent='('+present+')';
     const selectedNode=selected===null?null:state.nodes[selected];
     const statsEl=byId('uxEditorStats'),budget=byId('uxBalance'),note=byId('uxCombatNote'),foot=byId('uxFooterSummary');
     if(!selectedNode) {statsEl.replaceChildren();budget.hidden=true;note.textContent='';foot.textContent='';}
@@ -214,6 +216,7 @@
   byId('zoomIn').onclick=()=>zoomUX(1.25);
   byId('zoomOut').onclick=()=>zoomUX(.8);
   byId('fit').onclick=fitCameraUX;
+  byId('focusMap').onclick=()=>focusCameraUX(store.getSnapshot().ui.inspector.focusedNode);
   // Opening the on-screen keyboard resizes the mobile viewport. Moving
   // focused input elements between parents here blurs them and immediately
   // dismisses the keyboard; the editor is already in its final layout.

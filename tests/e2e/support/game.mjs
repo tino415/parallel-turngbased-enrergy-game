@@ -77,3 +77,19 @@ export async function chooseSource(page, id) {
     await swap.click();
   await expect(swap).toHaveAttribute('aria-label', new RegExp('^From Node ' + id + ' '));
 }
+
+export async function offsetFromVisibleMapCenter(page, locator) {
+  const item = await locator.boundingBox();
+  const map = await page.locator('#mapViewport').boundingBox();
+  const visibleTop = await visibleMapTop(page);
+  return {
+    dx: item.x + item.width / 2 - (map.x + map.width / 2),
+    dy: item.y + item.height / 2 - (visibleTop + map.y + map.height) / 2,
+  };
+}
+
+export async function visibleMapTop(page) {
+  const map = await page.locator('#mapViewport').boundingBox();
+  const header = await page.locator('body > header').boundingBox();
+  return Math.max(map.y, header.y + header.height);
+}

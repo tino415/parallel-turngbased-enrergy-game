@@ -36,19 +36,17 @@
         </div>
       </div>
       <div>
-        <span id="score"></span> <button class="primary" id="resolve">Resolve round</button>
+        <span id="score"><span id="scoreRound"></span><span id="scoreCounts"></span></span>
+        <div class="view-tabs" role="tablist" aria-label="Game views">
+          <button id="mapTab" class="active" role="tab" aria-selected="true">Map</button
+          ><button id="messagesTab" role="tab" aria-selected="false">Messages</button
+          ><button id="leaderboardTab" role="tab" aria-selected="false">Leaderboard</button>
+        </div>
+        <button class="primary" id="resolve">Resolve round</button>
         <button id="reset">New game</button>
         <button id="mobileSettings" type="button">Settings</button>
       </div>
     </header>
-    <div class="toolbar">
-      <div class="view-tabs" role="tablist" aria-label="Game views">
-        <button id="mapTab" class="active" role="tab" aria-selected="true">Map</button
-        ><button id="messagesTab" role="tab" aria-selected="false">Messages</button
-        ><button id="leaderboardTab" role="tab" aria-selected="false">Leaderboard</button>
-      </div>
-      <span class="muted desktop-zoom-hint">Ctrl/Cmd + scroll to zoom</span>
-    </div>
     <dialog id="newGameDialog" aria-labelledby="newGameTitle">
       <div class="dialog-body">
         <h2 id="newGameTitle">New game</h2>

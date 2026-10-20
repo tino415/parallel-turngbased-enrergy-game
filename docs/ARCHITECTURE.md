@@ -83,7 +83,7 @@ replaced in load order, and each layer calls the previous one:
 
 1. `game.js` draws the SVG map, score, allocator, policy editor, order list,
    log and tab state.
-2. `ux.js` adds the camera viewBox, side panel, dock counts, editor stats,
+2. `ux.js` adds the camera viewBox, side panel, dock, editor stats,
    budget bar and income labels.
 3. `tactical-ui.js` adds edge hit areas, selection and group rings, the group
    bar and the inspector for one node, one edge or the node group, which it

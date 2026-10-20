@@ -1,27 +1,61 @@
 /* Map-first contextual interface; loaded after the existing UX styles. */
+:root {
+  --header-clearance: 60px;
+}
 body {
   overflow-x: hidden;
 }
 body > header {
-  min-height: 47px;
-  padding: 5px 12px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 25;
+  padding: 8px;
   flex-wrap: nowrap;
+  background: none;
+  border: 0;
+  pointer-events: none;
 }
 body > header > div:first-child,
 #reset,
 #mobileSettings,
 #uxReviewHead,
-.ux-map-heading > div:first-child,
 .map-explanation {
   display: none !important;
 }
 body > header > div:last-child {
   flex: 1;
-  justify-content: space-between;
+  justify-content: flex-start;
   flex-wrap: nowrap;
+  gap: 8px;
+}
+body > header > div:last-child > * {
+  pointer-events: auto;
+}
+#score,
+body > header .view-tabs,
+body > header #resolve,
+#tacticalMenu > summary {
+  box-shadow: 0 4px 14px #000a;
 }
 #score {
-  padding: 5px 8px;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  padding: 0 11px;
+  background: #1c304af2;
+}
+#scoreCounts {
+  white-space: pre;
+}
+body > header .view-tabs {
+  margin-right: auto;
+  padding: 3px;
+  background: #182942f2;
+}
+body > header .view-tabs button {
+  padding: 7px 12px;
 }
 body > header #resolve {
   display: inline-block;
@@ -59,34 +93,36 @@ body > header #resolve {
 .tactical-menu-content button {
   text-align: left;
 }
-.toolbar {
-  padding: 4px 12px;
-  gap: 8px;
-}
-.view-tabs button {
-  padding: 8px 12px;
-}
 .layout,
 .layout.ux-wide-view {
   max-width: none;
   display: block;
-  padding: 5px 8px 8px;
+  padding: 0;
 }
 .layout > .panel:first-child {
-  padding: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
 }
 #mapViewport {
-  height: calc(100dvh - 122px);
+  height: 100dvh;
   min-height: 240px;
   max-height: none;
+  border: 0;
+  border-radius: 0;
   touch-action: none;
 }
 #mapViewport svg {
   touch-action: none;
 }
 #mapViewport .map-zoom-controls {
-  top: 9px;
+  top: var(--header-clearance);
   right: 9px;
+}
+#messagesView,
+#leaderboardView {
+  padding: var(--header-clearance) 12px 12px;
 }
 .ux-dock {
   display: none !important;
@@ -306,6 +342,7 @@ body > header #resolve {
 @media (max-width: 760px) {
   :root {
     --tactical-action-height: calc(66px + env(safe-area-inset-bottom));
+    --header-clearance: 54px;
   }
 
   html {
@@ -324,27 +361,27 @@ body > header #resolve {
   }
 
   body > header {
-    padding: 5px 8px;
+    padding: 6px;
+  }
+  body > header > div:last-child {
+    gap: 6px;
   }
   #score {
+    padding: 0 8px;
     font-size: 11px;
-    width: auto;
     white-space: nowrap;
   }
-  .toolbar {
-    padding: 3px 8px;
+  #scoreCounts {
+    display: none;
   }
-  .toolbar .view-tabs {
+  body > header .view-tabs {
     width: auto;
-    flex: 1;
+    flex: 0 1 auto;
   }
-  .toolbar .view-tabs button {
-    padding: 8px 5px;
-  }
-
-  body > header,
-  .toolbar {
+  body > header .view-tabs button {
     flex: 0 0 auto;
+    padding: 7px 8px;
+    font-size: 12px;
   }
 
   /* Use the remaining height instead of subtracting guessed header sizes. */
@@ -356,7 +393,7 @@ body > header #resolve {
     min-height: 0;
     overflow: hidden;
     margin: 0;
-    padding: 3px 3px var(--tactical-action-height);
+    padding: 0 0 var(--tactical-action-height);
   }
 
   .layout > .panel:first-child {
@@ -367,10 +404,6 @@ body > header #resolve {
     overflow: hidden;
   }
 
-  .ux-map-heading {
-    flex: 0 0 auto;
-  }
-
   #mapViewport {
     flex: 1 1 auto;
     height: auto;
@@ -378,7 +411,7 @@ body > header #resolve {
     max-height: none;
   }
   #mapViewport .map-zoom-controls {
-    top: 8px;
+    top: var(--header-clearance);
     right: 8px;
   }
   #mapViewport .map-zoom-controls button {
@@ -479,7 +512,7 @@ body > header #resolve {
 #tacticalGroupBar {
   position: absolute;
   z-index: 5;
-  top: 9px;
+  top: var(--header-clearance);
   left: 9px;
   right: 120px;
   display: flex;

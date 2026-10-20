@@ -142,26 +142,6 @@ button:disabled {
   gap: 6px;
   flex-wrap: wrap;
 }
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 9px;
-  padding: 10px 16px;
-  align-items: center;
-  background: #142035;
-}
-.toolbar label {
-  font-size: 12px;
-}
-.toolbar input {
-  width: 95px;
-}
-.toolbar select {
-  width: 95px;
-}
-.toolbar button {
-  font-size: 12px;
-}
 #mapViewport {
   position: relative;
   height: 65vh;
@@ -474,9 +454,6 @@ dialog#newGameDialog::backdrop {
   #nodeDialog {
     width: 96vw;
   }
-  .desktop-zoom-hint {
-    display: none;
-  }
   #mapViewport,
   #mapViewport svg {
     touch-action: none;
@@ -520,10 +497,6 @@ dialog#newGameDialog::backdrop {
   #mobileSettings {
     display: inline-block;
   }
-  .toolbar {
-    padding: 6px 10px;
-    gap: 4px;
-  }
   .view-tabs {
     width: 100%;
     gap: 4px;
@@ -532,9 +505,6 @@ dialog#newGameDialog::backdrop {
     flex: 1;
     font-size: 12px;
     padding: 7px 4px;
-  }
-  .toolbar label {
-    display: none;
   }
   .layout {
     grid-template-columns: 1fr;

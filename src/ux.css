@@ -59,13 +59,6 @@ header .primary {
 #mobileSettings {
   display: inline-block;
 }
-.toolbar {
-  background: #0b1424;
-  max-width: 1480px;
-  margin: auto;
-  padding: 13px 20px 2px;
-  gap: 16px;
-}
 .view-tabs {
   background: #182942;
   border: 1px solid #344963;
@@ -104,21 +97,6 @@ header .primary {
 }
 #mapViewport svg {
   display: block;
-}
-.ux-map-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 4px 4px 12px;
-}
-.ux-map-heading h2 {
-  font-size: 17px;
-  margin: 0;
-}
-.ux-map-heading .muted {
-  font-size: 12px;
-  margin: 3px 0 0;
 }
 #map .ux-flow-overlay {
   pointer-events: none;
@@ -483,9 +461,6 @@ header .primary {
     display: inline-block;
     font-size: 12px;
   }
-  .toolbar {
-    padding: 7px 8px;
-  }
   .view-tabs {
     width: 100%;
     gap: 3px;
@@ -502,15 +477,6 @@ header .primary {
     padding: 5px;
     background: transparent;
     border: 0;
-  }
-  .ux-map-heading {
-    padding: 8px 4px;
-  }
-  .ux-map-heading h2 {
-    font-size: 14px;
-  }
-  .ux-map-heading .muted {
-    font-size: 10px;
   }
   #mapViewport {
     height: calc(100dvh - 240px);

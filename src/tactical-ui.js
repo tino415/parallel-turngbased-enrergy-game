@@ -24,10 +24,13 @@
     ['Settings', 'mobileSettings'],
     ['New game', 'reset'],
   ];
+  const ordersCount = document.createElement('span');
+  ordersCount.id = 'menuOrdersCount';
   for (const [label, original] of menuItems) {
     const button = document.createElement('button');
     button.type = 'button';
     button.textContent = label;
+    if (original === 'uxReviewHead') button.append(' ', ordersCount);
     button.onclick = () => {
       menu.open = false;
       menu.querySelector('summary').focus();
@@ -81,10 +84,10 @@
     graph.querySelectorAll('line.ux-flow-overlay').forEach((line) => line.remove());
   };
 
-  let { active, editing, focusedNode } = store.getSnapshot().ui.inspector;
+  let { active, editing } = store.getSnapshot().ui.inspector;
   let { groupMode, groupEditing, bulkSelection } = store.getSnapshot().ui;
   store.subscribe(({ ui }) => {
-    ({ active, editing, focusedNode } = ui.inspector);
+    ({ active, editing } = ui.inspector);
     ({ groupMode, groupEditing, bulkSelection } = ui);
   });
   const groupIds = () => (groupMode ? bulkSelection : []);
@@ -354,7 +357,7 @@
       render();
     }
   };
-  byId('uxDockOrders').after(selectButton);
+  byId('uxDockResolve').before(selectButton);
 
   function chooseNode(id) {
     store.inspectNode(id);
@@ -396,24 +399,6 @@
   showNodeOnMobile = () => {
     if (selected === null) return;
     store.editSelectedNode();
-    render();
-  };
-
-  // Focus tracks the most recently selected node with no full-screen dialog.
-  byId('focusMap').onclick = () => {
-    if (!xy[focusedNode]) return;
-    const rect = viewport.getBoundingClientRect();
-    const base = mobile() ? 800 : xy.length === 14 && mapSeed === 'classic' ? 800 : 1800;
-    const vw = base;
-    const width = Math.max(260, viewport.clientWidth);
-    const height = Math.max(260, viewport.clientHeight);
-    const vh = (vw * height) / width;
-    const scale = mobile() ? 2.35 : 1.75;
-    store.setCamera({
-      scale,
-      x: vw / 2 - xy[focusedNode][0] * scale,
-      y: vh / 2 - xy[focusedNode][1] * scale,
-    });
     render();
   };
 
@@ -607,9 +592,9 @@
   });
 
   // Orders is a separate dialog, not another layer on top of the
-  // contextual editor. Clear selection before the dock opens Orders; otherwise
+  // contextual editor. Clear selection before Orders opens; otherwise
   // the editor reappears behind it when Orders closes.
-  byId('uxDockOrders').addEventListener(
+  byId('uxReviewHead').addEventListener(
     'click',
     () => {
       if (active) dismiss();
@@ -1855,12 +1840,18 @@
     oldRender();
     // The thumb-reachable control mirrors the authoritative round button.
     byId('uxDockResolve').disabled = byId('resolve').disabled;
+    ordersCount.textContent = '(' + plannedNodeCount() + ')';
     drawSelection();
     renderGroupBar();
     selectButton.textContent = groupMode ? 'Done' : 'Select';
     showInspector();
     if (focusedMapItem) svg.querySelector(focusedMapItem)?.focus();
   };
+
+  function plannedNodeCount() {
+    return state.nodes.filter((node) => node.owner === 0 && (orders[node.id] || policies[node.id]))
+      .length;
+  }
   byId('generate').addEventListener('click', () => store.closeInspector(), true);
   // The legacy node dialog must remain mounted for older renderer references,
   // but must never appear together with the contextual node inspector.
