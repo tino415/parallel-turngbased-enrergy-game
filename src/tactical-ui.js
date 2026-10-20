@@ -90,74 +90,11 @@
 
   function drawAiPlans(graph, element) {
     const layer = element('g', { class: 'ai-debug-flows' }, graph);
-    for (const order of aiPlanOrders()) {
-      const [ax, ay] = xy[order.source];
-      const color = GameEngine.playerColor(state.nodes[order.source].owner);
-      if (order.dest === null || order.dest === undefined) {
-        const label = element(
-          'text',
-          { x: ax, y: ay - 40, class: 'ai-debug-label', 'data-source': order.source },
-          layer,
-        );
-        label.textContent = 'I ' + compactEnergy(order.amount);
-        continue;
-      }
-      const [bx, by] = xy[order.dest];
-      const dx = bx - ax,
-        dy = by - ay,
-        length = Math.hypot(dx, dy) || 1;
-      const shiftX = (-dy / length) * 7,
-        shiftY = (dx / length) * 7;
-      element(
-        'line',
-        {
-          x1: ax + (dx / length) * 36 + shiftX,
-          y1: ay + (dy / length) * 36 + shiftY,
-          x2: bx - (dx / length) * 48 + shiftX,
-          y2: by - (dy / length) * 48 + shiftY,
-          stroke: color,
-          'stroke-width': 4,
-          'stroke-dasharray': order.type === 'attack' ? 'none' : '3 5',
-          class: 'ai-debug-flow',
-          'data-source': order.source,
-          'data-dest': order.dest,
-          'data-type': order.type,
-        },
-        layer,
-      );
-      const tipX = bx - (dx / length) * 33 + shiftX,
-        tipY = by - (dy / length) * 33 + shiftY;
-      const baseX = tipX - (dx / length) * 15,
-        baseY = tipY - (dy / length) * 15;
-      element(
-        'polygon',
-        {
-          points: [
-            [tipX, tipY],
-            [baseX - (dy / length) * 7, baseY + (dx / length) * 7],
-            [baseX + (dy / length) * 7, baseY - (dx / length) * 7],
-          ].join(' '),
-          fill: color,
-          class: 'ai-debug-arrow',
-          'data-source': order.source,
-          'data-dest': order.dest,
-        },
-        layer,
-      );
-      const label = element(
-        'text',
-        {
-          x: ax + dx * 0.35 + shiftX * 2,
-          y: ay + dy * 0.35 + shiftY * 2,
-          class: 'ai-debug-label',
-          fill: color,
-          'data-source': order.source,
-          'data-dest': order.dest,
-        },
-        layer,
-      );
-      label.textContent = (order.type === 'attack' ? '⚔ ' : '→ ') + compactEnergy(order.amount);
-    }
+    for (const order of aiPlanOrders())
+      drawPlayerMove(element, layer, xy, 'ai-debug', {
+        ...order,
+        owner: state.nodes[order.source].owner,
+      });
   }
 
   function aiPlanLines(id) {

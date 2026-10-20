@@ -1,7 +1,8 @@
 'use strict';
 
 (() => {
-  const { planPolicy, forecast, resolveRound, playerName, aiPlan, SOFT_CAP_RULES } = GameEngine;
+  const { planPolicy, forecast, resolveRound, seeded, playerName, aiPlan, SOFT_CAP_RULES } =
+    GameEngine;
   const HISTORY_LIMIT = 70;
   const TARGET_EPSILON = 1e-6;
   const sum = (values) => values.reduce((total, value) => total + value, 0);
@@ -59,19 +60,27 @@
       nodes[id].active = 24;
       nodes[id].invested = 14;
     }
+    const state = { round: 1, nodes, finished: false, rulesVersion: SOFT_CAP_RULES.version };
     return {
-      state: { round: 1, nodes, finished: false, rulesVersion: SOFT_CAP_RULES.version },
+      state,
       orders: {},
       policies: {},
       history: ['New match started. You are Blue.'],
       map: { xy: CLASSIC_XY, edges: CLASSIC_EDGES, N, playerCount, mapSeed: 'classic' },
       defaults,
+      replay: newReplay(state, random),
     };
   }
 
-  function generatedMatch(map, defaults) {
+  function generatedMatch(map, defaults, random) {
+    const state = {
+      round: 1,
+      nodes: map.nodes,
+      finished: false,
+      rulesVersion: SOFT_CAP_RULES.version,
+    };
     return {
-      state: { round: 1, nodes: map.nodes, finished: false, rulesVersion: SOFT_CAP_RULES.version },
+      state,
       orders: {},
       policies: {},
       history: [
@@ -85,8 +94,16 @@
         mapSeed: map.seed,
       },
       defaults,
+      replay: newReplay(state, random),
     };
   }
+
+  function newReplay(start, random) {
+    return { diceSeed: diceSeed(random), start, rounds: [], policiesAfterLastRound: {} };
+  }
+
+  const diceSeed = (random) =>
+    Array.from({ length: 4 }, () => Math.floor(random() * 2 ** 32).toString(36)).join('-');
 
   function matchFromSave(save, defaults) {
     if (
@@ -110,6 +127,7 @@
             invest: save.defaults.invest,
           }
         : defaults,
+      replay: Array.isArray(save.replay?.rounds) ? save.replay : null,
     });
   }
 
@@ -149,8 +167,8 @@
   }
 
   function saveFromMatch(match, selected) {
-    const { state, orders, policies, history, map, defaults } = match;
-    return { state, orders, policies, ...map, history, selected, defaults };
+    const { state, orders, policies, history, map, defaults, replay } = match;
+    return { state, orders, policies, ...map, history, selected, defaults, replay };
   }
 
   const neighbors = (match, id) =>
@@ -623,9 +641,24 @@
     };
   }
 
-  function resolve(match, rng = Math.random) {
+  function resolve(match) {
     if (match.state.finished) return match;
-    const result = resolveRound({
+    const result = resolveRoundOf(match, dice(match));
+    const history = result.events
+      .reduce((lines, event) => [event, ...lines], match.history)
+      .slice(0, HISTORY_LIMIT);
+    return {
+      ...match,
+      state: result.state,
+      policies: result.policies,
+      orders: {},
+      history,
+      replay: match.replay && withRecordedRound(match.replay, match, result.policies),
+    };
+  }
+
+  function resolveRoundOf(match, rng) {
+    return resolveRound({
       state: match.state,
       playerCount: match.map.playerCount,
       orders: match.orders,
@@ -634,10 +667,55 @@
       defaultConquestPolicy: conquestPolicy(match.defaults),
       rng,
     });
-    const history = result.events
-      .reduce((lines, event) => [event, ...lines], match.history)
-      .slice(0, HISTORY_LIMIT);
-    return { ...match, state: result.state, policies: result.policies, orders: {}, history };
+  }
+
+  const dice = (match) =>
+    match.replay ? diceOfRound(match.replay, match.state.round) : Math.random;
+  const diceOfRound = (replay, round) => seeded(replay.diceSeed + ':' + round);
+
+  function withRecordedRound(replay, match, policiesAfterRound) {
+    const { orders, defaults, policies } = match;
+    const round = {
+      orders,
+      defaults,
+      policies: policyChanges(replay.policiesAfterLastRound, policies),
+    };
+    return {
+      ...replay,
+      rounds: [...replay.rounds, round],
+      policiesAfterLastRound: policiesAfterRound,
+    };
+  }
+
+  function policyChanges(before, after) {
+    const ids = [...new Set([...Object.keys(before), ...Object.keys(after)])];
+    return Object.fromEntries(
+      ids.filter((id) => !sameValue(before[id], after[id])).map((id) => [id, after[id] ?? null]),
+    );
+  }
+
+  function withPolicyChanges(policies, changes) {
+    const next = { ...policies, ...changes };
+    for (const [id, policy] of Object.entries(changes)) if (policy === null) delete next[id];
+    return next;
+  }
+
+  function replayFrames(match) {
+    const { start, rounds } = match.replay;
+    const frames = [];
+    let current = { ...match, state: start, policies: {} };
+    for (const round of rounds) {
+      const input = {
+        ...current,
+        orders: round.orders,
+        defaults: round.defaults,
+        policies: withPolicyChanges(current.policies, round.policies),
+      };
+      const result = resolveRoundOf(input, diceOfRound(match.replay, input.state.round));
+      frames.push({ state: input.state, moves: result.moves, events: result.events });
+      current = { ...current, state: result.state, policies: result.policies };
+    }
+    return [...frames, { state: current.state, moves: [], events: [] }];
   }
 
   function edgeSource(match, a, b) {
@@ -682,6 +760,7 @@
     selected: null,
     camera: { x: 0, y: 0, scale: 1 },
     inspector: { ...CLOSED_INSPECTOR, focusedNode: null },
+    replay: null,
   };
   const sameTarget = (active, target) =>
     active?.kind === target.kind &&
@@ -722,6 +801,21 @@
       selected: null,
       inspector: { ...ui.inspector, active: null, editing: false },
     };
+  }
+
+  const lastReplayFrame = (match) => match.replay.rounds.length;
+  const clampedFrame = (match, frame) => Math.max(0, Math.min(lastReplayFrame(match), frame));
+  const openReplay = (match) => (match.replay ? { frame: 0, playing: false } : null);
+
+  function toggledPlaying(replay, match) {
+    if (replay.playing) return { ...replay, playing: false };
+    const atEnd = replay.frame === lastReplayFrame(match);
+    return { frame: atEnd ? 0 : replay.frame, playing: true };
+  }
+
+  function advancedReplay(replay, match) {
+    const frame = clampedFrame(match, replay.frame + 1);
+    return { frame, playing: frame < lastReplayFrame(match) };
   }
 
   function createStore() {
@@ -780,8 +874,8 @@
       routeSurplus: onMatch(routeSurplus),
       setEdgePressure: onMatch(setEdgePressure),
       setDefaults: onMatch(setDefaults),
-      resolve(rng) {
-        commit('match', resolve(snapshot.match, rng));
+      resolve() {
+        commit('match', resolve(snapshot.match));
         setUi('bulkSelection', ownOnly(snapshot.ui.bulkSelection));
       },
       applyGroupPolicyField(ids, key, value) {
@@ -831,6 +925,13 @@
           },
         }),
       focusNode: (id) => updateUi({ inspector: { ...snapshot.ui.inspector, focusedNode: id } }),
+      openReplay: () => setUi('replay', openReplay(snapshot.match)),
+      showReplayFrame: (frame) =>
+        setUi('replay', { frame: clampedFrame(snapshot.match, frame), playing: false }),
+      toggleReplayPlaying: () =>
+        setUi('replay', toggledPlaying(snapshot.ui.replay, snapshot.match)),
+      advanceReplay: () => setUi('replay', advancedReplay(snapshot.ui.replay, snapshot.match)),
+      closeReplay: () => setUi('replay', null),
     };
   }
 
@@ -862,6 +963,8 @@
       resolve,
     }),
     selectors: Object.freeze({
+      replayFrames,
+      lastReplayFrame,
       neighbors,
       edgeSource,
       groupPolicyView,

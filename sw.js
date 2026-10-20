@@ -14,6 +14,7 @@ const APP_SHELL = [
   './src/styles.css',
   './src/ux.css',
   './src/tactical-ui.css',
+  './src/replay.css',
   './src/engine.js',
   './src/store.js',
   './src/format.js',
@@ -22,6 +23,7 @@ const APP_SHELL = [
   './src/leaderboard.js',
   './src/ux.js',
   './src/tactical-ui.js',
+  './src/replay.js',
   './src/service-worker-registration.js',
 ];
 

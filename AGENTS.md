@@ -3,9 +3,9 @@
 A static browser game: `index.html` plus plain scripts in `src/`, loaded with `defer`
 in one global scope, no bundler and no runtime dependency. `src/engine.js` holds
 the rules and round resolution. `src/store.js` owns the match (state, orders,
-policies, history, map, conquest defaults) and the interface state in its `ui` slice, behind
+policies, history, map, conquest defaults, replay record) and the interface state in its `ui` slice, behind
 commands, selectors and a subscription; it never touches the DOM. `src/game.js`,
-`src/ux.js` and `src/tactical-ui.js` are the interface: they change state
+`src/ux.js`, `src/tactical-ui.js` and `src/replay.js` are the interface: they change state
 only through store commands and read the `state`, `orders`, `selected`, ... globals,
 which game.js mirrors from the store and nothing else assigns. Ownership, the
 command contract and the render chain are in `docs/ARCHITECTURE.md`. Node is used

@@ -523,6 +523,7 @@
       "enabled": false,
       "reserve": "3",
       "invest": "45"
-    }
+    },
+    "replay": null
   }
 }

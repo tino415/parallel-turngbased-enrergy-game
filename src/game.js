@@ -84,7 +84,7 @@ function previewMap() {
 }
 function generate() {
   store.select(null);
-  store.replaceMatch(GameStore.generatedMatch(buildMap(mapOptions()), domDefaults()));
+  store.replaceMatch(GameStore.generatedMatch(buildMap(mapOptions()), domDefaults(), Math.random));
   store.setCamera({ x: 0, y: 0, scale: 1 });
   store.setView('map');
   $('newGameDialog').close();
@@ -346,6 +346,58 @@ function renderFlows(svg, graph, element) {
     t.textContent = '+' + compactEnergy(p.income) + ' / I ' + compactEnergy(p.invest);
   }
 }
+function drawPlayerMove(element, layer, positions, kind, move) {
+  const color = playerColor(move.owner);
+  const marked = (part, attrs) => ({
+    ...attrs,
+    class: 'move-' + part + ' ' + kind + '-' + part,
+    'data-source': move.source,
+    'data-type': move.type,
+    ...(move.type === 'invest' ? {} : { 'data-dest': move.dest }),
+  });
+  if (move.type === 'invest') {
+    const [x, y] = positions[move.source];
+    element('text', marked('label', { x, y: y - 40, fill: color }), layer).textContent =
+      'I ' + compactEnergy(move.amount);
+    return;
+  }
+  const [ax, ay] = positions[move.source],
+    [bx, by] = positions[move.dest],
+    length = Math.hypot(bx - ax, by - ay) || 1,
+    ux = (bx - ax) / length,
+    uy = (by - ay) / length;
+  const along = (x, y, distance, side = 7) => [
+    x + ux * distance - uy * side,
+    y + uy * distance + ux * side,
+  ];
+  const [x1, y1] = along(ax, ay, 36),
+    [x2, y2] = along(bx, by, -48),
+    tip = along(bx, by, -33);
+  element(
+    'line',
+    marked('flow', {
+      x1,
+      y1,
+      x2,
+      y2,
+      stroke: color,
+      'stroke-width': 4,
+      'stroke-dasharray': move.type === 'attack' ? 'none' : '3 5',
+    }),
+    layer,
+  );
+  element(
+    'polygon',
+    marked('arrow', {
+      points: [tip, [x2 - uy * 7, y2 + ux * 7], [x2 + uy * 7, y2 - ux * 7]].join(' '),
+      fill: color,
+    }),
+    layer,
+  );
+  const [labelX, labelY] = along(ax, ay, length * 0.35, 14);
+  element('text', marked('label', { x: labelX, y: labelY, fill: color }), layer).textContent =
+    (move.type === 'attack' ? '⚔ ' : '→ ') + compactEnergy(move.amount);
+}
 function renderViews() {
   $('mapViewport').hidden = currentView !== 'map';
   $('messagesView').hidden = currentView !== 'messages';
@@ -456,14 +508,23 @@ function setActiveTab() {
 }
 function saveGame() {
   if (!state) return;
+  const save = GameStore.saveFromMatch(currentMatch(), store.getSnapshot().ui.selected);
   try {
-    localStorage.setItem(
-      SAVE_KEY,
-      JSON.stringify(GameStore.saveFromMatch(currentMatch(), store.getSnapshot().ui.selected)),
-    );
+    writeSave(save);
+  } catch (e) {
+    console.warn('Autosave without the replay, it does not fit', e);
+    tryWriteSave({ ...save, replay: null });
+  }
+}
+function tryWriteSave(save) {
+  try {
+    writeSave(save);
   } catch (e) {
     console.warn('Autosave unavailable', e);
   }
+}
+function writeSave(save) {
+  localStorage.setItem(SAVE_KEY, JSON.stringify(save));
 }
 function restoreGame() {
   try {
