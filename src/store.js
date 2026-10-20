@@ -643,13 +643,12 @@
     return values.map((value) => (total += value));
   }
 
-  function nextLeaderboardChart(chart, fields, playerCount) {
+  function nextLeaderboardChart(chart, fields, owners) {
     const next = { ...chart, ...fields };
     const valid =
       CHART_SERIES.includes(next.series) &&
       typeof next.runningTotal === 'boolean' &&
-      (next.focus === null ||
-        (Number.isInteger(next.focus) && next.focus >= 0 && next.focus < playerCount));
+      (next.focus === null || owners.includes(next.focus));
     return valid ? next : chart;
   }
 
@@ -931,7 +930,8 @@
     return {
       replay: match.replay,
       next,
-      rounds: [...from.rounds, ...rounds.map((round) => roundStats(round, match.map.playerCount))],
+      owners: ownersOf(match),
+      rounds: [...from.rounds, ...rounds.map((round) => roundStats(round, ownersOf(match)))],
     };
   }
 
@@ -945,10 +945,10 @@
     );
   }
 
-  function roundStats({ before, after, ledger }, playerCount) {
+  function roundStats({ before, after, ledger }, owners) {
     return {
       round: before.round,
-      players: Array.from({ length: playerCount }, (_, owner) => ({
+      players: owners.map((owner) => ({
         ...standingIn(after.nodes, owner),
         production: ledger[owner].production,
         battleLoss:
@@ -1179,11 +1179,7 @@
       setLeaderboardChart: (fields) =>
         setUi(
           'leaderboardChart',
-          nextLeaderboardChart(
-            snapshot.ui.leaderboardChart,
-            fields,
-            snapshot.match.map.playerCount,
-          ),
+          nextLeaderboardChart(snapshot.ui.leaderboardChart, fields, ownersOf(snapshot.match)),
         ),
       copyPolicy: (policy) => setUi('clipboard', { ...policy }),
       select: (id) => setUi('selected', id),

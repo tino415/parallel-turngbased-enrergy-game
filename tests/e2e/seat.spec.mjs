@@ -24,6 +24,13 @@ test('a match started as Purple is played and replayed as Purple', async ({ page
   await page.locator('#tacticalMenu summary').click();
   await page.locator('#tacticalMenu button').filter({ hasText: 'Replay' }).click();
   await expect(page.locator('#replayDialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.getByRole('tab', { name: /Leaderboard/ }).click();
+  await expect(page.locator('#leaderboardTable tbody tr.is-you')).toContainText('Purple (you)');
+  await expect(page.locator('#leaderboardTable tbody')).not.toContainText('Blue (you)');
+  await page.getByRole('tab', { name: /Map/ }).click();
+  await page.locator('#tacticalMenu summary').click();
+  await page.locator('#tacticalMenu button').filter({ hasText: 'Replay' }).click();
   await expect(page.locator(`#replayMap circle[fill="${PURPLE}"]`)).toHaveCount(1);
   await expect(page.locator(`#replayMap circle[fill="${BLUE}"]`)).toHaveCount(1);
   expect(await page.evaluate(() => currentMatch().replay.seat)).toBe(2);
@@ -54,4 +61,7 @@ test('any colour can be played against a single AI', async ({ page }) => {
   await expect(page.locator('#score')).toContainText('Round 2');
   await page.getByRole('tab', { name: /Leaderboard/ }).click();
   await expect(page.locator('#leaderboardTable tbody tr')).toHaveCount(2);
+  await expect(page.locator('#leaderboardTable tbody tr.is-you')).toContainText('Green (you)');
+  await expect(page.locator('#chartPlayers button')).toHaveCount(2);
+  await expect(page.locator('.chart-line')).toHaveCount(2);
 });

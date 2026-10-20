@@ -547,7 +547,10 @@
       rnd = (a, b) => a + rng() * (b - a),
       clamp = (v) => Math.max(0, v);
     const softCap = isSoftCap(state);
-    const ledger = Array.from({ length: playerCount }, emptyLedger);
+    const ledger = Array.from(
+      { length: Math.max(playerCount, ...owners.map((o) => o + 1)) },
+      emptyLedger,
+    );
     const book = (owner, flow, amount) => {
       if (owner !== null) ledger[owner][flow] += amount;
     };
