@@ -122,12 +122,14 @@
   }
 
   let { active, editing } = store.getSnapshot().ui.inspector;
-  let { groupMode, groupEditing, bulkSelection } = store.getSnapshot().ui;
+  let { groupMode, groupEditing, bulkSelection, bulkEdges } = store.getSnapshot().ui;
   store.subscribe(({ ui }) => {
     ({ active, editing } = ui.inspector);
-    ({ groupMode, groupEditing, bulkSelection } = ui);
+    ({ groupMode, groupEditing, bulkSelection, bulkEdges } = ui);
   });
   const groupIds = () => (groupMode ? bulkSelection : []);
+  const groupEdges = () => (groupMode ? bulkEdges : []);
+  const showingEdgeGroup = () => groupEditing && groupEdges().length > 0;
   const showingGroup = () => groupEditing && groupIds().length >= 2;
   const editedMember = () => (groupEditing && groupIds().length === 1 ? groupIds()[0] : null);
   let groupMessage = '';
@@ -221,6 +223,19 @@
     return hit ? Number(hit.dataset.node) : null;
   }
 
+  function edgeOf(element) {
+    const hit = element?.closest?.('.tactical-edge-hit');
+    return hit ? hit.dataset.edge.split('-').map(Number) : null;
+  }
+
+  function toggleGroupItemAt(element) {
+    const id = nodeIdOf(element);
+    if (id !== null) toggleGroupNode(id);
+    else toggleGroupEdge(...edgeOf(element));
+  }
+
+  const isGroupItem = (element) => nodeIdOf(element) !== null || edgeOf(element) !== null;
+
   function stopEvent(event) {
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -236,8 +251,8 @@
     (event) => {
       swallowNextClick = false;
       cancelPress();
-      const id = nodeIdOf(event.target);
-      if (event.pointerType !== 'touch' || id === null || fingers.size > 1) return;
+      const target = event.target;
+      if (event.pointerType !== 'touch' || !isGroupItem(target) || fingers.size > 1) return;
       press = {
         pointerId: event.pointerId,
         x: event.clientX,
@@ -245,7 +260,7 @@
         timer: setTimeout(() => {
           press = null;
           swallowNextClick = true;
-          toggleGroupNode(id);
+          toggleGroupItemAt(target);
         }, LONG_PRESS_MS),
       };
     },
@@ -262,7 +277,7 @@
   );
   for (const type of ['pointerup', 'pointercancel']) svg.addEventListener(type, cancelPress, true);
   svg.addEventListener('contextmenu', (event) => {
-    if (nodeIdOf(event.target) !== null) event.preventDefault();
+    if (isGroupItem(event.target)) event.preventDefault();
   });
 
   svg.addEventListener(
@@ -273,15 +288,10 @@
         stopEvent(event);
         return;
       }
-      const id = nodeIdOf(event.target);
       const modified = event.shiftKey || event.ctrlKey || event.metaKey;
-      if (id !== null && (modified || groupMode)) {
-        stopEvent(event);
-        toggleGroupNode(id);
-      } else if (groupMode && event.target.closest('.tactical-edge-hit')) {
-        stopEvent(event);
-        showGroupHint('Only your nodes join a group.');
-      }
+      if (!isGroupItem(event.target) || !(modified || groupMode)) return;
+      stopEvent(event);
+      toggleGroupItemAt(event.target);
     },
     true,
   );
@@ -289,10 +299,9 @@
     'keydown',
     (event) => {
       if (event.key !== 'Enter' && event.key !== ' ') return;
-      const id = nodeIdOf(event.target);
-      if (id === null || !(event.shiftKey || groupMode)) return;
+      if (!isGroupItem(event.target) || !(event.shiftKey || groupMode)) return;
       stopEvent(event);
-      toggleGroupNode(id);
+      toggleGroupItemAt(event.target);
     },
     true,
   );
@@ -307,13 +316,35 @@
   );
 
   function toggleGroupNode(id) {
+    if (groupEdges().length) {
+      showGroupHint('This group holds connections. Done, then pick nodes.');
+      return;
+    }
     if (state.nodes[id]?.owner !== 0) {
       showGroupHint('Only your nodes join a group.');
       return;
     }
     store.setGroupMode(true);
     store.toggleGroupMember(id);
-    if (!bulkSelection.length) store.setGroupEditing(false);
+    changedGroup();
+  }
+
+  function toggleGroupEdge(a, b) {
+    if (groupIds().length) {
+      showGroupHint('This group holds nodes. Done, then pick connections.');
+      return;
+    }
+    if (selectors.edgeSource(currentMatch(), a, b) === null) {
+      showGroupHint('Only connections touching your nodes join.');
+      return;
+    }
+    store.setGroupMode(true);
+    store.toggleGroupEdge(a, b);
+    changedGroup();
+  }
+
+  function changedGroup() {
+    if (!bulkSelection.length && !bulkEdges.length) store.setGroupEditing(false);
     groupMessage = '';
     store.dismissInspector();
     render();
@@ -365,13 +396,18 @@
       return button;
     };
     const edit = action('Edit', editGroup);
-    edit.disabled = bulkSelection.length === 0;
+    edit.disabled = bulkSelection.length === 0 && bulkEdges.length === 0;
     updateChildrenInPlace(groupBar, [
-      textElement('strong', bulkSelection.length + ' selected'),
+      textElement('strong', groupCount() + ' selected'),
       edit,
       action('Done', leaveGroup),
       textElement('span', '', 'tactical-group-hint'),
     ]);
+  }
+
+  function groupCount() {
+    if (!bulkEdges.length) return String(bulkSelection.length);
+    return bulkEdges.length + (bulkEdges.length === 1 ? ' connection' : ' connections');
   }
 
   const selectButton = document.createElement('button');
@@ -427,17 +463,7 @@
     const graph = svg.querySelector('g');
     if (!graph || currentView !== 'map') return;
     for (const [a, b] of edges) {
-      const [ax, ay] = xy[a];
-      const [bx, by] = xy[b];
-      const dx = bx - ax;
-      const dy = by - ay;
-      const length = Math.hypot(dx, dy) || 1;
-      const attributes = {
-        x1: ax + (dx * 37) / length,
-        y1: ay + (dy * 37) / length,
-        x2: bx - (dx * 37) / length,
-        y2: by - (dy * 37) / length,
-      };
+      const attributes = trimmedLine(a, b);
       if (active?.kind === 'edge' && active.a === a && active.b === b) {
         svgElement(
           'line',
@@ -478,6 +504,16 @@
       if (x !== undefined)
         svgElement('circle', { cx: x, cy: y, r: 39, class: 'tactical-group-member' }, graph);
     }
+    for (const [source, destination] of groupEdges())
+      svgElement(
+        'line',
+        {
+          ...trimmedLine(source, destination),
+          class: 'tactical-group-edge',
+          'data-group-edge': source + '-' + destination,
+        },
+        graph,
+      );
     for (const ring of selectionRings()) {
       const [x, y] = xy[ring.id] || [];
       if (x === undefined) continue;
@@ -498,6 +534,20 @@
     }
     drawDirectionArrow(graph);
     drawMapSwap(graph);
+  }
+
+  function trimmedLine(from, to) {
+    const [ax, ay] = xy[from];
+    const [bx, by] = xy[to];
+    const dx = bx - ax;
+    const dy = by - ay;
+    const length = Math.hypot(dx, dy) || 1;
+    return {
+      x1: ax + (dx * 37) / length,
+      y1: ay + (dy * 37) / length,
+      x2: bx - (dx * 37) / length,
+      y2: by - (dy * 37) / length,
+    };
   }
 
   function drawMapSwap(graph) {
@@ -1084,6 +1134,7 @@
     max = Infinity,
     step = '1',
     placeholder,
+    title,
     onCommit,
   }) {
     const field = textElement('label', '', 'tactical-field');
@@ -1097,6 +1148,7 @@
     input.dataset.key = key;
     input.value = value === null ? '' : String(value);
     if (placeholder) input.placeholder = placeholder;
+    if (title) input.title = title;
     input.setAttribute('aria-label', name);
     const revert = () => (input.value = value === null ? '' : String(value));
     input.onchange = () => {
@@ -1203,6 +1255,15 @@
 
   const NULLABLE_GROUP_FIELDS = ['investTarget', 'defenseTarget'];
   const shownValue = (value) => (value === null ? 'none' : numeric(value));
+  const mixedPlaceholder = ([lowest, highest]) =>
+    'mixed (' + shownValue(lowest) + '–' + shownValue(highest) + ')';
+  const compactMixed = (mixed) =>
+    mixed
+      ? {
+          placeholder: shownValue(mixed[0]) + '–' + shownValue(mixed[1]),
+          title: mixedPlaceholder(mixed),
+        }
+      : {};
 
   function groupNumberField(ids, view, field, label, max = Infinity) {
     const { value, mixed } = view[field];
@@ -1213,7 +1274,7 @@
       value: mixed ? null : value,
       max,
       placeholder: mixed
-        ? 'mixed (' + shownValue(mixed[0]) + '–' + shownValue(mixed[1]) + ')'
+        ? mixedPlaceholder(mixed)
         : NULLABLE_GROUP_FIELDS.includes(field)
           ? 'no limit'
           : undefined,
@@ -1258,13 +1319,33 @@
     block.append(
       textElement(
         'p',
-        'Transfer destinations and border pressure stay per node and per connection.',
+        'Transfer destinations stay per node. Border pressure starts on a connection.',
         'tactical-secondary',
       ),
+      ...pressuredEdgeFields(ids),
       groupButton('Clear destinations', () => store.clearGroupDestinations(ids)),
       groupButton('Stop border pressure', () => store.stopGroupPressure(ids)),
     );
     return block;
+  }
+
+  function pressuredEdgeFields(ids) {
+    const pairs = selectors.pressuredEdges(currentMatch(), ids);
+    if (!pairs.length) return [];
+    const view = selectors.groupEdgeView(currentMatch(), pairs);
+    return [
+      editorRow('Pressure', groupPressureFields(pairs, view)),
+      textElement(
+        'p',
+        'On the ' +
+          pairs.length +
+          (pairs.length === 1 ? ' pressured connection' : ' pressured connections') +
+          ' of these nodes: ' +
+          edgeList(pairs) +
+          '.',
+        'tactical-secondary',
+      ),
+    ];
   }
 
   function groupOneOffOrders(ids) {
@@ -1316,44 +1397,292 @@
   }
 
   function groupMembers(ids) {
+    return memberList(
+      ids.map((id) =>
+        memberRow({
+          key: 'member:' + id,
+          label: 'Node ' + id,
+          subject: 'node ' + id,
+          detail: nodeMemberDetail(id),
+          onOpen: () => editMemberAlone(id),
+          onRemove: () => toggleGroupNode(id),
+        }),
+      ),
+    );
+  }
+
+  function nodeMemberDetail(id) {
+    const node = state.nodes[id];
+    return (
+      numeric(node.active) +
+      ' active · ' +
+      numeric(node.invested) +
+      ' invested · next ' +
+      numeric(projection(id).next) +
+      (softCapEnabled()
+        ? ' · ' + numeric(node.active + node.invested) + ' / ' + SOFT_CAP_RULES.capacity
+        : '')
+    );
+  }
+
+  function memberList(rows) {
     const list = document.createElement('div');
     list.className = 'tactical-group-members';
-    for (const id of ids) {
-      const node = state.nodes[id];
-      const row = document.createElement('div');
-      row.className = 'tactical-group-member-row';
-      row.dataset.key = 'member:' + id;
-      const open = document.createElement('button');
-      open.type = 'button';
-      open.textContent = 'Node ' + id;
-      open.setAttribute('aria-label', 'Edit node ' + id + ' alone');
-      open.onclick = () => {
-        editMemberAlone(id);
-      };
-      const remove = document.createElement('button');
-      remove.type = 'button';
-      remove.textContent = '×';
-      remove.setAttribute('aria-label', 'Remove node ' + id + ' from group');
-      remove.onclick = () => toggleGroupNode(id);
-      row.append(
-        open,
-        textElement(
-          'span',
-          numeric(node.active) +
-            ' active · ' +
-            numeric(node.invested) +
-            ' invested · next ' +
-            numeric(projection(id).next) +
-            (softCapEnabled()
-              ? ' · ' + numeric(node.active + node.invested) + ' / ' + SOFT_CAP_RULES.capacity
-              : ''),
-          'tactical-secondary',
-        ),
-        remove,
-      );
-      list.append(row);
-    }
+    list.append(...rows);
     return list;
+  }
+
+  function memberRow({ key, label, subject, detail, onOpen, onRemove, extra = [] }) {
+    const row = document.createElement('div');
+    row.className = 'tactical-group-member-row';
+    row.dataset.key = key;
+    const open = textElement('button', label);
+    open.type = 'button';
+    open.setAttribute('aria-label', 'Edit ' + subject + ' alone');
+    open.onclick = onOpen;
+    const remove = textElement('button', '×');
+    remove.type = 'button';
+    remove.setAttribute('aria-label', 'Remove ' + subject + ' from group');
+    remove.onclick = onRemove;
+    row.append(open, textElement('span', detail, 'tactical-secondary'), ...extra, remove);
+    return row;
+  }
+
+  function showEdgeGroup(body, pairs) {
+    const view = selectors.groupEdgeView(currentMatch(), pairs);
+    body.append(
+      metrics([
+        ['Attacks', view.attacks],
+        ['Sending', view.sending],
+        ['Pressured', view.pressured],
+      ]),
+      groupAmountRow(pairs, view),
+      ...(view.attacks ? [groupWinChanceRow(pairs)] : []),
+      divider(),
+      ...(view.attacks ? groupPressureRows(pairs, view) : []),
+      groupStopRow(pairs, view),
+    );
+    if (groupMessage) body.append(textElement('p', groupMessage, 'tactical-warning'));
+    body.append(edgeGroupMembers(pairs));
+  }
+
+  function groupAmountRow(pairs, view) {
+    const { value, mixed } = view.amount;
+    const amount = policyNumberField({
+      id: 'groupEdgeAmount',
+      key: 'group:edgeAmount',
+      label: 'energy',
+      name: 'Energy on each connection',
+      value: mixed ? null : value,
+      step: '0.1',
+      ...compactMixed(mixed),
+      onCommit: (committed) =>
+        committed !== null && reportSkipped(pairs, store.sendOnEachEdge(pairs, committed)),
+    });
+    amount.classList.add('tactical-field-wide');
+    const split = (kind, label, name) => {
+      const button = textElement('button', label);
+      button.type = 'button';
+      button.dataset.preset = kind;
+      button.setAttribute('aria-label', name);
+      button.onclick = () => {
+        store.splitOnEachEdge(pairs, kind);
+        groupMessage = '';
+        render();
+      };
+      return button;
+    };
+    const presets = document.createElement('div');
+    presets.className = 'tactical-order-presets';
+    presets.append(
+      split('all', 'All', 'Send all, split between each node’s connections'),
+      split('surplus', 'Surplus', 'Send all surplus, split between each node’s connections'),
+    );
+    return editorRow(
+      view.attacks === pairs.length ? 'Attack each' : 'Send each',
+      [amount, presets],
+      help('Send each', [
+        'The amount goes on every selected connection. A connection whose node lacks the energy keeps its order.',
+        'All and Surplus split a node’s energy evenly between its selected connections.',
+      ]),
+    );
+  }
+
+  function groupWinChanceRow(pairs) {
+    const presets = document.createElement('div');
+    presets.className = 'tactical-order-presets';
+    presets.append(
+      ...[0.7, 0.9, 1].map((chance) => {
+        const percent = Math.round(chance * 100);
+        const button = textElement('button', percent + '%');
+        button.type = 'button';
+        button.dataset.preset = 'chance-' + percent;
+        button.setAttribute('aria-label', percent + '% success attack on each connection');
+        button.onclick = () =>
+          reportSkipped(attacksIn(pairs), store.attackChanceOnEachEdge(pairs, chance));
+        return button;
+      }),
+    );
+    return editorRow(
+      'Win chance',
+      [presets],
+      help('Win chance on each', [
+        'Each attack gets the smallest amount with that chance against its own target’s defense now. Connections between your nodes keep their orders.',
+        'Attack and defense strength each roll ×0.8–1.2, and other players’ orders this round can change the outcome.',
+      ]),
+    );
+  }
+
+  const attacksIn = (pairs) =>
+    pairs.filter(([, destination]) => state.nodes[destination].owner !== 0);
+
+  function reportSkipped(pairs, skipped) {
+    groupMessage = skipped.length
+      ? 'Applied to ' +
+        (pairs.length - skipped.length) +
+        ' of ' +
+        pairs.length +
+        '; ' +
+        edgeList(skipped) +
+        ' lacked energy.'
+      : '';
+    render();
+  }
+
+  const edgeName = ([source, destination]) => source + ' → ' + destination;
+  const edgeList = (pairs) => pairs.map(edgeName).join(', ');
+
+  function groupPressureRows(pairs, view) {
+    const toggle = chipToggle({
+      id: 'groupEdgePressure',
+      label: 'Pressure · ' + view.pressured + ' of ' + view.attacks,
+      name: 'Pressure every attacked node each round',
+      checked: view.pressured === view.attacks,
+      onChange: (checked) => {
+        if (checked) return applyGroupPressure(pairs, {});
+        store.stopEdgePressure(pairs);
+        render();
+      },
+    });
+    toggle.querySelector('input').indeterminate =
+      view.pressured > 0 && view.pressured < view.attacks;
+    const rows = [
+      editorRow(
+        'Each round',
+        [toggle],
+        help('Pressure on each', [
+          'Every round, each source banks a share of its surplus for the node it attacks and attacks with the bank once it reaches “attack at”.',
+          'A value typed here turns pressure on for every attack in the group.',
+        ]),
+      ),
+    ];
+    if (view.pressured) rows.push(editorRow('', groupPressureFields(pairs, view)));
+    return rows;
+  }
+
+  function groupPressureFields(pairs, view) {
+    return [
+      groupPressureField(pairs, view, 'pct', '% surplus', 'Send % of surplus', 100),
+      groupPressureField(
+        pairs,
+        view,
+        'min',
+        'attack at',
+        'Attack when at least this much is banked',
+      ),
+    ];
+  }
+
+  function groupPressureField(pairs, view, field, label, name, max = Infinity) {
+    const { value, mixed } = view[field];
+    return policyNumberField({
+      id: 'group-pressure-' + field,
+      key: 'group:pressure:' + field,
+      label,
+      name,
+      value: mixed ? null : value,
+      max,
+      ...compactMixed(mixed),
+      onCommit: (committed) =>
+        committed !== null && applyGroupPressure(pairs, { [field]: committed }),
+    });
+  }
+
+  function applyGroupPressure(pairs, fields) {
+    const rejected = store.setGroupEdgePressure(pairs, fields);
+    groupMessage = rejected.length
+      ? 'Nothing changed: ' +
+        nodeList([...new Set(rejected.map(([source]) => source))]) +
+        ' would exceed 100% of surplus or reject this value.'
+      : '';
+    render();
+    return rejected.length === 0;
+  }
+
+  function groupStopRow(pairs, view) {
+    const buttons = document.createElement('div');
+    buttons.className = 'tactical-order-presets';
+    buttons.append(
+      groupButton('Clear orders', () => store.clearEdgeOrders(pairs)),
+      ...(view.pressured
+        ? [groupButton('Stop pressure', () => store.stopEdgePressure(pairs))]
+        : []),
+    );
+    return editorRow('Stop', [buttons]);
+  }
+
+  function edgeGroupMembers(pairs) {
+    return memberList(
+      pairs.map(([source, destination]) =>
+        memberRow({
+          key: 'member:' + source + '-' + destination,
+          label: edgeName([source, destination]),
+          subject: 'connection ' + edgeName([source, destination]),
+          detail: edgeMemberDetail(source, destination),
+          onOpen: () => editEdgeAlone(source, destination),
+          onRemove: () => toggleGroupEdge(source, destination),
+          extra: bothEndsFriendly(source, destination) ? [groupEdgeSwap(source, destination)] : [],
+        }),
+      ),
+    );
+  }
+
+  function edgeMemberDetail(source, destination) {
+    const amount = plan(source).edges[destination] || 0;
+    if (state.nodes[destination].owner === 0)
+      return amount ? 'send ' + numeric(amount) : 'nothing sent';
+    const pressure = policies[source]?.pressure?.[destination];
+    return (
+      (amount ? 'attack ' + numeric(amount) : 'no attack') +
+      ' · ' +
+      (pressure
+        ? 'pressure ' + numeric(pressure.pct) + '% at ' + numeric(pressure.min ?? 10)
+        : 'no pressure')
+    );
+  }
+
+  function groupEdgeSwap(source, destination) {
+    const swap = textElement('button', '⇄');
+    swap.type = 'button';
+    swap.setAttribute(
+      'aria-label',
+      'From Node ' + source + ' to Node ' + destination + '. Swap direction',
+    );
+    swap.onclick = () => {
+      store.swapGroupEdge(source, destination);
+      render();
+    };
+    return swap;
+  }
+
+  function editEdgeAlone(source, destination) {
+    const [a, b] = [source, destination].sort((x, y) => x - y);
+    store.leaveGroupMode();
+    store.dismissInspector();
+    store.inspectEdge(a, b);
+    store.inspectEdge(a, b);
+    store.setEdgeSource(source);
+    render();
   }
 
   function directionRow(source, destination, swappable) {
@@ -1767,7 +2096,7 @@
 
   function positionInspector() {
     if (root.hidden || mobile()) return;
-    if (showingGroup() || editedMember() !== null) {
+    if (showingGroup() || showingEdgeGroup() || editedMember() !== null) {
       root.style.left = Math.max(10, innerWidth - 372) + 'px';
       root.style.top = '70px';
       return;
@@ -1806,8 +2135,9 @@
     // The first tap highlights only. The second tap opens the editor above
     // the unchanged mobile Orders/Resolve dock, or near the edge on desktop.
     const group = showingGroup();
+    const edgeGroup = showingEdgeGroup();
     const member = editedMember();
-    const groupEditor = group || member !== null;
+    const groupEditor = group || edgeGroup || member !== null;
     root.hidden =
       !(groupEditor || (active && editing)) ||
       currentView !== 'map' ||
@@ -1817,11 +2147,13 @@
     root.classList.toggle('is-editing', true);
     const subject = group
       ? 'Group · ' + groupIds().length + ' nodes'
-      : member !== null
-        ? 'Node ' + member
-        : active.kind === 'node'
-          ? 'Node ' + active.id
-          : 'Connection ' + active.a + ' — ' + active.b;
+      : edgeGroup
+        ? 'Group · ' + groupCount()
+        : member !== null
+          ? 'Node ' + member
+          : active.kind === 'node'
+            ? 'Node ' + active.id
+            : 'Connection ' + active.a + ' — ' + active.b;
     const header = document.createElement('div');
     header.className = 'tactical-inspector-head';
     header.append(textElement('strong', subject));
@@ -1837,6 +2169,7 @@
     const body = document.createElement('div');
     body.className = 'tactical-inspector-body';
     if (group) showGroup(body, groupIds());
+    else if (edgeGroup) showEdgeGroup(body, groupEdges());
     else if (member !== null) showNode(body, member, true);
     else if (active.kind === 'node') showNode(body, active.id);
     else showEdge(body, active.a, active.b);

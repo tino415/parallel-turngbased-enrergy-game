@@ -550,16 +550,18 @@
 
   function groupPolicyView(match, ids) {
     return Object.fromEntries(
-      GROUP_FIELDS.map((field) => {
-        const values = [...new Set(ids.map((id) => shownPolicy(match, id)[field] ?? null))].sort(
-          ascending,
-        );
-        return [
-          field,
-          values.length === 1 ? { value: values[0] } : { mixed: [values[0], values.at(-1)] },
-        ];
-      }),
+      GROUP_FIELDS.map((field) => [
+        field,
+        spread(ids.map((id) => shownPolicy(match, id)[field] ?? null)),
+      ]),
     );
+  }
+
+  function spread(values) {
+    const distinct = [...new Set(values)].sort(ascending);
+    return distinct.length === 1
+      ? { value: distinct[0] }
+      : { mixed: [distinct[0], distinct.at(-1)] };
   }
 
   const LEADERBOARD_COLUMNS = ['player', 'invested', 'active', 'nodes'];
@@ -627,6 +629,122 @@
   const clearGroupOrders = (match, ids) => ids.reduce(clearNodeOrders, match);
   const pasteGroupPolicy = (match, ids, copied) =>
     ids.filter((id) => isOwn(match, id)).reduce((next, id) => pastePolicy(next, id, copied), match);
+
+  const isAttack = (match, [, destination]) => !isOwn(match, destination);
+  const orderedAmount = (match, [source, destination]) =>
+    plan(match, source).edges[destination] || 0;
+  const pressureOf = (match, [source, destination]) =>
+    match.policies[source]?.pressure?.[destination];
+
+  function groupEdgeView(match, pairs) {
+    const pressured = pairs
+      .filter((pair) => isAttack(match, pair))
+      .map((pair) => pressureOf(match, pair))
+      .filter(Boolean);
+    return {
+      attacks: pairs.filter((pair) => isAttack(match, pair)).length,
+      sending: sum(pairs.map((pair) => orderedAmount(match, pair))),
+      amount: spread(pairs.map((pair) => orderedAmount(match, pair))),
+      pressured: pressured.length,
+      pct: pressured.length ? spread(pressured.map((edge) => edge.pct)) : null,
+      min: pressured.length ? spread(pressured.map((edge) => edge.min ?? 10)) : null,
+    };
+  }
+
+  const pressuredEdges = (match, ids) =>
+    ids.flatMap((source) =>
+      Object.keys(match.policies[source]?.pressure ?? {})
+        .map((destination) => [source, Number(destination)])
+        .filter(([, destination]) => isPressurable(match, source, destination)),
+    );
+
+  const sendOnEachEdge = (match, pairs, amount) => amountsOnEachEdge(match, pairs, () => amount);
+
+  const attackChanceOnEachEdge = (match, pairs, chance) =>
+    amountsOnEachEdge(
+      match,
+      pairs.filter((pair) => isAttack(match, pair)),
+      ([, destination]) => attackForChance(match.state.nodes[destination].active, chance),
+    );
+
+  function amountsOnEachEdge(match, pairs, amountOf) {
+    const skipped = [];
+    const next = pairs.reduce((current, pair) => {
+      const [source, destination] = pair;
+      const amount = amountOf(pair);
+      if (!isOwn(current, source) || amount > edgeLimit(current, source, destination) + 1e-8) {
+        skipped.push(pair);
+        return current;
+      }
+      return setAllocation(current, source, destination, amount).match;
+    }, match);
+    return { match: next, skipped };
+  }
+
+  function splitOnEachEdge(match, pairs, preset) {
+    const sources = [...new Set(pairs.map(([source]) => source))].filter((source) =>
+      isOwn(match, source),
+    );
+    return sources.reduce((current, source) => {
+      const destinations = pairs
+        .filter(([from]) => from === source)
+        .map(([, destination]) => destination);
+      const cleared = destinations.reduce(
+        (next, destination) => setAllocation(next, source, destination, 0).match,
+        current,
+      );
+      const reserve = preset === 'surplus' ? policyReserve(cleared, source) : 0;
+      const pool = Math.max(0, edgeLimit(cleared, source, destinations[0]) - reserve);
+      return destinations.reduce(
+        (next, destination) =>
+          setAllocation(next, source, destination, pool / destinations.length).match,
+        cleared,
+      );
+    }, match);
+  }
+
+  const clearEdgeOrders = (match, pairs) =>
+    pairs
+      .filter((pair) => orderedAmount(match, pair) > 0)
+      .reduce(
+        (next, [source, destination]) => setAllocation(next, source, destination, 0).match,
+        match,
+      );
+
+  function setGroupEdgePressure(match, pairs, fields) {
+    const rejected = [];
+    const next = pairs
+      .filter(([source, destination]) => isPressurable(match, source, destination))
+      .reduce((current, pair) => {
+        const changed = setEdgePressure(current, ...pair, fields);
+        if (changed === current) rejected.push(pair);
+        return changed;
+      }, match);
+    return rejected.length ? { match, rejected } : { match: next, rejected };
+  }
+
+  const stopEdgePressure = (match, pairs) =>
+    pairs.reduce(
+      (next, [source, destination]) => setEdgePressure(next, source, destination, null),
+      match,
+    );
+
+  const orderableEdges = (match, pairs) =>
+    pairs.filter(
+      ([source, destination]) =>
+        isOwn(match, source) && neighbors(match, source).includes(destination),
+    );
+
+  const stillOrderableEdges = (match, pairs) =>
+    orderableEdges(
+      match,
+      pairs.map(([source, destination]) =>
+        isOwn(match, source) ? [source, destination] : [destination, source],
+      ),
+    );
+
+  const sameEdge = ([source, destination], a, b) =>
+    (source === a && destination === b) || (source === b && destination === a);
 
   function setDefaults(match, defaults) {
     return { ...match, defaults: { ...match.defaults, ...defaults } };
@@ -755,6 +873,7 @@
     clipboard: null,
     aiDebug: false,
     bulkSelection: [],
+    bulkEdges: [],
     groupMode: false,
     groupEditing: false,
     selected: null,
@@ -847,6 +966,19 @@
       const others = snapshot.ui.bulkSelection.filter((other) => other !== id);
       return selected ? [...others, id] : others;
     };
+    const reporting =
+      (command, report) =>
+      (...args) => {
+        const result = command(snapshot.match, ...args);
+        commit('match', result.match);
+        return result[report];
+      };
+    const bulkEdgesWith = (a, b) => {
+      const others = snapshot.ui.bulkEdges.filter((pair) => !sameEdge(pair, a, b));
+      if (others.length < snapshot.ui.bulkEdges.length) return others;
+      const source = edgeSource(snapshot.match, a, b);
+      return [...others, ...orderableEdges(snapshot.match, [[source, source === a ? b : a]])];
+    };
 
     return {
       getSnapshot: () => snapshot,
@@ -876,30 +1008,45 @@
       setDefaults: onMatch(setDefaults),
       resolve() {
         commit('match', resolve(snapshot.match));
-        setUi('bulkSelection', ownOnly(snapshot.ui.bulkSelection));
+        updateUi({
+          bulkSelection: ownOnly(snapshot.ui.bulkSelection),
+          bulkEdges: stillOrderableEdges(snapshot.match, snapshot.ui.bulkEdges),
+        });
       },
-      applyGroupPolicyField(ids, key, value) {
-        const result = applyGroupPolicyField(snapshot.match, ids, key, value);
-        commit('match', result.match);
-        return result.rejected;
-      },
-      investOnEach(ids, amount) {
-        const result = investOnEach(snapshot.match, ids, amount);
-        commit('match', result.match);
-        return result.skipped;
-      },
+      applyGroupPolicyField: reporting(applyGroupPolicyField, 'rejected'),
+      investOnEach: reporting(investOnEach, 'skipped'),
       clearGroupDestinations: onMatch(clearGroupDestinations),
       stopGroupPressure: onMatch(stopGroupPressure),
       pauseGroup: onMatch(pauseGroup),
       clearGroupOrders: onMatch(clearGroupOrders),
       pasteGroupPolicy: onMatch(pasteGroupPolicy),
+      sendOnEachEdge: reporting(sendOnEachEdge, 'skipped'),
+      attackChanceOnEachEdge: reporting(attackChanceOnEachEdge, 'skipped'),
+      splitOnEachEdge: onMatch(splitOnEachEdge),
+      clearEdgeOrders: onMatch(clearEdgeOrders),
+      setGroupEdgePressure: reporting(setGroupEdgePressure, 'rejected'),
+      stopEdgePressure: onMatch(stopEdgePressure),
       setGroupMode: (on) => setUi('groupMode', on),
-      leaveGroupMode: () => updateUi({ groupMode: false, groupEditing: false, bulkSelection: [] }),
+      leaveGroupMode: () =>
+        updateUi({ groupMode: false, groupEditing: false, bulkSelection: [], bulkEdges: [] }),
       setGroupEditing: (on) => setUi('groupEditing', on),
       setBulkSelection: (ids) => setUi('bulkSelection', ownOnly(ids)),
       toggleGroupMember(id) {
-        if (!isOwn(snapshot.match, id)) return;
+        if (!isOwn(snapshot.match, id) || snapshot.ui.bulkEdges.length) return;
         setUi('bulkSelection', bulkSelectionWith(id, !snapshot.ui.bulkSelection.includes(id)));
+      },
+      setBulkEdges: (pairs) => setUi('bulkEdges', orderableEdges(snapshot.match, pairs)),
+      toggleGroupEdge(a, b) {
+        if (snapshot.ui.bulkSelection.length) return;
+        setUi('bulkEdges', bulkEdgesWith(a, b));
+      },
+      swapGroupEdge(a, b) {
+        setUi(
+          'bulkEdges',
+          snapshot.ui.bulkEdges.map((pair) =>
+            sameEdge(pair, a, b) && isOwn(snapshot.match, pair[1]) ? [pair[1], pair[0]] : pair,
+          ),
+        );
       },
       setView: (view) => setUi('view', view),
       setAiDebug: (on) => setUi('aiDebug', Boolean(on)),
@@ -959,6 +1106,12 @@
       pauseGroup,
       clearGroupOrders,
       pasteGroupPolicy,
+      sendOnEachEdge,
+      attackChanceOnEachEdge,
+      splitOnEachEdge,
+      clearEdgeOrders,
+      setGroupEdgePressure,
+      stopEdgePressure,
       setDefaults,
       resolve,
     }),
@@ -968,6 +1121,8 @@
       neighbors,
       edgeSource,
       groupPolicyView,
+      groupEdgeView,
+      pressuredEdges,
       leaderboard,
       softCapEnabled,
       defaultPolicy,
