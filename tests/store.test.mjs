@@ -186,6 +186,18 @@ test('an old save without optional fields loads with empty plans and current def
   assert.equal(GameStore.matchFromSave({ state }, DEFAULTS), null);
 });
 
+test('a save carrying the removed flow filter loads like one without it', () => {
+  const GameStore = loadStore(),
+    store = newStore(GameStore);
+  playCommands(store);
+  const save = JSON.parse(JSON.stringify(GameStore.saveFromMatch(store.getSnapshot().match, 2)));
+  const withFilter = { ...save, overlay: 'manual', ui: { overlay: 'none' } };
+  assertSameData(
+    GameStore.matchFromSave(withFilter, DEFAULTS),
+    GameStore.matchFromSave(save, DEFAULTS),
+  );
+});
+
 test('ui commands change only the ui slice and ignore repeated values', () => {
   const store = newStore();
   const calls = [];
@@ -299,7 +311,6 @@ test('dismissing clears selection and editing but keeps focus and section state'
   store.dismissInspector();
   store.editSelectedNode();
   store.setCamera({ x: 0, y: 0, scale: 1 });
-  store.setOverlay('all');
   assert.equal(store.getSnapshot(), before);
 });
 

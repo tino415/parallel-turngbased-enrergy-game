@@ -162,7 +162,7 @@ test('manual orders can be opened from the overflow Orders review', async ({ pag
   await expect(page.locator('#tacticalInspector')).toHaveClass(/is-editing/);
 });
 
-test('planned arrows and income remain visible across selections and filters', async ({ page }) => {
+test('planned arrows and income remain visible across selections', async ({ page }) => {
   await page.evaluate(() => {
     state.nodes[1].owner = 0;
     orders[0] = { invest: 0, withdraw: 0, edges: { 1: 4, 2: 6 } };
@@ -180,12 +180,6 @@ test('planned arrows and income remain visible across selections and filters', a
   await expect(income).toHaveCount(2);
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
   await expect(styled).toHaveCount(3);
-  await page.locator('#overlay').selectOption('manual');
-  await expect(styled).toHaveCount(3);
-  await page.locator('#overlay').selectOption('policy');
-  await expect(styled).toHaveCount(1);
-  await page.locator('#overlay').selectOption('none');
-  await expect(styled).toHaveCount(0);
   await expect(income).toHaveCount(2);
 });
 

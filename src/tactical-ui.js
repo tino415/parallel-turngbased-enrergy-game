@@ -52,17 +52,9 @@
   const originalRenderFlows = renderFlows;
   renderFlows = (mapSvg, graph, element) => {
     originalRenderFlows(mapSvg, graph, element);
-    const filter = overlay;
-    const visible =
-      filter === 'none'
-        ? []
-        : previewOrders().filter((order) => {
-            if (order.dest === null || order.dest === undefined || order.amount <= 0.01)
-              return false;
-            if (filter === 'manual' && order.automatic) return false;
-            if (filter === 'policy' && !order.automatic) return false;
-            return true;
-          });
+    const visible = previewOrders().filter(
+      (order) => order.dest !== null && order.dest !== undefined && order.amount > 0.01,
+    );
     const key = (a, b) => [Math.min(a, b), Math.max(a, b)].join(':');
     const byEdge = new Map();
     for (const order of visible) {

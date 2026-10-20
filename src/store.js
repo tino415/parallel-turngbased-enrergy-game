@@ -672,7 +672,6 @@
   const INITIAL_UI = {
     view: 'map',
     leaderboardSort: DEFAULT_LEADERBOARD_SORT,
-    overlay: 'all',
     clipboard: null,
     bulkSelection: [],
     groupMode: false,
@@ -809,7 +808,6 @@
       sortLeaderboard: (column) =>
         setUi('leaderboardSort', nextLeaderboardSort(snapshot.ui.leaderboardSort, column)),
       copyPolicy: (policy) => setUi('clipboard', { ...policy }),
-      setOverlay: (overlay) => setUi('overlay', overlay),
       select: (id) => setUi('selected', id),
       setCamera: (camera) => setUi('camera', camera),
       inspectNode: onUi(inspectNode),

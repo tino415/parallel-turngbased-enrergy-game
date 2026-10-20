@@ -42,13 +42,13 @@
   const policySection = document.createElement('section');
   policySection.className = 'ux-editor-section';
   policySection.id = 'uxPolicySection';
-  manualSection.append(allocator);
+  manualSection.append(allocator, hint);
   policySection.append(policyEditor);
   columns.append(manualSection, policySection);
   const note = document.createElement('div');
   note.className = 'ux-combat-note';
   note.id = 'uxCombatNote';
-  scroll.append(details, stats, balance, jumps, columns, note, hint);
+  scroll.append(details, stats, balance, jumps, columns, note);
   const footer = document.createElement('div');
   footer.className = 'ux-editor-footer';
   footer.innerHTML = '<span id="uxFooterSummary" class="muted"></span><button type="button" class="primary" id="uxDone">Done ✓</button>';
@@ -76,11 +76,6 @@
   const heading = document.createElement('div');
   heading.className = 'ux-map-heading';
   heading.innerHTML = '<div><h2>Tactical map</h2><p class="muted">Select a node to inspect or issue orders</p></div>';
-  const overlayLabel = byId('overlay').closest('label');
-  overlayLabel.prepend(document.createTextNode('Flows · '));
-  overlayLabel.firstChild.textContent = 'Flows · ';
-  overlayLabel.removeAttribute('hidden');
-  heading.append(overlayLabel);
   byId('mapViewport').before(heading);
   const toolbar = document.querySelector('.toolbar');
   const hintZoom = toolbar.querySelector('.desktop-zoom-hint');
@@ -95,12 +90,8 @@
   // Keep the game's normal renderer and engine; only change graphical overlays.
   const originalRenderFlows = renderFlows;
   renderFlows = function(svg, graph, element) {
-    const filter = overlay;
-    const paths = filter === 'none' ? [] : previewOrders();
-    for (const o of paths) {
+    for (const o of previewOrders()) {
       if (o.dest === null || o.dest === undefined || o.amount <= .01) continue;
-      if (filter === 'manual' && o.automatic) continue;
-      if (filter === 'policy' && !o.automatic) continue;
       const [ax,ay] = xy[o.source], [bx,by] = xy[o.dest];
       const dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy)||1;
       const fromX=ax+dx/len*32,fromY=ay+dy/len*32,toX=bx-dx/len*35,toY=by-dy/len*35;
@@ -111,7 +102,7 @@
       label.textContent=compactEnergy(o.amount);
     }
     // Next-round income/investment previews are economic status, not flow
-    // arrows; keep them on every owned node at every zoom and filter level.
+    // arrows; keep them on every owned node at every zoom level.
     for (const n of state.nodes) {
       if (n.owner !== 0) continue;
       const p=projection(n.id),[x,y]=xy[n.id];
@@ -227,8 +218,6 @@
   // focused input elements between parents here blurs them and immediately
   // dismisses the keyboard; the editor is already in its final layout.
   window.addEventListener('resize', redrawCamera);
-  const renderBeforeInspector=render;
-  byId('overlay').onchange=()=>{store.setOverlay(byId('overlay').value);renderBeforeInspector();};
   render();
   if(mobile()) {
     const mine=state.nodes.find(n=>n.owner===0);

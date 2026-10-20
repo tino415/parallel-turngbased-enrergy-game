@@ -88,7 +88,7 @@ test('an empty edge draft is not coerced while focused and commits as before on 
   expect(await page.evaluate(() => orders[0])).toBeUndefined();
 });
 
-test('a manual allocation draft survives map, flow and camera updates', async ({ page }) => {
+test('a manual allocation draft survives map and camera updates', async ({ page }) => {
   await openManualAllocations(page);
   const invest = manualInvest(page);
   await typeInto(invest, '3');
@@ -97,10 +97,6 @@ test('a manual allocation draft survives map, flow and camera updates', async ({
   await page.evaluate(() => {
     store.setCamera({ ...camera, scale: camera.scale * 1.25 });
     render();
-  });
-  await page.locator('#overlay').evaluate((select) => {
-    select.value = 'manual';
-    select.dispatchEvent(new Event('change'));
   });
   expect(await trackedFieldIsFocusedInInspector(page)).toBe(true);
   await expect(invest).toHaveValue('3');
