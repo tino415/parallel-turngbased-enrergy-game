@@ -1,8 +1,18 @@
 'use strict';
 
 (() => {
-  const { planPolicy, forecast, resolveRound, seeded, playerName, aiPlan, SOFT_CAP_RULES } =
-    GameEngine;
+  const {
+    planPolicy,
+    forecast,
+    resolveRound,
+    seeded,
+    playerName,
+    aiPlan,
+    coloursFor,
+    recoloured,
+    firstOwners,
+    SOFT_CAP_RULES,
+  } = GameEngine;
   const HISTORY_LIMIT = 70;
   const TARGET_EPSILON = 1e-6;
   const sum = (values) => values.reduce((total, value) => total + value, 0);
@@ -46,7 +56,7 @@
     [735, 415],
   ];
 
-  function classicMatch(random, defaults) {
+  function classicMatch(random, defaults, seat = 0) {
     const N = CLASSIC_XY.length,
       playerCount = 2;
     const nodes = Array.from({ length: N }, (_, id) => ({
@@ -65,17 +75,19 @@
       state,
       orders: {},
       policies: {},
-      history: ['New match started. You are Blue.'],
+      history: ['New match started. You are ' + playerName(seat) + '.'],
+      seat,
       map: { xy: CLASSIC_XY, edges: CLASSIC_EDGES, N, playerCount, mapSeed: 'classic' },
       defaults,
-      replay: newReplay(state, random),
+      replay: newReplay(state, random, seat),
     };
   }
 
-  function generatedMatch(map, defaults, random) {
+  function generatedMatch(map, defaults, random, seat = 0) {
+    const colours = coloursFor(seat, map.players);
     const state = {
       round: 1,
-      nodes: map.nodes,
+      nodes: recoloured(map.nodes, colours),
       finished: false,
       rulesVersion: SOFT_CAP_RULES.version,
     };
@@ -84,22 +96,25 @@
       orders: {},
       policies: {},
       history: [
+        'You are ' + playerName(seat) + '.',
         'Generated ' + map.nodes.length + ' nodes, ' + map.players + ' players, seed ' + map.seed,
       ],
+      seat,
       map: {
         xy: map.positions,
         edges: map.links,
         N: map.nodes.length,
         playerCount: map.players,
         mapSeed: map.seed,
+        ...(sameValue(colours, firstOwners(map.players)) ? {} : { owners: colours }),
       },
       defaults,
-      replay: newReplay(state, random),
+      replay: newReplay(state, random, seat),
     };
   }
 
-  function newReplay(start, random) {
-    return { diceSeed: diceSeed(random), start, rounds: [], policiesAfterLastRound: {} };
+  function newReplay(start, random, seat) {
+    return { diceSeed: diceSeed(random), seat, start, rounds: [], policiesAfterLastRound: {} };
   }
 
   const diceSeed = (random) =>
@@ -113,13 +128,14 @@
       !Array.isArray(save.edges)
     )
       return null;
-    const { state, xy, edges, N, playerCount, mapSeed } = save;
+    const { state, xy, edges, N, playerCount, mapSeed, owners } = save;
     return withOneWaySupport({
       state,
       orders: save.orders ?? {},
       policies: save.policies ?? {},
+      seat: save.seat ?? 0,
       history: ['Recovered saved match from this browser.', ...(save.history ?? [])],
-      map: { xy, edges, N, playerCount, mapSeed },
+      map: { xy, edges, N, playerCount, mapSeed, ...(owners ? { owners } : {}) },
       defaults: save.defaults
         ? {
             enabled: Boolean(save.defaults.enabled),
@@ -167,13 +183,16 @@
   }
 
   function saveFromMatch(match, selected) {
-    const { state, orders, policies, history, map, defaults, replay } = match;
-    return { state, orders, policies, ...map, history, selected, defaults, replay };
+    const { state, orders, policies, history, map, defaults, replay, seat } = match;
+    const saved = { state, orders, policies, ...map, history, selected, defaults, replay };
+    return seatOf(match) === 0 ? saved : { ...saved, seat };
   }
 
   const neighbors = (match, id) =>
     match.map.edges.flatMap(([a, b]) => (a === id ? [b] : b === id ? [a] : []));
-  const isOwn = (match, id) => match.state.nodes[id]?.owner === 0;
+  const seatOf = (match) => match.seat ?? 0;
+  const ownersOf = (match) => match.map.owners ?? firstOwners(match.map.playerCount);
+  const isOwn = (match, id) => match.state.nodes[id]?.owner === seatOf(match);
   const softCapEnabled = (match) => match.state?.rulesVersion === SOFT_CAP_RULES.version;
   const defaultPolicy = () => ({ enabled: true, reserve: 5, investPct: 50, dest: null });
   const plan = (match, source) => match.orders[source] ?? { invest: 0, withdraw: 0, edges: {} };
@@ -300,7 +319,7 @@
     return [...manual, ...automatic];
   }
 
-  const aiDebugPlan = (match) => aiPlan(match.state, match.map.edges);
+  const aiDebugPlan = (match) => aiPlan(match.state, match.map.edges, seatOf(match));
 
   function projection(match, id) {
     const scheduled = previewOrders(match),
@@ -345,14 +364,13 @@
   function orderPresets(match, source, destination) {
     const limit = edgeLimit(match, source, destination);
     const defense = match.state.nodes[destination].active;
-    const attacks =
-      match.state.nodes[destination].owner === 0
-        ? []
-        : [0.7, 0.9, 1].map((chance) => ({
-            kind: 'chance',
-            chance,
-            amount: attackForChance(defense, chance),
-          }));
+    const attacks = isOwn(match, destination)
+      ? []
+      : [0.7, 0.9, 1].map((chance) => ({
+          kind: 'chance',
+          chance,
+          amount: attackForChance(defense, chance),
+        }));
     return {
       limit,
       presets: [
@@ -569,9 +587,9 @@
 
   function leaderboard(match, sort = DEFAULT_LEADERBOARD_SORT) {
     const sign = sort.direction === 'asc' ? 1 : -1;
-    return Array.from({ length: match.map.playerCount }, (_, owner) =>
-      standingOf(match, owner),
-    ).sort((a, b) => sign * (a[sort.column] - b[sort.column]) || a.player - b.player);
+    return ownersOf(match)
+      .map((owner) => standingOf(match, owner))
+      .sort((a, b) => sign * (a[sort.column] - b[sort.column]) || a.player - b.player);
   }
 
   function standingOf(match, owner) {
@@ -625,13 +643,12 @@
     return values.map((value) => (total += value));
   }
 
-  function nextLeaderboardChart(chart, fields, playerCount) {
+  function nextLeaderboardChart(chart, fields, owners) {
     const next = { ...chart, ...fields };
     const valid =
       CHART_SERIES.includes(next.series) &&
       typeof next.runningTotal === 'boolean' &&
-      (next.focus === null ||
-        (Number.isInteger(next.focus) && next.focus >= 0 && next.focus < playerCount));
+      (next.focus === null || owners.includes(next.focus));
     return valid ? next : chart;
   }
 
@@ -822,6 +839,8 @@
     return resolveRound({
       state: match.state,
       playerCount: match.map.playerCount,
+      owners: ownersOf(match),
+      seat: seatOf(match),
       orders: match.orders,
       policies: match.policies,
       links: match.map.edges,
@@ -873,7 +892,12 @@
 
   function replayedRounds(match, from) {
     const rounds = [];
-    let current = { ...match, state: from.state, policies: from.policies };
+    let current = {
+      ...match,
+      seat: match.replay.seat ?? 0,
+      state: from.state,
+      policies: from.policies,
+    };
     for (const round of match.replay.rounds.slice(from.round)) {
       const input = {
         ...current,
@@ -906,7 +930,8 @@
     return {
       replay: match.replay,
       next,
-      rounds: [...from.rounds, ...rounds.map((round) => roundStats(round, match.map.playerCount))],
+      owners: ownersOf(match),
+      rounds: [...from.rounds, ...rounds.map((round) => roundStats(round, ownersOf(match)))],
     };
   }
 
@@ -920,10 +945,10 @@
     );
   }
 
-  function roundStats({ before, after, ledger }, playerCount) {
+  function roundStats({ before, after, ledger }, owners) {
     return {
       round: before.round,
-      players: Array.from({ length: playerCount }, (_, owner) => ({
+      players: owners.map((owner) => ({
         ...standingIn(after.nodes, owner),
         production: ledger[owner].production,
         battleLoss:
@@ -1154,11 +1179,7 @@
       setLeaderboardChart: (fields) =>
         setUi(
           'leaderboardChart',
-          nextLeaderboardChart(
-            snapshot.ui.leaderboardChart,
-            fields,
-            snapshot.match.map.playerCount,
-          ),
+          nextLeaderboardChart(snapshot.ui.leaderboardChart, fields, ownersOf(snapshot.match)),
         ),
       copyPolicy: (policy) => setUi('clipboard', { ...policy }),
       select: (id) => setUi('selected', id),
@@ -1235,6 +1256,9 @@
       groupEdgeView,
       pressuredEdges,
       leaderboard,
+      isOwn,
+      seatOf,
+      ownersOf,
       softCapEnabled,
       defaultPolicy,
       plan,

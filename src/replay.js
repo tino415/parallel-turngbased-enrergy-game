@@ -116,7 +116,8 @@
 
   function outcomeOf(match) {
     if (match.state.finished) return 'finished';
-    if (!match.state.nodes.some((n) => n.owner === 0)) return 'eliminated';
+    if (!match.state.nodes.some((n) => n.owner === GameStore.selectors.seatOf(match)))
+      return 'eliminated';
     return null;
   }
 
@@ -128,7 +129,9 @@
       return 'You were eliminated. The other players fight on: resolve rounds to keep watching.';
     const winner = match.state.nodes.find((n) => n.owner !== null)?.owner;
     if (winner === undefined) return 'Game over. No players remain.';
-    return winner === 0 ? 'Game over. You win!' : 'Game over. ' + playerName(winner) + ' wins.';
+    return winner === GameStore.selectors.seatOf(match)
+      ? 'Game over. You win!'
+      : 'Game over. ' + playerName(winner) + ' wins.';
   }
 
   function renderReplay(match, replay) {
@@ -167,7 +170,7 @@
   }
 
   function standings(match, state) {
-    return Array.from({ length: match.map.playerCount }, (_, owner) => {
+    return GameStore.selectors.ownersOf(match).map((owner) => {
       const count = state.nodes.filter((n) => n.owner === owner).length;
       const entry = document.createElement('span');
       entry.className = 'replay-standing' + (count ? '' : ' is-out');

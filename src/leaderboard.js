@@ -21,7 +21,7 @@
   const SERIES_TITLES = Object.fromEntries(
     seriesButtons.map((button) => [button.dataset.series, button.textContent]),
   );
-  const isYou = (player) => player === 0;
+  const isYou = (player) => player === mySeat();
   let history = null;
   let hoveredRound = null;
 
@@ -107,9 +107,7 @@
         String(button.dataset.runningTotal === String(chart.runningTotal)),
       );
     byId('chartPlayers').replaceChildren(
-      ...Array.from({ length: match.map.playerCount }, (_, player) =>
-        playerButton(player, chart.focus),
-      ),
+      ...GameStore.selectors.ownersOf(match).map((player) => playerButton(player, chart.focus)),
     );
     byId('chartDescription').textContent = SERIES_DESCRIPTIONS[chart.series];
     renderChart(match, chart);
@@ -135,10 +133,16 @@
     chartFrame.hidden = Boolean(empty);
     drawnWidth = chartFrame.clientWidth;
     if (empty || !drawnWidth) return;
-    const lines = GameStore.selectors.chartLines(history, chart);
+    const lines = linesByOwner(GameStore.selectors.chartLines(history, chart), history.owners);
     const rounds = history.rounds.map((round) => round.round);
     if (hoveredRound !== null && hoveredRound >= rounds.length) hoveredRound = null;
     chartFrame.replaceChildren(...lineChart({ lines, rounds, chart, width: drawnWidth }));
+  }
+
+  function linesByOwner(lines, owners) {
+    const byOwner = [];
+    owners.forEach((owner, position) => (byOwner[owner] = lines[position]));
+    return byOwner;
   }
 
   function emptyChartNote(history) {
@@ -230,7 +234,7 @@
   }
 
   function drawingOrder(lines, focus) {
-    const players = lines.map((_, player) => player);
+    const players = lines.flatMap((_, player) => [player]);
     return focus === null ? players : [...players.filter((p) => p !== focus), focus];
   }
 

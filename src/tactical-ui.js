@@ -133,7 +133,7 @@
   const showingGroup = () => groupEditing && groupIds().length >= 2;
   const editedMember = () => (groupEditing && groupIds().length === 1 ? groupIds()[0] : null);
   let groupMessage = '';
-  store.focusNode(state.nodes.find((node) => node.owner === 0)?.id ?? 0);
+  store.focusNode(state.nodes.find((node) => isMine(node.id))?.id ?? 0);
   let previousRound = state.round;
   const svg = byId('map');
   const viewport = byId('mapViewport');
@@ -320,7 +320,7 @@
       showGroupHint('This group holds connections. Done, then pick nodes.');
       return;
     }
-    if (state.nodes[id]?.owner !== 0) {
+    if (!isMine(id)) {
       showGroupHint('Only your nodes join a group.');
       return;
     }
@@ -590,7 +590,7 @@
     render();
   }
 
-  const bothEndsFriendly = (a, b) => state.nodes[a].owner === 0 && state.nodes[b].owner === 0;
+  const bothEndsFriendly = (a, b) => isMine(a) && isMine(b);
 
   function selectionRings() {
     if (active?.kind === 'node') return [{ id: active.id, role: null }];
@@ -698,7 +698,7 @@
   }
 
   function showNode(body, id, isEditing = editing) {
-    if (state.nodes[id].owner !== 0) {
+    if (!isMine(id)) {
       body.append(
         nodeMetrics(id, null),
         textElement('p', 'Inspect only: this node is not yours.', 'tactical-secondary'),
@@ -1079,7 +1079,7 @@
   }
 
   function pressureStatusText({ bank, nextBank, minimum, pulse }, dest) {
-    if (state.nodes[dest].owner === 0) return 'now yours: the share goes to the rest';
+    if (isMine(dest)) return 'now yours: the share goes to the rest';
     if (pulse > 0) return 'pulse this round: ' + numeric(pulse) + ' → Node ' + dest;
     return 'banked ' + numeric(bank) + ' → ' + numeric(nextBank) + ' / ' + numeric(minimum);
   }
@@ -1094,7 +1094,7 @@
     );
     const total = invest + defense + pressure;
     const destination =
-      effective.dest !== null && state.nodes[effective.dest]?.owner === 0
+      effective.dest !== null && isMine(effective.dest)
         ? '→ Node ' + effective.dest
         : 'stays on the node';
     const line = textElement(
@@ -1533,8 +1533,7 @@
     );
   }
 
-  const attacksIn = (pairs) =>
-    pairs.filter(([, destination]) => state.nodes[destination].owner !== 0);
+  const attacksIn = (pairs) => pairs.filter(([, destination]) => !isMine(destination));
 
   function reportSkipped(pairs, skipped) {
     groupMessage = skipped.length
@@ -1649,8 +1648,7 @@
 
   function edgeMemberDetail(source, destination) {
     const amount = plan(source).edges[destination] || 0;
-    if (state.nodes[destination].owner === 0)
-      return amount ? 'send ' + numeric(amount) : 'nothing sent';
+    if (isMine(destination)) return amount ? 'send ' + numeric(amount) : 'nothing sent';
     const pressure = policies[source]?.pressure?.[destination];
     return (
       (amount ? 'attack ' + numeric(amount) : 'no attack') +
@@ -1720,7 +1718,7 @@
       textElement('strong', 'Node ' + id),
       textElement(
         'span',
-        (node.owner === 0 ? '' : GameEngine.playerName(node.owner) + ' · ') +
+        (isMine(node.id) ? '' : GameEngine.playerName(node.owner) + ' · ') +
           compactEnergy(node.active),
         'tactical-secondary',
       ),
@@ -2199,7 +2197,7 @@
   };
 
   function plannedNodeCount() {
-    return state.nodes.filter((node) => node.owner === 0 && (orders[node.id] || policies[node.id]))
+    return state.nodes.filter((node) => isMine(node.id) && (orders[node.id] || policies[node.id]))
       .length;
   }
   byId('generate').addEventListener('click', () => store.closeInspector(), true);

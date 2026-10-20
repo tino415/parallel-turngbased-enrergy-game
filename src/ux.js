@@ -49,7 +49,7 @@
     // Next-round income/investment previews are economic status, not flow
     // arrows; keep them on every owned node at every zoom level.
     for (const n of state.nodes) {
-      if (n.owner !== 0) continue;
+      if (!isMine(n.id)) continue;
       const p=projection(n.id),[x,y]=xy[n.id];
       const t=element('text',{x,y:y+53,'font-size':12,fill:'#92ebc9',class:'ux-income-label'},graph);
       const bank=Object.values(policies[n.id]?.pressure??{}).reduce((sum,edge)=>sum+(edge.bank??0),0);
