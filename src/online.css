@@ -1,11 +1,17 @@
 .online-status {
+  position: fixed;
+  top: var(--header-clearance);
+  left: 8px;
+  right: 64px;
+  z-index: 24;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 14px;
-  padding: 8px 22px;
+  gap: 6px 12px;
+  padding: 6px 12px;
   background: var(--ux-panel);
-  border-bottom: 1px solid var(--ux-border);
+  border: 1px solid var(--ux-border);
+  border-radius: 10px;
 }
 .online-status[hidden],
 .online-lobby[hidden] {
@@ -29,8 +35,14 @@
   margin-right: 6px;
 }
 .online-lobby {
-  max-width: 560px;
-  margin: 18px auto;
+  position: fixed;
+  top: var(--header-clearance);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  width: min(560px, calc(100vw - 16px));
+  max-height: calc(100dvh - var(--header-clearance) - 8px);
+  overflow-y: auto;
   padding: 16px 20px;
   background: var(--ux-panel);
   border: 1px solid var(--ux-border);
@@ -67,12 +79,4 @@
 .online-seat-player {
   flex: 1;
   color: var(--ux-muted);
-}
-@media (max-width: 760px) {
-  .online-status {
-    padding: 8px 12px;
-  }
-  .online-lobby {
-    margin: 10px;
-  }
 }
