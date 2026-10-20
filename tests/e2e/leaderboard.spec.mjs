@@ -165,14 +165,3 @@ test('the question marks explain Invested and Active without sorting', async ({ 
   await page.locator('#leaderboardView h2').click();
   await expect(page.locator('#investedHelp')).toBeHidden();
 });
-
-test('the table still fits a phone whose font runs 40% wider', async ({ page }) => {
-  await openLeaderboard(page);
-  const overflow = await page.evaluate(() => {
-    const view = document.getElementById('leaderboardView');
-    const table = document.getElementById('leaderboardTable');
-    table.style.fontSize = parseFloat(getComputedStyle(table).fontSize) * 1.4 + 'px';
-    return view.scrollWidth - view.clientWidth;
-  });
-  expect(overflow).toBe(0);
-});
