@@ -233,6 +233,9 @@ body > header #resolve {
   gap: 8px;
   padding: 6px 0 2px;
 }
+.tactical-editor-row-wrapping {
+  flex-wrap: wrap;
+}
 .tactical-row-label {
   flex: 0 0 66px;
   align-self: center;

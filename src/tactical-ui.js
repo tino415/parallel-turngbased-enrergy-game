@@ -938,6 +938,7 @@
                   value: withdrawal(id, p),
                   max: node.invested,
                 }),
+                withdrawAllButton(id, node),
               ]
             : []),
           allocationField(id, null, {
@@ -963,9 +964,21 @@
             : []),
           'Attacks and transfers are set on the connection.',
         ]),
+        { wraps: true },
       ),
       error,
     ];
+  }
+
+  function withdrawAllButton(id, node) {
+    const button = chipButton(
+      'tacticalWithdrawAll',
+      'Withdraw all',
+      'Withdraw all invested energy',
+      () => store.setAllocation(id, 'withdraw', node.invested),
+    );
+    button.disabled = node.invested <= 0;
+    return button;
   }
 
   function allocationField(id, target, { label, name, value, max }) {
@@ -1001,9 +1014,10 @@
     return field;
   }
 
-  function editorRow(label, controls, helpParts = []) {
+  function editorRow(label, controls, helpParts = [], { wraps = false } = {}) {
     const row = document.createElement('div');
     row.className = 'tactical-editor-row';
+    row.classList.toggle('tactical-editor-row-wrapping', wraps);
     row.dataset.key = 'row:' + label;
     row.append(textElement('span', label, 'tactical-row-label'), ...controls, ...helpParts);
     return row;

@@ -66,6 +66,7 @@ test('legacy saved games do not silently switch on new gameplay rules', async ({
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
   await expect(page.locator('#tacticalInspector')).not.toContainText('Capacity');
   await expect(page.locator('#tacticalInspector [data-allocation="withdraw"]')).toHaveCount(0);
+  await expect(page.locator('#tacticalWithdrawAll')).toHaveCount(0);
   const storedVersion = await page.evaluate(
     () => JSON.parse(localStorage.getItem('parallel-energy-game-v1')).state.rulesVersion,
   );
@@ -78,5 +79,39 @@ test('legacy saved games do not silently switch on new gameplay rules', async ({
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
   await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
   await expect(page.locator('#tacticalInspector [data-allocation="withdraw"]')).toHaveCount(0);
+  await expect(page.locator('#tacticalWithdrawAll')).toHaveCount(0);
   await expect(page.locator('#tacticalInspector')).not.toContainText('Capacity');
+});
+
+test('withdraw all sets the withdrawal to the whole investment like a typed amount', async ({
+  page,
+}) => {
+  await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
+  await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
+  const withdrawal = page.locator('#tacticalInspector [data-allocation="withdraw"]');
+  const invested = await page.evaluate(() => {
+    const { match } = store.getSnapshot();
+    return match.state.nodes.find((n) => n.id === selected).invested;
+  });
+  await page.locator('#tacticalWithdrawAll').click();
+  await expect(withdrawal).toHaveValue(String(Number(invested.toFixed(2))));
+  const withdrawAllOrder = await page.evaluate(() => structuredClone(orders[selected]));
+  expect(withdrawAllOrder.withdraw).toBeCloseTo(invested);
+  await withdrawal.fill('0');
+  await withdrawal.blur();
+  await withdrawal.fill(String(invested));
+  await withdrawal.blur();
+  expect(await page.evaluate(() => orders[selected])).toEqual(withdrawAllOrder);
+});
+
+test('withdraw all is disabled when the node has nothing invested', async ({ page }) => {
+  await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
+  await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
+  await page.evaluate(() => {
+    const match = store.getSnapshot().match;
+    const nodes = match.state.nodes.map((n) => (n.id === selected ? { ...n, invested: 0 } : n));
+    store.replaceMatch({ ...match, state: { ...match.state, nodes } });
+    render();
+  });
+  await expect(page.locator('#tacticalWithdrawAll')).toBeDisabled();
 });
