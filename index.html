@@ -19,23 +19,7 @@
     <header>
       <div>
         <h1>⚡ Parallel Energy Game</h1>
-        <div class="muted">
-          Simultaneous orders • Local energy • Prototype
-          <span
-            id="version"
-            title="Game build version"
-            style="
-              display: inline-block;
-              padding: 2px 7px;
-              margin-left: 7px;
-              border: 1px solid #637891;
-              border-radius: 5px;
-              color: #f8d278;
-              font-weight: 700;
-            "
-            >v0.8.4</span
-          >
-        </div>
+        <div class="muted">Simultaneous orders • Local energy • Prototype</div>
       </div>
       <div>
         <span id="score"><span id="scoreRound"></span><span id="scoreCounts"></span></span>
@@ -300,6 +284,7 @@
           </p>
         </details>
         <button id="settingsNewGame" type="button">New game…</button>
+        <p class="muted" id="buildVersion" title="Game build">Build: development</p>
       </div>
     </dialog>
     <script src="./src/engine.js" defer></script>

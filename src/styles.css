@@ -570,10 +570,6 @@ dialog#newGameDialog::backdrop {
     font-size: 10px;
     line-height: 1.15;
   }
-  #version {
-    margin-left: 3px !important;
-    padding: 0 4px !important;
-  }
   header > div:last-child {
     display: flex;
     align-items: center;
