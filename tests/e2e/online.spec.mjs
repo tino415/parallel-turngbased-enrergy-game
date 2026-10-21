@@ -116,6 +116,13 @@ test('an order changed after ending the turn waits to be sent again', async ({
   await expect(turnButton(page)).toHaveText('Turn ended ✓');
 });
 
+test('the lobby never scrolls sideways', async ({ page }) => {
+  await hostOnlineMatch(page);
+  const panel = page.locator('#onlinePanel');
+  const overflow = await panel.evaluate((element) => element.scrollWidth - element.clientWidth);
+  expect(overflow).toBe(0);
+});
+
 test('the host changes the map in the lobby and the friend sees it', async ({
   page,
   browser,

@@ -16,6 +16,9 @@
   border: 1px solid var(--ux-border);
   border-radius: 12px;
 }
+.online-panel.lobby {
+  width: min(940px, calc(100vw - 16px));
+}
 .online-link {
   display: flex;
   gap: 8px;

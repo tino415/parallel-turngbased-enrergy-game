@@ -232,6 +232,7 @@
   function renderPanel() {
     const lobby = view.phase === 'lobby';
     byId('onlinePanel').hidden = !lobby && !panelOpen;
+    byId('onlinePanel').classList.toggle('lobby', lobby);
     byId('onlineSetup').hidden = !lobby;
     byId('onlineWaiting').hidden = lobby;
     byId('onlineWaiting').textContent = statusText();
