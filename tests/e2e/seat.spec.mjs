@@ -65,3 +65,24 @@ test('any colour can be played against a single AI', async ({ page }) => {
   await expect(page.locator('#chartPlayers button')).toHaveCount(2);
   await expect(page.locator('.chart-line')).toHaveCount(2);
 });
+
+async function distanceFromMapCentre(page, id) {
+  return page.evaluate((nodeId) => {
+    const node = document.querySelector(`#map [data-node="${nodeId}"]`).getBoundingClientRect();
+    const map = document.querySelector('#map').getBoundingClientRect();
+    return Math.abs(node.x + node.width / 2 - (map.x + map.width / 2));
+  }, id);
+}
+
+test('a match started as Purple centres the map on the Purple node, and Focus finds it again', async ({
+  page,
+}) => {
+  await startAsPurple(page);
+  const own = await page.evaluate(() => state.nodes.find((n) => n.owner === 2).id);
+  expect(own).not.toBe(0);
+  expect(await distanceFromMapCentre(page, own)).toBeLessThan(40);
+
+  await page.getByRole('button', { name: 'Fit' }).click();
+  await page.getByRole('button', { name: 'Focus' }).click();
+  expect(await distanceFromMapCentre(page, own)).toBeLessThan(40);
+});
