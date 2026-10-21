@@ -95,11 +95,23 @@ test('withdraw all sets the withdrawal to the whole investment like a typed amou
   });
   await page.locator('#tacticalWithdrawAll').click();
   await expect(withdrawal).toHaveValue(String(Number(invested.toFixed(2))));
-  const typedOrder = await page.evaluate(() => structuredClone(orders[selected]));
-  expect(typedOrder.withdraw).toBeCloseTo(invested);
+  const withdrawAllOrder = await page.evaluate(() => structuredClone(orders[selected]));
+  expect(withdrawAllOrder.withdraw).toBeCloseTo(invested);
   await withdrawal.fill('0');
   await withdrawal.blur();
   await withdrawal.fill(String(invested));
   await withdrawal.blur();
-  expect(await page.evaluate(() => orders[selected])).toEqual(typedOrder);
+  expect(await page.evaluate(() => orders[selected])).toEqual(withdrawAllOrder);
+});
+
+test('withdraw all is disabled when the node has nothing invested', async ({ page }) => {
+  await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
+  await page.locator('#map .node-hit[fill="#3278c8"]').first().click();
+  await page.evaluate(() => {
+    const match = store.getSnapshot().match;
+    const nodes = match.state.nodes.map((n) => (n.id === selected ? { ...n, invested: 0 } : n));
+    store.replaceMatch({ ...match, state: { ...match.state, nodes } });
+    render();
+  });
+  await expect(page.locator('#tacticalWithdrawAll')).toBeDisabled();
 });
