@@ -7,6 +7,7 @@ import {
   claimSeat,
   createMatch,
   forceResolve,
+  leaveMatch,
   startMatch,
   submitTurn,
   viewFor,
@@ -191,6 +192,37 @@ test('the host resolves without a stuck player, whose standing policies still ru
   assert.equal(forced.match.state.round, 3);
   const after = forced.match.state.nodes[annsNode.id];
   assert.ok(after.owner !== 1 || after.invested > 0);
+});
+
+test('the host cannot leave, and a stranger has nothing to leave', () => {
+  refusal(() => leaveMatch(playing(), { tokenHash: HOST }));
+  refusal(() => leaveMatch(playing(), { tokenHash: 'stranger-hash' }));
+});
+
+test('leaving the lobby frees the colour', () => {
+  const claimed = claimSeat(lobby(), { owner: 1, name: 'Ann', tokenHash: ANN });
+  const left = leaveMatch(claimed, { tokenHash: ANN });
+  assert.equal(left.seats[1].tokenHash, null);
+  assert.equal(viewFor(left, ANN).you, null);
+});
+
+test('a player who leaves mid-match hands the colour to the AI', () => {
+  const left = leaveMatch(playing(), { tokenHash: ANN });
+  assert.deepEqual(left.match.humanSeats, [0]);
+  assert.deepEqual(waitingFor(left), [0]);
+  assert.match(left.match.history[0], /Ann left; the AI plays Red/);
+});
+
+test('the round resolves when the last player still deciding leaves', () => {
+  const left = leaveMatch(turn(playing(), HOST), { tokenHash: ANN });
+  assert.equal(left.match.state.round, 2);
+});
+
+test('a match someone left replays to the state the server reached', () => {
+  const left = leaveMatch(turn(turn(playing(), HOST), ANN), { tokenHash: ANN });
+  const record = [1, 2, 3].reduce((current) => turn(current, HOST), left);
+  const frames = selectors.replayFrames({ ...record.match, seat: 0 });
+  assert.deepEqual(frames.at(-1).state, record.match.state);
 });
 
 test('the recorded rounds replay to the state the server reached', () => {

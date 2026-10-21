@@ -867,11 +867,12 @@
   const diceOfRound = (replay, round) => seeded(replay.diceSeed + ':' + round);
 
   function withRecordedRound(replay, match, policiesAfterRound) {
-    const { orders, defaults, policies, seatDefaults } = match;
+    const { orders, defaults, policies, seatDefaults, humanSeats } = match;
     const round = {
       orders,
       defaults,
       ...(seatDefaults ? { seatDefaults } : {}),
+      ...(humanSeats ? { humanSeats } : {}),
       policies: policyChanges(replay.policiesAfterLastRound, policies),
     };
     return {
@@ -919,6 +920,7 @@
         orders: round.orders,
         defaults: round.defaults,
         seatDefaults: round.seatDefaults,
+        humanSeats: round.humanSeats ?? current.humanSeats,
         policies: withPolicyChanges(current.policies, round.policies),
       };
       const result = resolveRoundOf(input, diceOfRound(match.replay, input.state.round));

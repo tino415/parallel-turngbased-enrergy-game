@@ -167,6 +167,11 @@ imports and resolve rounds with the store's own `resolve`.
 - `match.humanSeats` lists the colours people play; the engine plans the AI for every
   other owner, and a policy is dropped when its node changes owner. `match.seat` is
   still the colour this browser plays, `isMine` still reads it.
+- A player other than the host can leave: in the lobby the colour is free again, during
+  play it leaves `humanSeats` with its policies and the AI plays it from the next round.
+  Each recorded round carries the `humanSeats` it was resolved with, so the replay plans
+  the AI for the same colours. The host has no Leave until the match is over; cancelling
+  is the host's exit.
 - The server keeps only the orders of nodes the sender owns, cleans every number,
   and shows a seat only its own policies and submitted turn. The replay (orders and
   dice seed) is sent when the match is finished, which is also when the Leaderboard

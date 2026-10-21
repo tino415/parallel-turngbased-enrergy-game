@@ -168,6 +168,25 @@
     }
   }
 
+  async function leaveMatch() {
+    const seated = view && view.you !== null && view.phase !== 'finished';
+    if (
+      seated &&
+      view.phase === 'playing' &&
+      !confirm('Leave the match? The AI takes over your colour.')
+    )
+      return;
+    try {
+      if (seated) {
+        await api('POST', '/leave');
+        localStorage.removeItem(sessionKey(matchId));
+      }
+      location.assign(location.pathname);
+    } catch (error) {
+      showMessage(error.message);
+    }
+  }
+
   function showPanel(open) {
     panelOpen = open;
     renderOnline();
@@ -176,6 +195,7 @@
   function stopWith(text) {
     leaveOnline();
     byId('onlinePanel').hidden = false;
+    byId('onlineLeave').hidden = false;
     for (const id of [
       'onlineSetup',
       'onlineWaiting',
@@ -223,6 +243,7 @@
     byId('onlineResolve').hidden = !view.host || view.phase !== 'playing';
     byId('onlineCancel').hidden = !view.host || view.phase === 'finished';
     byId('onlineClose').hidden = lobby;
+    byId('onlineLeave').hidden = view.host && view.phase !== 'finished';
   }
 
   function renderSetup() {
@@ -356,7 +377,7 @@
   };
   byId('onlineCancel').onclick = cancelMatch;
   byId('onlineClose').onclick = () => showPanel(false);
-  byId('onlineLeave').onclick = () => location.assign(location.pathname);
+  byId('onlineLeave').onclick = leaveMatch;
   byId('onlineName').value = localStorage.getItem(NAME_KEY) ?? '';
 
   window.GameOnline = { endTurn };

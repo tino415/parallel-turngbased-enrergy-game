@@ -1,7 +1,7 @@
 import '../src/engine.js';
 import '../src/store.js';
 
-const { buildMap, firstOwners } = globalThis.GameEngine;
+const { buildMap, firstOwners, playerName } = globalThis.GameEngine;
 const { generatedMatch, commands } = globalThis.GameStore;
 
 const MATCH_DEFAULTS = { enabled: true, reserve: 5, invest: 70 };
@@ -46,15 +46,41 @@ export function cancelMatch(record, { tokenHash }) {
   return { id: record.id, cancelled: true };
 }
 
+export function leaveMatch(record, { tokenHash }) {
+  const owner = ownerOf(record, tokenHash);
+  if (owner === null) throw new Refusal(403, 'You have no colour in this match');
+  if (tokenHash === record.hostTokenHash)
+    throw new Refusal(409, 'The host cancels the match instead');
+  if (record.phase === 'finished') throw new Refusal(409, 'The match is over');
+  const leaving = record.seats[owner];
+  const seats = record.seats.map((seat) => (seat === leaving ? freeSeat(owner) : seat));
+  if (record.phase === 'lobby') return revised({ ...record, seats });
+  const { match } = record;
+  const next = revised({
+    ...record,
+    seats,
+    submissions: withoutOwner(record.submissions, owner),
+    seatDefaults: withoutOwner(record.seatDefaults, owner),
+    match: {
+      ...match,
+      humanSeats: match.humanSeats.filter((human) => human !== owner),
+      policies: Object.fromEntries(
+        Object.entries(match.policies).filter(([id]) => match.state.nodes[id]?.owner !== owner),
+      ),
+      history: [leaving.name + ' left; the AI plays ' + playerName(owner) + '.', ...match.history],
+    },
+  });
+  const stillWaiting = waitingFor(next).length || !next.match.humanSeats.length;
+  return stillWaiting ? next : resolved(next);
+}
+
 function lobbyMap(requested, seatsBefore, random) {
   const options = mapOptions(requested ?? {});
   const map = buildMap(options);
   const match = generatedMatch(map, MATCH_DEFAULTS, random, 0);
   return {
     options,
-    seats: firstOwners(map.players).map(
-      (owner) => seatsBefore[owner] ?? { owner, name: null, tokenHash: null },
-    ),
+    seats: firstOwners(map.players).map((owner) => seatsBefore[owner] ?? freeSeat(owner)),
     match: { ...match, history: ['Online match created.', ...match.history.slice(1)] },
   };
 }
@@ -72,7 +98,7 @@ export function claimSeat(record, { owner, name, tokenHash }) {
     s.owner === owner
       ? { owner, name: cleanName, tokenHash }
       : s.tokenHash === tokenHash
-        ? { owner: s.owner, name: null, tokenHash: null }
+        ? freeSeat(s.owner)
         : s,
   );
   return revised({ ...record, seats });
@@ -196,6 +222,9 @@ const policiesOf = (match, owner) =>
   );
 
 const revised = (record) => ({ ...record, revision: record.revision + 1 });
+const freeSeat = (owner) => ({ owner, name: null, tokenHash: null });
+const withoutOwner = (byOwner, owner) =>
+  Object.fromEntries(Object.entries(byOwner).filter(([key]) => Number(key) !== owner));
 const claimedOwners = (record) => record.seats.filter((s) => s.tokenHash).map((s) => s.owner);
 
 function ownerOf(record, tokenHash) {

@@ -146,6 +146,28 @@ test('the host cancels the match and the friend is told', async ({ page, browser
   await expect(friend.locator('#onlineMessage')).toHaveText('The host cancelled this match.', SLOW);
 });
 
+test('a friend who leaves hands their colour to the AI and nobody waits for them', async ({
+  page,
+  browser,
+}, testInfo) => {
+  page.on('dialog', (dialog) => dialog.accept());
+  const friend = await startWithFriend(page, browser, testInfo);
+  await page.getByRole('button', { name: 'Start match' }).click();
+  await expect(indicator(page)).toContainText('0/2', SLOW);
+  await indicator(page).click();
+  await expect(page.getByRole('button', { name: 'Leave' })).toBeHidden();
+  await page.getByRole('button', { name: 'Close' }).click();
+
+  await indicator(friend).click(SLOW);
+  await friend.getByRole('button', { name: 'Leave' }).click();
+  await expect(friend).not.toHaveURL(/match=/, SLOW);
+  await expect(indicator(page)).toContainText('0/1', SLOW);
+  await endTurn(page);
+  await expect.poll(() => round(page), SLOW).toBe(2);
+  await indicator(page).click();
+  await expect(page.locator('.online-seat', { hasText: 'Red' })).toContainText('AI');
+});
+
 test('the host resolves a round without a stuck player', async ({ page, browser }, testInfo) => {
   page.on('dialog', (dialog) => dialog.accept());
   const friend = await startWithFriend(page, browser, testInfo);

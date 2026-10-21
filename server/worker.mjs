@@ -6,6 +6,7 @@ import {
   claimSeat,
   createMatch,
   forceResolve,
+  leaveMatch,
   startMatch,
   submitTurn,
   viewFor,
@@ -67,6 +68,7 @@ export class Match extends DurableObject {
       'POST /start': () => startMatch(record, { tokenHash }),
       'PUT /turn': () => submitTurn(record, { tokenHash, ...body }),
       'POST /resolve': () => forceResolve(record, { tokenHash }),
+      'POST /leave': () => leaveMatch(record, { tokenHash }),
     }[route];
     if (!change) return notFound();
     return this.saved(change(), tokenHash);
