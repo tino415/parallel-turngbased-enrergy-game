@@ -249,4 +249,5 @@ test('a refused Shift+click shows its reason before any group exists', async ({ 
   await edgeHit(page, '9-10').click({ modifiers: ['Shift'] });
   await expect(groupBar(page)).toBeVisible();
   await expect(groupBar(page)).toContainText('Only connections touching your nodes join.');
+  expect((await ui(page)).bulkEdges).toEqual([]);
 });
