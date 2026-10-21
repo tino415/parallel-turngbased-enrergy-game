@@ -934,6 +934,12 @@
                   value: withdrawal(id, p),
                   max: node.invested,
                 }),
+                chipButton(
+                  'tacticalWithdrawAll',
+                  'Withdraw all',
+                  'Withdraw all invested energy',
+                  () => store.setAllocation(id, 'withdraw', node.invested),
+                ),
               ]
             : []),
           allocationField(id, null, {
@@ -1000,6 +1006,7 @@
   function editorRow(label, controls, helpParts = []) {
     const row = document.createElement('div');
     row.className = 'tactical-editor-row';
+    row.classList.toggle('tactical-editor-row-wrapping', controls.length > 3);
     row.dataset.key = 'row:' + label;
     row.append(textElement('span', label, 'tactical-row-label'), ...controls, ...helpParts);
     return row;
