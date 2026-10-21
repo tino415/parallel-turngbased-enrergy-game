@@ -63,6 +63,16 @@ test('Shift+click builds a group from own nodes only, without opening the editor
   expect((await ui(page)).bulkSelection).toEqual([0, 1]);
 });
 
+test('a refused Shift+click on a node shows its reason before any group exists', async ({
+  page,
+}) => {
+  await giveBlue(page, { 1: {} });
+  await node(page, 3).click({ modifiers: ['Shift'] });
+  await expect(groupBar(page)).toBeVisible();
+  await expect(groupBar(page)).toContainText('Only your nodes join a group.');
+  expect((await ui(page)).bulkSelection).toEqual([]);
+});
+
 test('Edit opens one node or the group, and the map keeps selecting while it is open', async ({
   page,
 }) => {

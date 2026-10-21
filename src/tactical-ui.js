@@ -375,6 +375,10 @@
   }
 
   function showGroupHint(text) {
+    if (!groupMode) {
+      store.setGroupMode(true);
+      render();
+    }
     groupBar.querySelector('.tactical-group-hint').textContent = text;
   }
 
