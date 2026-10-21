@@ -160,6 +160,10 @@ imports and resolve rounds with the store's own `resolve`.
 - The record holds the store's match (map, state, policies, history, replay) plus the
   seats, each seat's token hash, conquest defaults and the turn submitted for the
   round. The dice seed is the replay's `diceSeed`, generated on the server.
+- In the lobby the host can rebuild the map from new options; seats the new map still
+  has keep their player. The host's cancel replaces the record with
+  `{ id, cancelled: true }`, answered with 410. Every write moves the Durable Object's
+  alarm seven days ahead, and the alarm deletes the match.
 - `match.humanSeats` lists the colours people play; the engine plans the AI for every
   other owner, and a policy is dropped when its node changes owner. `match.seat` is
   still the colour this browser plays, `isMine` still reads it.
@@ -172,6 +176,11 @@ imports and resolve rounds with the store's own `resolve`.
   the result into the store with `replaceMatch`, marked `match.online`. An online match
   is never autosaved, `store.resolve` does nothing in it, and the AI debug view is off,
   because it would show hidden orders. `sw.js` leaves `/api/` to the network.
+- Nothing of an online match floats over the map during play. A button beside End turn
+  (in the phone dock and the desktop header) shows a green dot and how many of the
+  playing humans ended their turn, and opens `#onlinePanel`, which is also the lobby.
+  End turn reads "Turn ended ✓" while the server holds exactly this browser's orders,
+  policies and conquest defaults, and "Update turn" once any of them changes.
 
 ## Next steps
 

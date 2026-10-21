@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   Refusal,
+  cancelMatch,
+  changeMap,
   claimSeat,
   createMatch,
   forceResolve,
@@ -59,6 +61,44 @@ test('a colour can be taken once, and moving frees the old one', () => {
     moved.seats.map((seat) => seat.name),
     [null, null, 'Ann'],
   );
+});
+
+test('the host changes the map in the lobby and everyone sees its options', () => {
+  const options = { count: 20, players: 4, density: 'dense', seed: 'other' };
+  refusal(() => changeMap(lobby(), { tokenHash: ANN, options, random: seeded('dice') }));
+  const changed = changeMap(lobby(), { tokenHash: HOST, options, random: seeded('dice') });
+  assert.equal(changed.match.map.N, 20);
+  assert.equal(changed.seats.length, 4);
+  assert.deepEqual(viewFor(changed, ANN).options, options);
+});
+
+test('a smaller map keeps the colours it still has and frees the rest', () => {
+  const claimed = claimSeat(claimSeat(lobby(), { owner: 0, name: 'Hana', tokenHash: HOST }), {
+    owner: 2,
+    name: 'Ann',
+    tokenHash: ANN,
+  });
+  const smaller = changeMap(claimed, {
+    tokenHash: HOST,
+    options: { ...OPTIONS, players: 2 },
+    random: seeded('dice'),
+  });
+  assert.deepEqual(
+    smaller.seats.map((seat) => seat.name),
+    ['Hana', null],
+  );
+  assert.equal(viewFor(smaller, ANN).you, null);
+});
+
+test('the map is fixed once the match runs', () => {
+  refusal(() =>
+    changeMap(playing(), { tokenHash: HOST, options: OPTIONS, random: seeded('dice') }),
+  );
+});
+
+test('only the host cancels, and the cancelled match keeps nothing but its id', () => {
+  refusal(() => cancelMatch(playing(), { tokenHash: ANN }));
+  assert.deepEqual(cancelMatch(playing(), { tokenHash: HOST }), { id: 'abc', cancelled: true });
 });
 
 test('only the host starts, and not before someone took a colour', () => {

@@ -60,9 +60,15 @@ function offerSeats() {
 function previewMap() {
   const options = mapOptions(),
     map = buildMap(options),
-    nodes = GameEngine.recoloured(map.nodes, GameEngine.coloursFor(chosenSeat(), options.players)),
-    svg = $('newGamePreview'),
-    ns = 'http://www.w3.org/2000/svg';
+    nodes = GameEngine.recoloured(map.nodes, GameEngine.coloursFor(chosenSeat(), options.players));
+  drawMapPreview($('newGamePreview'), map.positions, map.links, nodes);
+  $('previewCaption').textContent = mapCaption(options, map.links.length);
+}
+function mapCaption({ count, players, seed }, links) {
+  return count + ' nodes · ' + players + ' players · ' + links + ' links · seed ' + seed;
+}
+function drawMapPreview(svg, positions, links, nodes) {
+  const ns = 'http://www.w3.org/2000/svg';
   svg.replaceChildren();
   const element = (name, attrs) => {
     const e = document.createElementNS(ns, name);
@@ -70,18 +76,18 @@ function previewMap() {
     svg.append(e);
     return e;
   };
-  for (const [a, b] of map.links)
+  for (const [a, b] of links)
     element('line', {
-      x1: map.positions[a][0],
-      y1: map.positions[a][1],
-      x2: map.positions[b][0],
-      y2: map.positions[b][1],
+      x1: positions[a][0],
+      y1: positions[a][1],
+      x2: positions[b][0],
+      y2: positions[b][1],
       stroke: '#75859b',
       'stroke-width': 3,
       opacity: '.65',
     });
   for (const n of nodes) {
-    const [cx, cy] = map.positions[n.id];
+    const [cx, cy] = positions[n.id];
     element('circle', {
       cx,
       cy,
@@ -91,14 +97,6 @@ function previewMap() {
       'stroke-width': 2,
     });
   }
-  $('previewCaption').textContent =
-    options.count +
-    ' nodes · ' +
-    options.players +
-    ' players · ' +
-    map.links.length +
-    ' links · seed ' +
-    options.seed;
 }
 function generate() {
   store.select(null);

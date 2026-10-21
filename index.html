@@ -92,26 +92,58 @@
         </div>
       </div>
     </dialog>
-    <div id="onlineStatus" class="online-status" hidden>
-      <span id="onlineSeatChips" class="online-chips"></span>
-      <span id="onlineWaiting" role="status"></span>
-      <button id="onlineResolve" type="button" hidden>Resolve now</button>
-      <button id="onlineLeave" type="button">Leave</button>
-    </div>
-    <section id="onlineLobby" class="online-lobby" aria-labelledby="onlineTitle" hidden>
+    <section id="onlinePanel" class="online-panel" aria-labelledby="onlineTitle" hidden>
       <h2 id="onlineTitle">Online match</h2>
-      <p class="muted">
-        Send this link to your friends. Everyone takes a colour; the AI plays the rest.
-      </p>
-      <div class="online-link">
-        <input id="onlineLink" readonly aria-label="Invite link" />
-        <button id="onlineCopy" type="button">Copy</button>
+      <div id="onlineSetup">
+        <p class="muted">
+          Send this link to your friends. Everyone takes a colour; the AI plays the rest.
+        </p>
+        <div class="online-link">
+          <input id="onlineLink" readonly aria-label="Invite link" />
+          <button id="onlineCopy" type="button">Copy</button>
+        </div>
+        <fieldset id="onlineMap" class="online-map">
+          <legend>Map</legend>
+          <div class="generator-fields">
+            <label>Nodes <input id="onlineNodeCount" type="number" min="10" max="120" /></label
+            ><label
+              >Players
+              <select id="onlinePlayerCount">
+                <option>2</option>
+                <option>3</option>
+                <option>4</option>
+                <option>5</option>
+                <option>6</option>
+              </select></label
+            ><label
+              >Connections
+              <select id="onlineDensity">
+                <option value="sparse">Sparse</option>
+                <option value="normal">Normal</option>
+                <option value="dense">Dense</option>
+              </select></label
+            ><label>Seed <input id="onlineSeed" maxlength="40" /></label>
+          </div>
+          <svg
+            id="onlinePreview"
+            class="online-preview"
+            viewBox="0 0 1800 1050"
+            role="img"
+            aria-label="Preview of the match map"
+          ></svg>
+          <p class="muted" id="onlinePreviewCaption"></p>
+        </fieldset>
+        <label>Your name <input id="onlineName" maxlength="20" autocomplete="nickname" /></label>
       </div>
-      <label>Your name <input id="onlineName" maxlength="20" autocomplete="nickname" /></label>
+      <p id="onlineWaiting" role="status"></p>
       <ul id="onlineSeats" class="online-seats"></ul>
       <p id="onlineMessage" class="muted" role="status"></p>
       <div class="dialog-actions">
-        <button id="onlineStart" class="primary" type="button" hidden>Start match</button>
+        <button id="onlineLeave" type="button">Leave</button
+        ><button id="onlineCancel" type="button" hidden>Cancel match</button
+        ><button id="onlineResolve" type="button" hidden>Resolve now</button
+        ><button id="onlineClose" type="button" hidden>Close</button
+        ><button id="onlineStart" class="primary" type="button" hidden>Start match</button>
       </div>
     </section>
     <div class="layout">

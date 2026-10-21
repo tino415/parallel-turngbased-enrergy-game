@@ -24,16 +24,37 @@ export class Refusal extends Error {
 }
 
 export function createMatch({ id, options, hostTokenHash, random }) {
-  const map = buildMap(mapOptions(options));
-  const match = generatedMatch(map, MATCH_DEFAULTS, random, 0);
   return {
     id,
     phase: 'lobby',
     revision: 0,
     hostTokenHash,
-    seats: firstOwners(map.players).map((owner) => ({ owner, name: null, tokenHash: null })),
     seatDefaults: {},
     submissions: {},
+    ...lobbyMap(options, [], random),
+  };
+}
+
+export function changeMap(record, { tokenHash, options, random }) {
+  requireHost(record, tokenHash);
+  if (record.phase !== 'lobby') throw new Refusal(409, 'The match has already started');
+  return revised({ ...record, ...lobbyMap(options, record.seats, random) });
+}
+
+export function cancelMatch(record, { tokenHash }) {
+  requireHost(record, tokenHash);
+  return { id: record.id, cancelled: true };
+}
+
+function lobbyMap(requested, seatsBefore, random) {
+  const options = mapOptions(requested ?? {});
+  const map = buildMap(options);
+  const match = generatedMatch(map, MATCH_DEFAULTS, random, 0);
+  return {
+    options,
+    seats: firstOwners(map.players).map(
+      (owner) => seatsBefore[owner] ?? { owner, name: null, tokenHash: null },
+    ),
     match: { ...match, history: ['Online match created.', ...match.history.slice(1)] },
   };
 }
@@ -109,6 +130,7 @@ export function viewFor(record, tokenHash) {
     revision: record.revision,
     host: Boolean(tokenHash) && tokenHash === record.hostTokenHash,
     you,
+    options: record.options,
     seats: record.seats.map(({ owner, name, tokenHash: taken }) => ({
       owner,
       name,
