@@ -100,8 +100,9 @@ test('a human seat that switched its conquest default off gets no policy on a ca
   assert.equal(result.policies[1], undefined);
 });
 
-const withPressure = { ...policy(50), pressure: { 2: { pct: 10, min: 10, bank: 4 } } };
+const withPressure = { ...policy(50), dest: 3, pressure: { 2: { pct: 10, min: 10, bank: 4 } } };
 const ringLinks = [...line, [1, 3]];
+
 test('a retaken node gets back the policy it had, pressure included', () => {
   const state = fourNodes();
   state.nodes[1] = node(1, 1, 2);
@@ -136,8 +137,9 @@ test('a retaken node gets back the policy it had, pressure included', () => {
   });
   assert.equal(retaken.state.nodes[1].owner, 1);
   const { pressure, ...rest } = retaken.policies[1];
-  const { pressure: keptPressure, ...keptRest } = { ...withPressure, dest: null };
+  const { pressure: keptPressure, ...keptRest } = withPressure;
   assert.deepEqual(rest, keptRest);
   assert.equal(pressure[2].pct, keptPressure[2].pct);
   assert.equal(pressure[2].min, keptPressure[2].min);
+  assert.equal(retaken.keptPolicies[1]?.[1], undefined);
 });

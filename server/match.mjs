@@ -64,7 +64,7 @@ export function leaveMatch(record, { tokenHash }) {
     match: {
       ...match,
       humanSeats: match.humanSeats.filter((human) => human !== owner),
-      keptPolicies: withoutOwner(match.keptPolicies, owner),
+      keptPolicies: withoutOwner(match.keptPolicies ?? {}, owner),
       policies: Object.fromEntries(
         Object.entries(match.policies).filter(([id]) => match.state.nodes[id]?.owner !== owner),
       ),

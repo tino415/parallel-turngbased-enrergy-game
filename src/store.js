@@ -116,7 +116,14 @@
   }
 
   function newReplay(start, random, seat) {
-    return { diceSeed: diceSeed(random), seat, start, rounds: [], policiesAfterLastRound: {} };
+    return {
+      diceSeed: diceSeed(random),
+      seat,
+      start,
+      rounds: [],
+      keptPoliciesFrom: 1,
+      policiesAfterLastRound: {},
+    };
   }
 
   const diceSeed = (random) =>
@@ -146,8 +153,21 @@
             invest: save.defaults.invest,
           }
         : defaults,
-      replay: Array.isArray(save.replay?.rounds) ? save.replay : null,
+      replay: Array.isArray(save.replay?.rounds)
+        ? keepingPoliciesFrom(save.replay, save.keptPolicies ? 1 : state.round)
+        : null,
     });
+  }
+
+  const keepingPoliciesFrom = (replay, round) => replay && { keptPoliciesFrom: round, ...replay };
+
+  function withKeptPolicies(match) {
+    if (match.keptPolicies) return match;
+    return {
+      ...match,
+      keptPolicies: {},
+      replay: keepingPoliciesFrom(match.replay, match.state.round),
+    };
   }
 
   function withOneWaySupport(match) {
@@ -836,8 +856,9 @@
     };
   }
 
-  function resolve(match) {
-    if (match.state.finished) return match;
+  function resolve(unrecorded) {
+    if (unrecorded.state.finished) return unrecorded;
+    const match = withKeptPolicies(unrecorded);
     const result = resolveRoundOf(match, dice(match));
     const history = result.events
       .reduce((lines, event) => [event, ...lines], match.history)
@@ -869,7 +890,7 @@
       seat: humansOf(match),
       orders: match.orders,
       policies: match.policies,
-      keptPolicies: match.keptPolicies,
+      keptPolicies: match.replay ? keptPoliciesInRound(match.replay, match) : match.keptPolicies,
       links: match.map.edges,
       defaultConquestPolicy: conquestPolicy(match.defaults),
       conquestPolicies: conquestPoliciesOf(match),
@@ -967,6 +988,9 @@
     };
     return { rounds, next };
   }
+
+  const keptPoliciesInRound = (replay, current) =>
+    current.state.round < (replay.keptPoliciesFrom ?? 1) ? null : (current.keptPolicies ?? {});
 
   function playerHistory(match, known = null) {
     if (!match.replay) return null;
