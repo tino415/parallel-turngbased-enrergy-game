@@ -14,7 +14,9 @@ class_name = "Match"
 tag = "v1"
 new_sqlite_classes = ["Match"]
 
-[previews]
+[[previews.durable_objects.bindings]]
+name = "MATCHES"
+class_name = "Match"
 
 [build]
 command = "npm run build"
