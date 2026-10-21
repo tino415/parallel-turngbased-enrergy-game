@@ -75,6 +75,7 @@
       state,
       orders: {},
       policies: {},
+      keptPolicies: {},
       history: ['New match started. You are ' + playerName(seat) + '.'],
       seat,
       map: { xy: CLASSIC_XY, edges: CLASSIC_EDGES, N, playerCount, mapSeed: 'classic' },
@@ -95,6 +96,7 @@
       state,
       orders: {},
       policies: {},
+      keptPolicies: {},
       history: [
         'You are ' + playerName(seat) + '.',
         'Generated ' + map.nodes.length + ' nodes, ' + map.players + ' players, seed ' + map.seed,
@@ -133,6 +135,7 @@
       state,
       orders: save.orders ?? {},
       policies: save.policies ?? {},
+      keptPolicies: save.keptPolicies ?? {},
       seat: save.seat ?? 0,
       history: ['Recovered saved match from this browser.', ...(save.history ?? [])],
       map: { xy, edges, N, playerCount, mapSeed, ...(owners ? { owners } : {}) },
@@ -183,8 +186,18 @@
   }
 
   function saveFromMatch(match, selected) {
-    const { state, orders, policies, history, map, defaults, replay, seat } = match;
-    const saved = { state, orders, policies, ...map, history, selected, defaults, replay };
+    const { state, orders, policies, keptPolicies, history, map, defaults, replay, seat } = match;
+    const saved = {
+      state,
+      orders,
+      policies,
+      keptPolicies,
+      ...map,
+      history,
+      selected,
+      defaults,
+      replay,
+    };
     return seatOf(match) === 0 ? saved : { ...saved, seat };
   }
 
@@ -833,6 +846,7 @@
       ...match,
       state: result.state,
       policies: result.policies,
+      keptPolicies: result.keptPolicies,
       orders: {},
       history,
       replay: match.replay && withRecordedRound(match.replay, match, result.policies),
@@ -855,6 +869,7 @@
       seat: humansOf(match),
       orders: match.orders,
       policies: match.policies,
+      keptPolicies: match.keptPolicies,
       links: match.map.edges,
       defaultConquestPolicy: conquestPolicy(match.defaults),
       conquestPolicies: conquestPoliciesOf(match),
@@ -903,7 +918,12 @@
     ];
   }
 
-  const replayStart = (match) => ({ round: 0, state: match.replay.start, policies: {} });
+  const replayStart = (match) => ({
+    round: 0,
+    state: match.replay.start,
+    policies: {},
+    keptPolicies: {},
+  });
 
   function replayedRounds(match, from) {
     const rounds = [];
@@ -913,6 +933,7 @@
       humanSeats: match.replay.humanSeats,
       state: from.state,
       policies: from.policies,
+      keptPolicies: from.keptPolicies,
     };
     for (const round of match.replay.rounds.slice(from.round)) {
       const input = {
@@ -931,12 +952,18 @@
         events: result.events,
         ledger: result.ledger,
       });
-      current = { ...current, state: result.state, policies: result.policies };
+      current = {
+        ...current,
+        state: result.state,
+        policies: result.policies,
+        keptPolicies: result.keptPolicies,
+      };
     }
     const next = {
       round: match.replay.rounds.length,
       state: current.state,
       policies: current.policies,
+      keptPolicies: current.keptPolicies,
     };
     return { rounds, next };
   }

@@ -64,6 +64,7 @@ export function leaveMatch(record, { tokenHash }) {
     match: {
       ...match,
       humanSeats: match.humanSeats.filter((human) => human !== owner),
+      keptPolicies: withoutOwner(match.keptPolicies, owner),
       policies: Object.fromEntries(
         Object.entries(match.policies).filter(([id]) => match.state.nodes[id]?.owner !== owner),
       ),
@@ -192,12 +193,12 @@ function resolved(record) {
     policies: mergedPolicies(record),
     seatDefaults: record.seatDefaults,
   });
-  const { policies, history, state, replay } = after;
+  const { policies, keptPolicies, history, state, replay } = after;
   return revised({
     ...record,
     phase: state.finished ? 'finished' : 'playing',
     submissions: {},
-    match: { ...match, orders: {}, policies, history, state, replay },
+    match: { ...match, orders: {}, policies, keptPolicies, history, state, replay },
   });
 }
 

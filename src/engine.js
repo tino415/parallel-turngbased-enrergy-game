@@ -537,13 +537,15 @@
     owners = firstOwners(playerCount),
     defaultConquestPolicy = null,
     conquestPolicies = {},
+    keptPolicies = {},
     rng = Math.random,
     aiOrdersOverride = null,
     aiWithdrawalsOverride = null,
   }) {
-    if (state.finished) return { state, policies, events: [], moves: [] };
+    if (state.finished) return { state, policies, keptPolicies, events: [], moves: [] };
     const nodes = state.nodes.map((n) => ({ ...n })),
       nextPolicies = { ...policies },
+      nextKept = { ...keptPolicies },
       events = [];
     const neighbors = (i) => links.flatMap(([a, b]) => (a === i ? [b] : b === i ? [a] : []));
     const fmt = (v) => v.toFixed(1),
@@ -558,6 +560,17 @@
         : owner === [].concat(seat)[0]
           ? defaultConquestPolicy
           : null;
+    const keepLostPolicy = (owner, id) => {
+      if (!isSeat(seat, owner) || !nextPolicies[id]) return;
+      nextKept[owner] = { ...nextKept[owner], [id]: nextPolicies[id] };
+    };
+    const takeKeptPolicy = (owner, id) => {
+      const policy = nextKept[owner]?.[id];
+      if (!policy) return null;
+      const { [id]: _taken, ...rest } = nextKept[owner];
+      nextKept[owner] = rest;
+      return policy;
+    };
     const ledger = Array.from(
       { length: Math.max(playerCount, ...owners.map((o) => o + 1)) },
       emptyLedger,
@@ -759,9 +772,10 @@
         book(original, 'investedCeded', node.invested);
         node.invested *= rnd(0.25, 0.75);
         book(node.owner, 'investedCaptured', node.invested);
-        const conquestPolicy = conquestPolicyOf(node.owner);
-        if (conquestPolicy) {
-          nextPolicies[node.id] = { ...conquestPolicy, dest: null };
+        keepLostPolicy(original, node.id);
+        const policy = takeKeptPolicy(node.owner, node.id) ?? conquestPolicyOf(node.owner);
+        if (policy) {
+          nextPolicies[node.id] = { ...policy, dest: null };
           conquered.add(node.id);
         }
       }
@@ -812,6 +826,7 @@
     return {
       state: nextState,
       policies: nextPolicies,
+      keptPolicies: nextKept,
       events,
       moves: valid.map(movedEnergy),
       ledger,

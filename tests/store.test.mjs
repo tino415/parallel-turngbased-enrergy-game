@@ -180,6 +180,7 @@ test('an old save without optional fields loads with empty plans and current def
   const restored = GameStore.matchFromSave(legacy, DEFAULTS);
   assertSameData(restored.orders, {});
   assertSameData(restored.policies, {});
+  assertSameData(restored.keptPolicies, {});
   assertSameData(restored.history, ['Recovered saved match from this browser.']);
   assert.equal(restored.defaults, DEFAULTS);
   assert.equal(GameStore.selectors.softCapEnabled(restored), false);
