@@ -243,3 +243,11 @@ test('the node group editor sets % and attack at on its nodes’ pressured conne
     await page.evaluate(() => [policies[1].pressure[3].min, policies[2].pressure[5].min]),
   ).toEqual([30, 30]);
 });
+
+test('a refused Shift+click shows its reason before any group exists', async ({ page }) => {
+  await giveBlue(page, blueAroundZero);
+  await edgeHit(page, '9-10').click({ modifiers: ['Shift'] });
+  await expect(groupBar(page)).toBeVisible();
+  await expect(groupBar(page)).toContainText('Only connections touching your nodes join.');
+  expect((await ui(page)).bulkEdges).toEqual([]);
+});
