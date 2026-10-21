@@ -93,3 +93,10 @@ export async function visibleMapTop(page) {
   const header = await page.locator('body > header').boundingBox();
   return Math.max(map.y, header.y + header.height);
 }
+
+export async function resolveUntilGameOver(page) {
+  const resolve = page.locator('#uxDockResolve:visible, #resolve:visible').first();
+  for (let round = 0; round < 150 && !(await page.evaluate(() => state.finished)); round++)
+    await resolve.click();
+  await expect(page.locator('#gameOverNotice')).toBeVisible();
+}

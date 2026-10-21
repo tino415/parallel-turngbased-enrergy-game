@@ -1,4 +1,4 @@
-import { test, expect, isMobileLayout } from './support/game.mjs';
+import { test, expect, isMobileLayout, resolveUntilGameOver } from './support/game.mjs';
 
 const menu = (page) => page.locator('#tacticalMenu');
 const openDialogs = (page) => page.locator('dialog[open]');
@@ -47,19 +47,12 @@ test('New game opened from Settings leaves only New game open', async ({ page })
   await expect(openDialogs(page)).toHaveCount(1);
 });
 
-async function finishGame(page) {
-  const resolve = page.locator('#uxDockResolve:visible, #resolve:visible').first();
-  for (let round = 0; round < 150 && !(await page.evaluate(() => state.finished)); round++)
-    await resolve.click();
-  await expect(page.locator('#gameOverNotice')).toBeVisible();
-}
-
 for (const [opener, dialog] of [
   ['#gameOverNewGame', '#newGameDialog'],
   ['#watchReplay', '#replayDialog'],
 ]) {
   test(`${opener} clicked while the menu is open closes the menu`, async ({ page }) => {
-    await finishGame(page);
+    await resolveUntilGameOver(page);
     await menu(page).locator('summary').click();
     await expect(menu(page)).toHaveAttribute('open', '');
     await page.locator(opener).click();
