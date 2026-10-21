@@ -1,17 +1,10 @@
 import { readFileSync } from 'node:fs';
-import { test, expect } from './support/game.mjs';
+import { test, expect, resolveUntilGameOver } from './support/game.mjs';
 
 const BLUE = '#3278c8';
 const replay = (page) => page.locator('#replayDialog');
 const roundTitle = (page) => page.locator('#replayRound');
 const blueNodes = (page) => page.locator(`#replayMap circle[fill="${BLUE}"]`);
-
-async function resolveUntilGameOver(page) {
-  const resolve = page.locator('#uxDockResolve:visible, #resolve:visible').first();
-  for (let round = 0; round < 150 && !(await page.evaluate(() => state.finished)); round++)
-    await resolve.click();
-  await expect(page.locator('#gameOverNotice')).toBeVisible();
-}
 
 async function openFromMenu(page, label) {
   await page.locator('#tacticalMenu summary').click();
