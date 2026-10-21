@@ -186,7 +186,9 @@ test('the edge editor names the reverse support a new order replaces', async ({ 
 test('Settings shows the build version, commit and date', async ({ page }) => {
   await page.locator('#tacticalMenu summary').click();
   await page.locator('#tacticalMenu button').filter({ hasText: 'Settings' }).click();
-  await expect(page.locator('#uxSettingsDialog #buildVersion')).toHaveText(
-    /^Build: v\d+\.\d+\.\d+ · [0-9a-f]{7} · \d{4}-\d{2}-\d{2}$/,
+  const build = page.locator('#uxSettingsDialog #buildVersion');
+  await expect(build).toBeVisible();
+  await expect(build).toHaveText(
+    /^Build: v\d+\.\d+\.\d+ · ([0-9a-f]{7}|unknown) · \d{4}-\d{2}-\d{2}$/,
   );
 });

@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Script } from 'node:vm';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
@@ -26,12 +28,13 @@ test('planning, automation, procedural generation and combat still exist', () =>
 
 test('the build stamps version, commit and date into the built index.html', () => {
   assert.match(html, /id="buildVersion"[^>]*>Build: development</);
-  const build = spawnSync(process.execPath, ['scripts/build.mjs'], {
+  const output = mkdtempSync(join(tmpdir(), 'build-'));
+  const build = spawnSync(process.execPath, ['scripts/build.mjs', output], {
     cwd: new URL('..', import.meta.url),
     env: { ...process.env, GITHUB_SHA: 'abcdef0123456789' },
   });
   assert.equal(build.status, 0, String(build.stderr));
-  const built = readFileSync(new URL('../dist/index.html', import.meta.url), 'utf8');
+  const built = readFileSync(join(output, 'index.html'), 'utf8');
   assert.match(
     built,
     /id="buildVersion"[^>]*>Build: v\d+\.\d+\.\d+ · abcdef0 · \d{4}-\d{2}-\d{2}</,
