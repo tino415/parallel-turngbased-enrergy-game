@@ -856,9 +856,9 @@
     };
   }
 
-  function resolve(unrecorded) {
-    if (unrecorded.state.finished) return unrecorded;
-    const match = withKeptPolicies(unrecorded);
+  function resolve(stored) {
+    if (stored.state.finished) return stored;
+    const match = withKeptPolicies(stored);
     const result = resolveRoundOf(match, dice(match));
     const history = result.events
       .reduce((lines, event) => [event, ...lines], match.history)
@@ -990,7 +990,9 @@
   }
 
   const keptPoliciesInRound = (replay, current) =>
-    current.state.round < (replay.keptPoliciesFrom ?? 1) ? null : (current.keptPolicies ?? {});
+    current.state.round < (replay.keptPoliciesFrom ?? Infinity)
+      ? null
+      : (current.keptPolicies ?? {});
 
   function playerHistory(match, known = null) {
     if (!match.replay) return null;

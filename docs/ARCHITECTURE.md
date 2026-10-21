@@ -120,7 +120,13 @@ from store selectors and commands.
 ## Replay
 
 A round is a pure function of the state, the orders, the policies, the kept policies, the conquest
-defaults and the dice; the AI is computed inside it. A node lost keeps its policy for the rest of the match, per colour, and the colour gets it back, pressure included, when it retakes the node; the conquest default applies only when nothing was kept. `replay.keptPoliciesFrom` is the round from which that rule applies: 1 for a new match, the round of the first resolve for a match or save recorded before it, whose earlier rounds rebuild without it. A new match draws a
+defaults and the dice; the AI is computed inside it. A node lost keeps its policy
+for the rest of the match, per colour, and the colour gets it back, pressure
+included, when it retakes the node; the conquest default applies only when nothing
+was kept. `replay.keptPoliciesFrom` is the round from which that rule applies: 1 for
+a new match, the round of the first resolve for a match or save recorded before it,
+whose earlier rounds rebuild without it; a replay without it never applied the rule.
+A new match draws a
 `diceSeed`, round _r_ resolves with `seeded(diceSeed + ':' + r)`, and `resolve`
 appends the round's inputs to `match.replay.rounds`: the orders, the defaults and
 the policies that differ from what the previous round left behind
@@ -166,7 +172,8 @@ imports and resolve rounds with the store's own `resolve`.
   `{ id, cancelled: true }`, answered with 410. Every write moves the Durable Object's
   alarm seven days ahead, and the alarm deletes the match.
 - `match.humanSeats` lists the colours people play; the engine plans the AI for every
-  other owner, and a policy leaves with its node but is kept per colour and restored when that colour retakes the node. `match.seat` is
+  other owner, and a policy leaves with its node but is kept per colour and restored
+  when that colour retakes the node. `match.seat` is
   still the colour this browser plays, `isMine` still reads it.
 - A player other than the host can leave: in the lobby the colour is free again, during
   play it leaves `humanSeats` with its policies and the AI plays it from the next round.
