@@ -1,0 +1,105 @@
+.online-panel[hidden],
+#onlinePanel [hidden] {
+  display: none;
+}
+.online-panel {
+  position: fixed;
+  top: var(--header-clearance);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  width: min(560px, calc(100vw - 16px));
+  max-height: calc(100dvh - var(--header-clearance) - var(--tactical-action-height, 0px) - 8px);
+  overflow-y: auto;
+  padding: 16px 20px;
+  background: var(--ux-panel);
+  border: 1px solid var(--ux-border);
+  border-radius: 12px;
+}
+.online-panel.lobby {
+  width: min(940px, calc(100vw - 16px));
+}
+.online-link {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0;
+}
+.online-link input {
+  flex: 1;
+  min-width: 0;
+}
+.online-map {
+  margin: 12px 0;
+  padding: 8px 12px 4px;
+  border: 1px solid var(--ux-border);
+  border-radius: 9px;
+}
+.online-map .generator-fields {
+  margin: 4px 0 10px;
+}
+.online-preview {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 12/7;
+  background: #111b2a;
+  border: 1px solid #364b65;
+  border-radius: 8px;
+}
+.online-seats {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.online-seat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--ux-card);
+  border: 1px solid var(--ux-border);
+  border-radius: 9px;
+}
+.online-seat.mine {
+  border-color: var(--ux-green);
+}
+.online-seat-player {
+  flex: 1;
+  color: var(--ux-muted);
+}
+.online-swatch {
+  margin-right: 6px;
+}
+.online-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  white-space: nowrap;
+  font-weight: 750;
+}
+body > header #onlineIndicator {
+  min-height: 37px;
+  font-size: 13px;
+  box-shadow: 0 4px 14px #000a;
+}
+.online-dot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--ux-green);
+}
+.online-dot.lost {
+  background: #f0b45a;
+}
+@media (max-width: 760px) {
+  body > header #onlineIndicator {
+    display: none !important;
+  }
+  .ux-dock #uxDockOnline {
+    display: inline-flex !important;
+  }
+}

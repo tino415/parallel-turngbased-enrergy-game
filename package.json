@@ -4,7 +4,7 @@
   "version": "0.8.4",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "npm run format:check && node --check src/engine.js && node --check src/store.js && node --check src/format.js && node --check src/game.js && node --check src/dialogs.js && node --check src/leaderboard.js && node --check src/tactical-ui.js && node --check src/replay.js && node --check src/service-worker-registration.js && node --check sw.js && npm test",
+    "check": "npm run format:check && node --check src/engine.js && node --check src/store.js && node --check src/format.js && node --check src/game.js && node --check src/dialogs.js && node --check src/leaderboard.js && node --check src/tactical-ui.js && node --check src/replay.js && node --check src/online.js && node --check server/match.mjs && node --check server/worker.mjs && node --check src/service-worker-registration.js && node --check sw.js && npm test",
     "build": "node scripts/build.mjs",
     "test:ui": "playwright test",
     "test:ui:report": "playwright show-report",
@@ -16,6 +16,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",
-    "prettier": "3.6.2"
+    "prettier": "3.6.2",
+    "wrangler": "^4.151.3"
   }
 }

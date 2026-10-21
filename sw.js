@@ -15,6 +15,7 @@ const APP_SHELL = [
   './src/ux.css',
   './src/tactical-ui.css',
   './src/replay.css',
+  './src/online.css',
   './src/engine.js',
   './src/store.js',
   './src/format.js',
@@ -24,6 +25,7 @@ const APP_SHELL = [
   './src/ux.js',
   './src/tactical-ui.js',
   './src/replay.js',
+  './src/online.js',
   './src/service-worker-registration.js',
 ];
 
@@ -45,8 +47,11 @@ async function cacheAppShell() {
 }
 
 function isSameOriginGet(request) {
-  return request.method === 'GET' && new URL(request.url).origin === self.location.origin;
+  const url = new URL(request.url);
+  return request.method === 'GET' && url.origin === self.location.origin && !isApiPath(url);
 }
+
+const isApiPath = ({ pathname }) => pathname.startsWith('/api/');
 
 async function networkFirst(request) {
   const fromNetwork = fetchAndCache(request);

@@ -31,9 +31,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run build && python3 -m http.server 4173 --directory dist --bind 127.0.0.1',
+    command: 'npx wrangler dev --ip 127.0.0.1 --port 4173',
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: !process.env.CI,
-    timeout: 30000,
+    timeout: 120000,
+    env: { WRANGLER_SEND_METRICS: 'false' },
   },
 });

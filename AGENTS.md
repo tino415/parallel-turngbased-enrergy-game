@@ -2,7 +2,8 @@
 
 A static browser game: `index.html` plus plain scripts in `src/`, loaded with `defer`
 in one global scope, no bundler and no runtime dependency. `src/engine.js` holds
-the rules and round resolution. `src/store.js` owns the match (state, orders,
+the rules and round resolution. `server/` holds the Cloudflare Worker and the match
+functions behind online matches (see `docs/ARCHITECTURE.md`). `src/store.js` owns the match (state, orders,
 policies, history, map, conquest defaults, replay record) and the interface state in its `ui` slice, behind
 commands, selectors and a subscription; it never touches the DOM. `src/game.js`,
 `src/ux.js`, `src/tactical-ui.js` and `src/replay.js` are the interface: they change state
@@ -62,8 +63,9 @@ npm run build
 python3 -m http.server 4173 --directory dist --bind 0.0.0.0
 ```
 
-and open http://127.0.0.1:4173. `test:ui` starts that server itself, or reuses
-one already listening on 4173.
+and open http://127.0.0.1:4173. That serves the single-player game only. `test:ui` starts
+`wrangler dev` on 4173, which serves `dist/` and the online API, or reuses one already
+listening there; run `npx wrangler dev --ip 0.0.0.0 --port 4173` to play online locally.
 
 `compose.yaml` publishes no host port, so stacks from several worktrees run side
 by side. An editor attached through the devcontainer forwards 4173 to the host.

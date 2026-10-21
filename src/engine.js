@@ -319,11 +319,14 @@
       total: projection.node.active + projection.node.invested,
     };
   }
+  const isSeat = (seat, owner) => [].concat(seat).includes(owner);
   function aiOrders(nodes, links, includeHuman = false, seat = 0) {
     const planned = {};
     const ns = nodes;
     const neighbors = (i) => links.flatMap(([a, b]) => (a === i ? [b] : b === i ? [a] : []));
-    for (const node of ns.filter((n) => n.owner !== null && (includeHuman || n.owner !== seat))) {
+    for (const node of ns.filter(
+      (n) => n.owner !== null && (includeHuman || !isSeat(seat, n.owner)),
+    )) {
       const adj = neighbors(node.id),
         foes = adj.filter((id) => ns[id].owner !== node.owner),
         friends = adj.filter((id) => ns[id].owner === node.owner);
@@ -382,7 +385,7 @@
     const committed = new Set();
 
     for (const owner of new Set(nodes.map((n) => n.owner).filter((n) => n !== null))) {
-      if (owner === seat && !includeHuman) continue;
+      if (isSeat(seat, owner) && !includeHuman) continue;
       // Pick common targets for all adjacent allied nodes: several modest
       // attacks can defeat a single well-defended frontier position.
       const targets = nodes.filter(
@@ -533,6 +536,7 @@
     seat = 0,
     owners = firstOwners(playerCount),
     defaultConquestPolicy = null,
+    conquestPolicies = {},
     rng = Math.random,
     aiOrdersOverride = null,
     aiWithdrawalsOverride = null,
@@ -547,6 +551,13 @@
       rnd = (a, b) => a + rng() * (b - a),
       clamp = (v) => Math.max(0, v);
     const softCap = isSoftCap(state);
+    const conquered = new Set();
+    const conquestPolicyOf = (owner) =>
+      owner in conquestPolicies
+        ? conquestPolicies[owner]
+        : owner === [].concat(seat)[0]
+          ? defaultConquestPolicy
+          : null;
     const ledger = Array.from(
       { length: Math.max(playerCount, ...owners.map((o) => o + 1)) },
       emptyLedger,
@@ -561,7 +572,7 @@
     if (softCap) {
       const requested = {};
       for (const [id, p] of Object.entries(orders || {})) {
-        if (state.nodes[Number(id)]?.owner === seat) requested[id] = p.withdraw ?? 0;
+        if (isSeat(seat, state.nodes[Number(id)]?.owner)) requested[id] = p.withdraw ?? 0;
       }
       for (const [id, policy] of Object.entries(policies)) {
         const automatic = policyWithdrawal({
@@ -575,7 +586,10 @@
       }
       const aiWithdrawals = aiWithdrawalsOverride ?? aiPlan?.withdrawals ?? {};
       for (const [id, amount] of Object.entries(aiWithdrawals)) {
-        if (state.nodes[Number(id)]?.owner !== null && state.nodes[Number(id)]?.owner !== seat)
+        if (
+          state.nodes[Number(id)]?.owner !== null &&
+          !isSeat(seat, state.nodes[Number(id)]?.owner)
+        )
           requested[id] = amount;
       }
       for (const [source, amount] of Object.entries(requested)) {
@@ -603,13 +617,13 @@
         .filter(([, amount]) => amount > 0)
         .map(([dest, amount]) => ({
           source: Number(source),
-          type: nodes[Number(dest)].owner === seat ? 'transfer' : 'attack',
+          type: nodes[Number(dest)].owner === nodes[Number(source)].owner ? 'transfer' : 'attack',
           amount,
           dest: Number(dest),
         })),
     ]);
     const policyPlans = Object.keys(policies)
-      .filter((id) => state.nodes[Number(id)]?.owner === seat)
+      .filter((id) => isSeat(seat, state.nodes[Number(id)]?.owner))
       .map(Number)
       .map((source) => ({
         source,
@@ -745,8 +759,10 @@
         book(original, 'investedCeded', node.invested);
         node.invested *= rnd(0.25, 0.75);
         book(node.owner, 'investedCaptured', node.invested);
-        if (node.owner === seat && defaultConquestPolicy) {
-          nextPolicies[node.id] = { ...defaultConquestPolicy, dest: null };
+        const conquestPolicy = conquestPolicyOf(node.owner);
+        if (conquestPolicy) {
+          nextPolicies[node.id] = { ...conquestPolicy, dest: null };
+          conquered.add(node.id);
         }
       }
     }
@@ -771,7 +787,11 @@
         log('Round ' + state.round + ' · Overflow decay destroyed ' + fmt(totalLoss) + ' energy.');
     }
     for (const id of Object.keys(nextPolicies)) {
-      if (nodes[Number(id)].owner !== seat) delete nextPolicies[id];
+      const owner = nodes[Number(id)].owner;
+      const kept =
+        isSeat(seat, owner) &&
+        (owner === state.nodes[Number(id)].owner || conquered.has(Number(id)));
+      if (!kept) delete nextPolicies[id];
     }
     const standings = owners.map((owner) => {
       const count = nodes.filter((n) => n.owner === owner).length;
