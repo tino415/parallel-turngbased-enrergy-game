@@ -238,8 +238,7 @@ test('a replay without keptPoliciesFrom never applied the rule, even without loa
 test('resolving a match stored without kept policies starts the rule at that round', () => {
   const { GameStore } = loadContext();
   const match = GameStore.classicMatch(seededRandom(), DEFAULTS);
-  const { keptPolicies, ...storedReplay } = match.replay;
-  const { keptPoliciesFrom, ...replay } = storedReplay;
+  const { keptPoliciesFrom, ...replay } = match.replay;
   const { keptPolicies: _dropped, ...stored } = match;
   const resolved = GameStore.commands.resolve({ ...stored, replay });
   assert.deepEqual(plain(resolved.keptPolicies), {});
