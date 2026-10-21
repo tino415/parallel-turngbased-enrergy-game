@@ -11,7 +11,7 @@ places replace, functions from earlier ones.
 | `store.js`       | All match and interface state, commands, selectors, subscriptions                         | no              |
 | `format.js`      | Energy number formatting                                                                  | no              |
 | `game.js`        | The base renderer, map navigation, save and restore, the global mirrors                   | yes             |
-| `dialogs.js`     | The Orders and Settings dialog buttons                                                    | yes             |
+| `dialogs.js`     | Orders and Settings dialog buttons; one overlay open at a time, backdrop click closes     | yes             |
 | `leaderboard.js` | The Leaderboard tab: one row per player, sorted by the chosen column, and the round chart | yes             |
 | `ux.js`          | Layout, dialogs, side panel, dock, camera fitting                                         | yes             |
 | `tactical-ui.js` | Map selection, node and connection groups, the inspector, pinch zoom, the ☰ menu         | yes             |
