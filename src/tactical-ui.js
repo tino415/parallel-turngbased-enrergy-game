@@ -659,6 +659,10 @@
     dismiss();
   });
 
+  menu.addEventListener('toggle', () => {
+    if (menu.open && active) dismiss();
+  });
+
   // Orders is a separate dialog, not another layer on top of the
   // contextual editor. Clear selection before Orders opens; otherwise
   // the editor reappears behind it when Orders closes.

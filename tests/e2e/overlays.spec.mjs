@@ -1,4 +1,13 @@
-import { test, expect, edgeHit, isMobileLayout, resolveUntilGameOver } from './support/game.mjs';
+import {
+  test,
+  expect,
+  edgeHit,
+  inspector,
+  isMobileLayout,
+  openEdgeEditor,
+  openNodeEditor,
+  resolveUntilGameOver,
+} from './support/game.mjs';
 
 const menu = (page) => page.locator('#tacticalMenu');
 const openDialogs = (page) => page.locator('dialog[open]');
@@ -83,4 +92,18 @@ test('a click on a map edge closes the menu', async ({ page }) => {
   await expect(menu(page)).toHaveAttribute('open', '');
   await edgeHit(page, '0-1').click();
   await expect(menu(page)).not.toHaveAttribute('open', '');
+});
+
+test('opening the menu closes the node editor', async ({ page }) => {
+  await openNodeEditor(page);
+  await menu(page).locator('summary').click();
+  await expect(menu(page)).toHaveAttribute('open', '');
+  await expect(inspector(page)).toBeHidden();
+});
+
+test('opening the menu closes the edge editor', async ({ page }) => {
+  await openEdgeEditor(page, '0-1');
+  await menu(page).locator('summary').click();
+  await expect(menu(page)).toHaveAttribute('open', '');
+  await expect(inspector(page)).toBeHidden();
 });
