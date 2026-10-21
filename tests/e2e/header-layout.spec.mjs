@@ -46,11 +46,8 @@ test('every header control sits in one line over the top of the map', async ({
   else await expect(page.locator('#score')).toHaveText(/^Round 1 · Blue \d+ · Opponents \d+$/);
 });
 
-test('the starting camera and Fit keep every node below the header line', async ({
-  page,
-}, testInfo) => {
+test('Fit keeps every node below the header line', async ({ page }) => {
   const headerBottom = await bottomOf(page.locator('#tacticalMenu > summary'));
-  if (!isMobileLayout(testInfo)) expect(await topmostNode(page)).toBeGreaterThan(headerBottom);
   await page.locator('#fit').click();
   expect(await topmostNode(page)).toBeGreaterThan(headerBottom);
 });

@@ -84,9 +84,14 @@
     store.setCamera(cameraFocusedOn(id));
     render();
   }
+  function ownNode() {
+    return state.nodes.find(n=>isMine(n.id));
+  }
   function startingCamera() {
-    const mine=state.nodes.find(n=>n.owner===0);
-    return mobile()&&mine?cameraFocusedOn(mine.id):fittedCamera();
+    const mine=ownNode();
+    if (!mine) return fittedCamera();
+    store.focusNode(mine.id);
+    return cameraFocusedOn(mine.id);
   }
   function fittedCamera() {
     const [vw,vh,bw,bh]=viewBounds(),top=headerOverlap();
@@ -117,7 +122,7 @@
   render = function() {
     originalRender();
     document.querySelector('.layout').classList.toggle('ux-wide-view',currentView!=='map');
-    const key=mapSeed+'/'+N+'/'+edges.length+'/'+state.round;
+    const key=mapSeed+'/'+N+'/'+edges.length+'/'+state.round+'/'+mySeat();
     if(key!==lastMap) {
       const isFirst=lastMap==='';
       lastMap=key;
@@ -134,8 +139,4 @@
   // dismisses the keyboard; the editor is already in its final layout.
   window.addEventListener('resize', redrawCamera);
   render();
-  if(mobile()) {
-    const mine=state.nodes.find(n=>n.owner===0);
-    if(mine) focusCameraUX(mine.id);
-  }
 })();

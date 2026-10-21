@@ -228,3 +228,33 @@ test('nothing of the online match covers the map during play', async ({
   });
   expect(topLeftOfMap).toBe(true);
 });
+
+async function distanceFromMapCentre(page, id) {
+  return page.evaluate((nodeId) => {
+    const node = document.querySelector(`#map [data-node="${nodeId}"]`).getBoundingClientRect();
+    const map = document.querySelector('#map').getBoundingClientRect();
+    return Math.abs(node.x + node.width / 2 - (map.x + map.width / 2));
+  }, id);
+}
+
+test('an online match centres each player on their own node and Focus finds it', async ({
+  page,
+  browser,
+}, testInfo) => {
+  page.on('dialog', (dialog) => dialog.accept());
+  const friend = await startWithFriend(page, browser, testInfo);
+  await page.getByRole('button', { name: 'Start match' }).click();
+  await expect(indicator(friend)).toContainText('0/2', SLOW);
+
+  for (const player of [page, friend]) {
+    const own = await ownNodeId(player);
+    expect(await distanceFromMapCentre(player, own)).toBeLessThan(40);
+    await player.getByRole('button', { name: 'Fit' }).click();
+    await player.getByRole('button', { name: 'Focus' }).click();
+    expect(await distanceFromMapCentre(player, own)).toBeLessThan(40);
+  }
+
+  await friend.reload();
+  await expect(friend.locator('#score')).toContainText('Red', SLOW);
+  expect(await distanceFromMapCentre(friend, await ownNodeId(friend))).toBeLessThan(40);
+});
