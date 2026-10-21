@@ -39,19 +39,34 @@ for (const [label, dialog] of MENU_DIALOGS) {
   });
 }
 
-test('opening one dialog closes the dialog that is open', async ({ page }) => {
-  await openFromMenu(page, 'Orders');
-  await page.evaluate(() => document.getElementById('uxSettingsDialog').showModal());
+test('New game opened from Settings leaves only New game open', async ({ page }) => {
+  await openFromMenu(page, 'Settings');
+  await page.locator('#settingsNewGame').click();
+  await expect(page.locator('#newGameDialog')).toBeVisible();
+  await expect(page.locator('#uxSettingsDialog')).toBeHidden();
   await expect(openDialogs(page)).toHaveCount(1);
-  await expect(page.locator('#uxSettingsDialog')).toBeVisible();
 });
 
-test('opening a dialog closes the open menu', async ({ page }) => {
-  await menu(page).locator('summary').click();
-  await expect(menu(page)).toHaveAttribute('open', '');
-  await page.evaluate(() => document.getElementById('uxOrdersDialog').showModal());
-  await expect(menu(page)).not.toHaveAttribute('open', '');
-});
+async function finishGame(page) {
+  const resolve = page.locator('#uxDockResolve:visible, #resolve:visible').first();
+  for (let round = 0; round < 150 && !(await page.evaluate(() => state.finished)); round++)
+    await resolve.click();
+  await expect(page.locator('#gameOverNotice')).toBeVisible();
+}
+
+for (const [opener, dialog] of [
+  ['#gameOverNewGame', '#newGameDialog'],
+  ['#watchReplay', '#replayDialog'],
+]) {
+  test(`${opener} clicked while the menu is open closes the menu`, async ({ page }) => {
+    await finishGame(page);
+    await menu(page).locator('summary').click();
+    await expect(menu(page)).toHaveAttribute('open', '');
+    await page.locator(opener).click();
+    await expect(page.locator(dialog)).toBeVisible();
+    await expect(menu(page)).not.toHaveAttribute('open', '');
+  });
+}
 
 test('a click outside the menu closes it', async ({ page }) => {
   await menu(page).locator('summary').click();
@@ -60,8 +75,12 @@ test('a click outside the menu closes it', async ({ page }) => {
   await expect(menu(page)).not.toHaveAttribute('open', '');
 });
 
-test('opening the menu closes an open dialog', async ({ page }) => {
-  await page.evaluate(() => document.getElementById('uxOrdersDialog').showModal());
-  await page.evaluate(() => (document.getElementById('tacticalMenu').open = true));
-  await expect(openDialogs(page)).toHaveCount(0);
+test('selecting text by dragging out onto the backdrop keeps New game open', async ({ page }) => {
+  await openFromMenu(page, 'New game');
+  const box = await page.locator('#seed').boundingBox();
+  await page.mouse.move(box.x + 5, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(2, 2, { steps: 5 });
+  await page.mouse.up();
+  await expect(page.locator('#newGameDialog')).toBeVisible();
 });

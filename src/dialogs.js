@@ -4,43 +4,28 @@
   const ordersDialog = document.getElementById('uxOrdersDialog');
   const settingsDialog = document.getElementById('uxSettingsDialog');
 
-  const menu = () => document.getElementById('tacticalMenu');
-  const openDialogs = () => [...document.querySelectorAll('dialog[open]')];
+  const tacticalMenu = () => document.getElementById('tacticalMenu');
+  const isOverlay = (element) => element instanceof HTMLDialogElement || element === tacticalMenu();
 
-  const closeMenu = () => {
-    if (menu()) menu().open = false;
+  const closeOtherOverlays = (opened) => {
+    for (const dialog of document.querySelectorAll('dialog[open]'))
+      if (dialog !== opened) dialog.requestClose();
+    if (tacticalMenu() && tacticalMenu() !== opened) tacticalMenu().open = false;
   };
 
-  const closeDialogs = (except) => {
-    for (const dialog of openDialogs()) if (dialog !== except) dialog.close();
-  };
-
-  const isOutside = (dialog, { clientX, clientY }) => {
-    const box = dialog.getBoundingClientRect();
-    return clientX < box.left || clientX > box.right || clientY < box.top || clientY > box.bottom;
-  };
-
-  const showModalAlone = HTMLDialogElement.prototype.showModal;
-  HTMLDialogElement.prototype.showModal = function () {
-    closeMenu();
-    closeDialogs(this);
-    showModalAlone.call(this);
+  const closeMenuOnOutsideClick = (event) => {
+    const menu = tacticalMenu();
+    if (menu?.open && !menu.contains(event.target)) menu.open = false;
   };
 
   document.addEventListener(
     'toggle',
     (event) => {
-      if (event.target === menu() && menu().open) closeDialogs();
+      if (event.newState === 'open' && isOverlay(event.target)) closeOtherOverlays(event.target);
     },
     true,
   );
-
-  document.addEventListener('click', (event) => {
-    const dialog = event.target.closest('dialog[open]');
-    if (dialog === event.target && isOutside(dialog, event)) {
-      if (dialog.dispatchEvent(new Event('cancel', { cancelable: true }))) dialog.close();
-    } else if (!dialog && menu()?.open && !menu().contains(event.target)) closeMenu();
-  });
+  document.addEventListener('click', closeMenuOnOutsideClick);
 
   for (const dialog of [ordersDialog, settingsDialog])
     dialog.querySelector('.ux-dialog-close').onclick = () => dialog.close();
@@ -55,8 +40,5 @@
     aiDebug.checked = true;
   }
 
-  document.getElementById('settingsNewGame').onclick = () => {
-    settingsDialog.close();
-    openNewGame();
-  };
+  document.getElementById('settingsNewGame').onclick = openNewGame;
 })();

@@ -5,18 +5,18 @@ this order: `engine.js`, `store.js`, `format.js`, `game.js`, `dialogs.js`,
 `leaderboard.js`, `ux.js`, `tactical-ui.js`, `replay.js`, `online.js`. Later scripts build on, and in
 places replace, functions from earlier ones.
 
-| Module           | Owns                                                                                      | Touches the DOM |
-| ---------------- | ----------------------------------------------------------------------------------------- | --------------- |
-| `engine.js`      | Rules: map generation, policy evaluation, forecast, AI, `resolveRound`                    | no              |
-| `store.js`       | All match and interface state, commands, selectors, subscriptions                         | no              |
-| `format.js`      | Energy number formatting                                                                  | no              |
-| `game.js`        | The base renderer, map navigation, save and restore, the global mirrors                   | yes             |
-| `dialogs.js`     | Orders and Settings dialog buttons; one overlay open at a time, backdrop click closes     | yes             |
-| `leaderboard.js` | The Leaderboard tab: one row per player, sorted by the chosen column, and the round chart | yes             |
-| `ux.js`          | Layout, dialogs, side panel, dock, camera fitting                                         | yes             |
-| `tactical-ui.js` | Map selection, node and connection groups, the inspector, pinch zoom, the ☰ menu         | yes             |
-| `replay.js`      | The replay screen, the game-over notice and the Replay menu item                          | yes             |
-| `online.js`      | The online lobby, the status bar, End turn, polling the server                            | yes             |
+| Module           | Owns                                                                                       | Touches the DOM |
+| ---------------- | ------------------------------------------------------------------------------------------ | --------------- |
+| `engine.js`      | Rules: map generation, policy evaluation, forecast, AI, `resolveRound`                     | no              |
+| `store.js`       | All match and interface state, commands, selectors, subscriptions                          | no              |
+| `format.js`      | Energy number formatting                                                                   | no              |
+| `game.js`        | The base renderer, map navigation, save and restore, the global mirrors                    | yes             |
+| `dialogs.js`     | Orders and Settings dialog buttons; opening a dialog or the menu closes the other overlays | yes             |
+| `leaderboard.js` | The Leaderboard tab: one row per player, sorted by the chosen column, and the round chart  | yes             |
+| `ux.js`          | Layout, dialogs, side panel, dock, camera fitting                                          | yes             |
+| `tactical-ui.js` | Map selection, node and connection groups, the inspector, pinch zoom, the ☰ menu          | yes             |
+| `replay.js`      | The replay screen, the game-over notice and the Replay menu item                           | yes             |
+| `online.js`      | The online lobby, the status bar, End turn, polling the server                             | yes             |
 
 ## State ownership
 
