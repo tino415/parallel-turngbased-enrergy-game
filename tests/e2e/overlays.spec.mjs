@@ -1,4 +1,4 @@
-import { test, expect, isMobileLayout, resolveUntilGameOver } from './support/game.mjs';
+import { test, expect, edgeHit, isMobileLayout, resolveUntilGameOver } from './support/game.mjs';
 
 const menu = (page) => page.locator('#tacticalMenu');
 const openDialogs = (page) => page.locator('dialog[open]');
@@ -76,4 +76,11 @@ test('selecting text by dragging out onto the backdrop keeps New game open', asy
   await page.mouse.move(2, 2, { steps: 5 });
   await page.mouse.up();
   await expect(page.locator('#newGameDialog')).toBeVisible();
+});
+
+test('a click on a map edge closes the menu', async ({ page }) => {
+  await menu(page).locator('summary').click();
+  await expect(menu(page)).toHaveAttribute('open', '');
+  await edgeHit(page, '0-1').click();
+  await expect(menu(page)).not.toHaveAttribute('open', '');
 });

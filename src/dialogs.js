@@ -25,7 +25,7 @@
     },
     true,
   );
-  document.addEventListener('click', closeMenuOnOutsideClick);
+  document.addEventListener('click', closeMenuOnOutsideClick, true);
 
   for (const dialog of [ordersDialog, settingsDialog])
     dialog.querySelector('.ux-dialog-close').onclick = () => dialog.close();
