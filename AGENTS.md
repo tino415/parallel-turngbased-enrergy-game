@@ -50,7 +50,7 @@ The `Dockerfile.dev` base image tag must equal the `@playwright/test` version in
 npm run check        # prettier check, syntax checks, unit tests
 npm test             # unit tests only (node --test tests/*.test.mjs)
 npm run test:ui      # Playwright suite in tests/e2e, four viewports
-npm run build        # copies index.html, _headers, the PWA files, icons/ and src/ into dist/
+npm run build        # stamps version, commit and date into index.html, copies it, _headers, the PWA files, icons/ and src/ into dist/
 npm run icons        # renders the PNG icons from icons/icon.svg
 npm run format       # apply prettier
 npm run simulate     # AI strategy simulations, see scripts/
