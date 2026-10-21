@@ -213,6 +213,23 @@ test('a player who leaves mid-match hands the colour to the AI', () => {
   assert.match(left.match.history[0], /Ann left; the AI plays Red/);
 });
 
+const withMatch = (record, changes) => ({ ...record, match: { ...record.match, ...changes } });
+const keptPolicy = { enabled: true, reserve: 5, investPct: 50, dest: null };
+
+test('a match stored before kept policies existed can still be left', () => {
+  const { keptPolicies, ...stored } = playing().match;
+  const left = leaveMatch({ ...playing(), match: stored }, { tokenHash: ANN });
+  assert.deepEqual(left.match.humanSeats, [0]);
+});
+
+test('leaving drops the kept policies of the leaver and keeps the others', () => {
+  const record = withMatch(playing(), {
+    keptPolicies: { 0: { 3: keptPolicy }, 1: { 4: keptPolicy } },
+  });
+  const left = leaveMatch(record, { tokenHash: ANN });
+  assert.deepEqual(Object.keys(left.match.keptPolicies), ['0']);
+});
+
 test('the round resolves when the last player still deciding leaves', () => {
   const left = leaveMatch(turn(playing(), HOST), { tokenHash: ANN });
   assert.equal(left.match.state.round, 2);

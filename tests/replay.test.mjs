@@ -170,3 +170,77 @@ test('replay navigation stays within the recorded rounds and playing stops at th
   store.closeReplay();
   assert.equal(store.getSnapshot().ui.replay, null);
 });
+
+function playedLoseAndRetake(GameStore) {
+  const base = GameStore.classicMatch(seededRandom(), DEFAULTS);
+  const nodes = [
+    { id: 0, owner: 0, active: 2, invested: 0 },
+    { id: 1, owner: 1, active: 30, invested: 0 },
+    { id: 2, owner: 0, active: 60, invested: 0 },
+  ];
+  const state = { ...base.state, nodes };
+  const store = GameStore.createStore();
+  store.replaceMatch({
+    ...base,
+    state,
+    map: {
+      ...base.map,
+      xy: base.map.xy.slice(0, 3),
+      edges: [
+        [0, 1],
+        [0, 2],
+      ],
+      N: 3,
+    },
+    humanSeats: [0, 1],
+    policies: { 0: { enabled: true, reserve: 0, investPct: 50, dest: null } },
+    replay: { ...base.replay, start: state, keptPoliciesFrom: 1000 },
+  });
+  const attackOn0 = (source, amount) => ({
+    [source]: { invest: 0, withdraw: 0, edges: { 0: amount } },
+  });
+  for (const orders of [attackOn0(1, 29), attackOn0(2, 50), {}]) {
+    store.replaceMatch({ ...store.getSnapshot().match, orders });
+    store.resolve();
+  }
+  return store.getSnapshot().match;
+}
+
+const savedBeforeKeptPolicies = (GameStore, match, keptPoliciesFrom) => {
+  const { keptPolicies, ...save } = plain(GameStore.saveFromMatch(match, null));
+  const { keptPoliciesFrom: _stamp, ...replay } = save.replay;
+  return { ...save, replay: keptPoliciesFrom ? { ...replay, keptPoliciesFrom } : replay };
+};
+
+test('a replay recorded before policies were kept rebuilds to the match as played', () => {
+  const { GameStore } = loadContext();
+  const played = playedLoseAndRetake(GameStore);
+  assert.equal(played.state.nodes[0].owner, 0);
+  const legacy = GameStore.matchFromSave(savedBeforeKeptPolicies(GameStore, played), DEFAULTS);
+  const frames = GameStore.selectors.replayFrames(legacy);
+  assert.deepEqual(plain(frames.at(-1).state), plain(played.state));
+  const underNewRule = GameStore.matchFromSave(
+    savedBeforeKeptPolicies(GameStore, played, 1),
+    DEFAULTS,
+  );
+  const newFrames = GameStore.selectors.replayFrames(underNewRule);
+  assert.notDeepEqual(plain(newFrames.at(-1).state), plain(played.state));
+});
+
+test('a replay without keptPoliciesFrom never applied the rule, even without loading a save', () => {
+  const { GameStore } = loadContext();
+  const played = playedLoseAndRetake(GameStore);
+  const { keptPoliciesFrom, ...replay } = played.replay;
+  const frames = GameStore.selectors.replayFrames({ ...played, replay });
+  assert.deepEqual(plain(frames.at(-1).state), plain(played.state));
+});
+
+test('resolving a match stored without kept policies starts the rule at that round', () => {
+  const { GameStore } = loadContext();
+  const match = GameStore.classicMatch(seededRandom(), DEFAULTS);
+  const { keptPoliciesFrom, ...replay } = match.replay;
+  const { keptPolicies: _dropped, ...stored } = match;
+  const resolved = GameStore.commands.resolve({ ...stored, replay });
+  assert.deepEqual(plain(resolved.keptPolicies), {});
+  assert.equal(resolved.replay.keptPoliciesFrom, match.state.round);
+});

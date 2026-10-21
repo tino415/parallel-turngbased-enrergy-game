@@ -29,6 +29,7 @@ command really changes it.
 | `state` (round, nodes, finished, rulesVersion)      | `match.state`         | yes   | `resolve`, `replaceMatch`           |
 | manual orders per node                              | `match.orders`        | yes   | allocation and order commands       |
 | persistent policies per node                        | `match.policies`      | yes   | policy commands, `resolve`          |
+| policies of nodes lost, per colour                  | `match.keptPolicies`  | yes   | `resolve`                           |
 | message history                                     | `match.history`       | yes   | `resolve`, `replaceMatch`           |
 | map: `xy`, `edges`, `N`, `playerCount`, `mapSeed`   | `match.map`           | yes   | `replaceMatch`                      |
 | conquest defaults (enabled, reserve, invest)        | `match.defaults`      | yes   | `setDefaults`                       |
@@ -118,16 +119,21 @@ from store selectors and commands.
 
 ## Replay
 
-A round is a pure function of the state, the orders, the policies, the conquest
-defaults and the dice; the AI is computed inside it. A new match draws a
-`diceSeed`, round _r_ resolves with `seeded(diceSeed + ':' + r)`, and `resolve`
-appends the round's inputs to `match.replay.rounds`: the orders, the defaults and
-the policies that differ from what the previous round left behind
-(`policiesAfterLastRound`). `replayFrames` rebuilds every round from
-`match.replay.start`, with its state, its log and the moves carried out. A match
-loaded from a save without `replay` keeps `replay: null`, resolves with
-`Math.random` and offers no replay. When the replay does not fit in
-localStorage, `game.js` saves the match without it.
+A round is a pure function of the state, the orders, the policies, the kept
+policies, the conquest defaults and the dice; the AI is computed inside it. A node
+lost keeps its policy for the rest of the match, per colour, and the colour gets it
+back, pressure included, when it retakes the node; the conquest default applies
+only when nothing was kept. `replay.keptPoliciesFrom` is the round from which that
+rule applies: 1 for a new match, the round of the first resolve for a match or save
+recorded before it, whose earlier rounds rebuild without it; a replay without it
+never applied the rule. A new match draws a `diceSeed`, round _r_ resolves with
+`seeded(diceSeed + ':' + r)`, and `resolve` appends the round's inputs to
+`match.replay.rounds`: the orders, the defaults and the policies that differ from
+what the previous round left behind (`policiesAfterLastRound`). `replayFrames`
+rebuilds every round from `match.replay.start`, with its state, its log and the
+moves carried out. A match loaded from a save without `replay` keeps
+`replay: null`, resolves with `Math.random` and offers no replay. When the replay
+does not fit in localStorage, `game.js` saves the match without it.
 
 `replay.js` caches the frames per `match.replay` and keeps the play timer, the
 inspected node and the dismissed game-over notice to itself.
@@ -157,16 +163,17 @@ it hashes the bearer token, loads the record, calls one function of
 tested with `node --test`; they load `engine.js` and `store.js` as side-effect
 imports and resolve rounds with the store's own `resolve`.
 
-- The record holds the store's match (map, state, policies, history, replay) plus the
+- The record holds the store's match (map, state, policies, kept policies, history, replay) plus the
   seats, each seat's token hash, conquest defaults and the turn submitted for the
   round. The dice seed is the replay's `diceSeed`, generated on the server.
 - In the lobby the host can rebuild the map from new options; seats the new map still
   has keep their player. The host's cancel replaces the record with
   `{ id, cancelled: true }`, answered with 410. Every write moves the Durable Object's
   alarm seven days ahead, and the alarm deletes the match.
-- `match.humanSeats` lists the colours people play; the engine plans the AI for every
-  other owner, and a policy is dropped when its node changes owner. `match.seat` is
-  still the colour this browser plays, `isMine` still reads it.
+- `match.humanSeats` lists the colours people play; the engine plans the AI for
+  every other owner, and a policy leaves with its node but is kept per colour and
+  restored when that colour retakes the node. `match.seat` is still the colour this
+  browser plays, `isMine` still reads it.
 - A player other than the host can leave: in the lobby the colour is free again, during
   play it leaves `humanSeats` with its policies and the AI plays it from the next round.
   Each recorded round carries the `humanSeats` it was resolved with, so the replay plans

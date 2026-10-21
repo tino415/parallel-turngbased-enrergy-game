@@ -99,3 +99,47 @@ test('a human seat that switched its conquest default off gets no policy on a ca
   const result = capturedByZero({ 0: null });
   assert.equal(result.policies[1], undefined);
 });
+
+const withPressure = { ...policy(50), dest: 3, pressure: { 2: { pct: 10, min: 10, bank: 4 } } };
+const ringLinks = [...line, [1, 3]];
+
+test('a retaken node gets back the policy it had, pressure included', () => {
+  const state = fourNodes();
+  state.nodes[1] = node(1, 1, 2);
+  state.nodes[3] = node(3, 1, 30);
+  const lost = resolveRound({
+    state,
+    playerCount: 3,
+    seat: [0, 1],
+    orders: { 0: { invest: 0, edges: { 1: 25 } } },
+    policies: { 1: withPressure },
+    links: ringLinks,
+    conquestPolicies: {},
+    rng: middle,
+    aiOrdersOverride: [],
+  });
+  assert.equal(lost.policies[1], undefined);
+  const weakened = {
+    ...lost.state,
+    nodes: lost.state.nodes.map((n) => (n.id === 1 ? { ...n, active: 2 } : n)),
+  };
+  const retaken = resolveRound({
+    state: weakened,
+    playerCount: 3,
+    seat: [0, 1],
+    orders: { 3: { invest: 0, edges: { 1: 25 } } },
+    policies: lost.policies,
+    keptPolicies: lost.keptPolicies,
+    links: ringLinks,
+    conquestPolicies: { 1: { enabled: true, reserve: 8, investPct: 30 } },
+    rng: middle,
+    aiOrdersOverride: [],
+  });
+  assert.equal(retaken.state.nodes[1].owner, 1);
+  const { pressure, ...rest } = retaken.policies[1];
+  const { pressure: keptPressure, ...keptRest } = withPressure;
+  assert.deepEqual(rest, keptRest);
+  assert.equal(pressure[2].pct, keptPressure[2].pct);
+  assert.equal(pressure[2].min, keptPressure[2].min);
+  assert.equal(retaken.keptPolicies[1]?.[1], undefined);
+});
