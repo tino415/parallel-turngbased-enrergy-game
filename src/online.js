@@ -31,15 +31,14 @@
     }
   };
   const writeToken = (id, token) => localStorage.setItem(sessionKey(id), JSON.stringify({ token }));
-  const seatLink = (id) => inviteLink(id) + '#seat=' + encodeURIComponent(readToken(id));
+  const inviteLink = (id) => location.origin + location.pathname + '?match=' + id;
+  const seatLink = (id) => inviteLink(id) + '#seat=' + encodeURIComponent(readToken(id) ?? '');
 
   function adoptSeatFromFragment() {
     const token = new URLSearchParams(location.hash.slice(1)).get('seat');
-    if (!token || !matchId) return;
-    writeToken(matchId, token);
-    window.history.replaceState(null, '', location.pathname + location.search);
+    if (token && matchId) writeToken(matchId, token);
+    if (token) window.history.replaceState(null, '', location.pathname + location.search);
   }
-  const inviteLink = (id) => location.origin + location.pathname + '?match=' + id;
   const turnOf = ({ orders, policies, defaults }) => JSON.stringify({ orders, policies, defaults });
 
   async function api(method, path, body, id = matchId) {
@@ -66,7 +65,6 @@
   }
 
   function startPolling() {
-    adoptSeatFromFragment();
     addIndicators();
     addSeatLinkMenuItem();
     refresh();
@@ -229,6 +227,7 @@
     indicators = [];
     seatLinkItem?.remove();
     seatLinkItem = null;
+    seatLinkShown = false;
     byId('onlinePanel').hidden = true;
     byId('aiDebug').disabled = false;
     byId('resolve').textContent = 'Resolve round';
@@ -264,8 +263,8 @@
   }
 
   function renderSeatLink() {
-    const seated = view.you !== null;
-    seatLinkItem.hidden = !seated;
+    const seated = view.you !== null && readToken(view.id) !== null;
+    if (seatLinkItem) seatLinkItem.hidden = !seated;
     byId('onlineSeatLink').hidden = !seated || !seatLinkShown;
     if (seated) byId('onlineSeatLinkInput').value = seatLink(view.id);
   }
@@ -420,5 +419,6 @@
   byId('onlineName').value = localStorage.getItem(NAME_KEY) ?? '';
 
   window.GameOnline = { endTurn };
+  adoptSeatFromFragment();
   if (matchId) startPolling();
 })();
