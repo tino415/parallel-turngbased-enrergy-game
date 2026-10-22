@@ -222,3 +222,32 @@ test('an empty-map tap keeps the group and Done leaves it', async ({ page }) => 
   await expect(groupBar(page)).toBeHidden();
   await expect(inspector(page)).toBeHidden();
 });
+
+test('All, Border and Interior select own nodes by whether they touch a foreign node', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const own = () =>
+    page.evaluate(() => {
+      const match = currentMatch();
+      const mine = state.nodes.map((n) => n.id).filter((id) => selectors.isOwn(match, id));
+      const border = mine.filter((id) =>
+        selectors.neighbors(match, id).some((other) => !selectors.isOwn(match, other)),
+      );
+      return { all: mine, border, interior: mine.filter((id) => !border.includes(id)) };
+    });
+  const selection = async () => (await ui(page)).bulkSelection.slice().sort((a, b) => a - b);
+  await page.evaluate(() => {
+    store.setGroupMode(true);
+    render();
+  });
+  const expected = await own();
+  expect(expected.border.length).toBeGreaterThan(0);
+
+  await groupBar(page).getByRole('button', { name: 'All' }).click();
+  expect(await selection()).toEqual(expected.all);
+  await groupBar(page).getByRole('button', { name: 'Border' }).click();
+  expect(await selection()).toEqual(expected.border);
+  await groupBar(page).getByRole('button', { name: 'Interior' }).click();
+  expect(await selection()).toEqual(expected.interior);
+});
