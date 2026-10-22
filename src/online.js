@@ -3,6 +3,7 @@
 (() => {
   const POLL_MS = 4000;
   const TICK_MS = 1000;
+  const EXPIRY_REFRESH_MS = 3000;
   const SESSION_PREFIX = 'parallel-energy-online:';
   const NAME_KEY = 'parallel-energy-online-name';
   const MAP_FIELDS = {
@@ -20,7 +21,7 @@
   let panelOpen = false;
   let sentTurn = null;
   let deadlineAt = null;
-  let refreshedAtDeadline = null;
+  let lastExpiryRefresh = 0;
   let indicators = [];
   let seatLinkItem = null;
   let seatLinkShown = false;
@@ -255,8 +256,8 @@
     if (!view || deadlineAt === null) return;
     renderIndicators();
     byId('onlineWaiting').textContent = statusText();
-    if (Date.now() >= deadlineAt && refreshedAtDeadline !== deadlineAt) {
-      refreshedAtDeadline = deadlineAt;
+    if (Date.now() >= deadlineAt && Date.now() - lastExpiryRefresh >= EXPIRY_REFRESH_MS) {
+      lastExpiryRefresh = Date.now();
       refresh();
     }
   }

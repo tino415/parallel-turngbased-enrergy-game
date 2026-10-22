@@ -213,6 +213,7 @@ export function submitTurn(record, { tokenHash, round, orders, policies, default
 export function expireTurn(record) {
   if (record.phase !== 'playing') return record;
   const late = waitingFor(record);
+  if (!late.length) return record;
   const misses = { ...record.misses };
   for (const owner of late) misses[owner] = (misses[owner] ?? 0) + 1;
   const absent = late.filter((owner) => misses[owner] >= MISSES_BEFORE_AI);

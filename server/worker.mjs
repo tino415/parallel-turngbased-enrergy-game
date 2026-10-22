@@ -56,7 +56,7 @@ export class Match extends DurableObject {
       options: await request.json().catch(() => ({})),
       hostTokenHash: await hashOf(token),
       random: randomUnit,
-      shortTurns: Boolean(this.env.ALLOW_SHORT_TURNS),
+      shortTurns: this.env.ALLOW_SHORT_TURNS === '1',
     });
     await this.keep(record);
     return json({ id, token, view: viewFor(record, record.hostTokenHash, Date.now()) }, 201);
