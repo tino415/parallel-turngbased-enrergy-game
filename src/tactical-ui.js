@@ -423,6 +423,10 @@
 
   function selectOwnNodes(predicate) {
     const ids = state.nodes.map((node) => node.id).filter((id) => isMine(id) && predicate(id));
+    if (!ids.length) {
+      showGroupHint('No such nodes.');
+      return;
+    }
     store.setBulkSelection(ids);
     changedGroup();
   }
