@@ -600,7 +600,7 @@ function mapItemSelector(element) {
 function renderMap() {
   const nodes = state.nodes;
   const svg = $('map');
-  lostMapFocus = mapItemSelector(document.activeElement) ?? lostMapFocus;
+  lostMapFocus = mapItemSelector(document.activeElement);
   svg.innerHTML = '';
   svg.setAttribute(
     'viewBox',

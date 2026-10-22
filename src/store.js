@@ -1178,6 +1178,9 @@
           const [current, before] = notifications.shift();
           for (const listener of listeners) listener(current, before);
         }
+      } catch (error) {
+        notifications.length = 0;
+        throw error;
       } finally {
         notifying = false;
       }
@@ -1339,16 +1342,9 @@
 
   const changed = (snapshot, previous, read) =>
     previous === null || read(snapshot) !== read(previous);
-  const onlyTheCameraMoved = (snapshot, previous) =>
-    previous !== null &&
-    snapshot.match === previous.match &&
-    Object.keys(snapshot.ui).every(
-      (key) => key === 'camera' || snapshot.ui[key] === previous.ui[key],
-    );
 
   globalThis.GameStore = Object.freeze({
     changed,
-    onlyTheCameraMoved,
     createStore,
     classicMatch,
     generatedMatch,

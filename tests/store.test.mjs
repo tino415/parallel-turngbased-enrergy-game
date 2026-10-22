@@ -144,6 +144,20 @@ test('a command from a listener reaches every listener after the current change'
   ]);
 });
 
+test('a listener that throws drops the changes queued behind it', () => {
+  const store = newStore();
+  const seen = [];
+  store.subscribe((snapshot) => {
+    if (snapshot.ui.selected !== 0) return;
+    store.select(1);
+    throw new Error('drawing failed');
+  });
+  store.subscribe((snapshot) => seen.push(snapshot.ui.selected));
+  assert.throws(() => store.select(0), /drawing failed/);
+  store.setView('messages');
+  assert.deepEqual(seen, [1]);
+});
+
 test('refresh notifies every listener without a previous snapshot', () => {
   const store = newStore();
   const calls = [];

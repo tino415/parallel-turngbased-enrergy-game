@@ -318,9 +318,11 @@
       showGroupHint('Only your nodes join a group.');
       return;
     }
-    store.setGroupMode(true);
-    store.toggleGroupMember(id);
-    changedGroup();
+    store.batch(() => {
+      store.setGroupMode(true);
+      store.toggleGroupMember(id);
+      changedGroup();
+    });
   }
 
   function toggleGroupEdge(a, b) {
@@ -332,18 +334,18 @@
       showGroupHint('Only connections touching your nodes join.');
       return;
     }
-    store.setGroupMode(true);
-    store.toggleGroupEdge(a, b);
-    changedGroup();
+    store.batch(() => {
+      store.setGroupMode(true);
+      store.toggleGroupEdge(a, b);
+      changedGroup();
+    });
   }
 
   function changedGroup() {
+    const { bulkSelection, bulkEdges } = store.getSnapshot().ui;
     groupMessage = '';
-    store.batch(() => {
-      if (!bulkSelection.length && !bulkEdges.length) store.setGroupEditing(false);
-      store.dismissInspector();
-    });
-    redrawPanels();
+    if (!bulkSelection.length && !bulkEdges.length) store.setGroupEditing(false);
+    store.dismissInspector();
   }
 
   function editGroup() {
@@ -771,8 +773,7 @@
         name: 'Pause policy this round',
         checked: Boolean(plan(id).hold),
         onChange: (checked) => {
-          store.setHold(id, checked);
-          redrawPanels();
+          redrawPanelsUnlessCommitted(() => store.setHold(id, checked));
         },
       }),
       chipButton('tacticalCopyPolicy', 'Copy', 'Copy policy', () =>
@@ -1011,9 +1012,8 @@
         byId('tacticalRoundError').textContent = 'Invalid amount';
         return;
       }
-      const limit = store.setAllocation(id, target, amount);
-      if (limit === undefined) redrawPanels();
-      else {
+      const limit = redrawPanelsUnlessCommitted(() => store.setAllocation(id, target, amount));
+      if (limit !== undefined) {
         input.value = shown();
         byId('tacticalRoundError').textContent =
           'Over budget: allocations cannot exceed ' + numeric(limit);
@@ -1068,10 +1068,7 @@
     button.type = 'button';
     button.id = id;
     button.setAttribute('aria-label', name);
-    button.onclick = () => {
-      act();
-      redrawPanels();
-    };
+    button.onclick = () => redrawPanelsUnlessCommitted(act);
     return button;
   }
 
@@ -1145,9 +1142,7 @@
   }
 
   function changePolicy(source, key, value) {
-    const accepted = store.changePolicy(source, key, value);
-    if (!accepted) redrawPanels();
-    return accepted;
+    return redrawPanelsUnlessCommitted(() => store.changePolicy(source, key, value));
   }
 
   function changeShare(id, key, value) {
@@ -1592,8 +1587,7 @@
       checked: view.pressured === view.attacks,
       onChange: (checked) => {
         if (checked) return applyGroupPressure(pairs, {});
-        store.stopEdgePressure(pairs);
-        redrawPanels();
+        redrawPanelsUnlessCommitted(() => store.stopEdgePressure(pairs));
       },
     });
     toggle.querySelector('input').indeterminate =
@@ -1802,7 +1796,7 @@
         input.value = String(value);
         return;
       }
-      store.setAllocation(source, destination, amount);
+      redrawPanelsUnlessCommitted(() => store.setAllocation(source, destination, amount));
     };
     field.append(input);
     const error = textElement('p', '', 'tactical-warning');
@@ -1934,7 +1928,10 @@
           button.title = presetDescription(preset);
           button.setAttribute('aria-label', presetDescription(preset));
           button.disabled = !presetAffordable(preset, limit);
-          button.onclick = () => store.setAllocation(source, destination, preset.amount);
+          button.onclick = () =>
+            redrawPanelsUnlessCommitted(() =>
+              store.setAllocation(source, destination, preset.amount),
+            );
           return button;
         }),
     );
@@ -2010,8 +2007,7 @@
             name: 'Automatically send remaining surplus to Node ' + destination + ' each round',
             checked: targetsHere,
             onChange: (checked) => {
-              store.routeSurplus(source, destination, checked);
-              redrawPanels();
+              redrawPanelsUnlessCommitted(() => store.routeSurplus(source, destination, checked));
             },
           }),
           ...(targetsHere
@@ -2129,9 +2125,8 @@
 
   function changeEdgePressure(source, destination, fields) {
     const before = currentMatch();
-    store.setEdgePressure(source, destination, fields);
+    redrawPanelsUnlessCommitted(() => store.setEdgePressure(source, destination, fields));
     const accepted = currentMatch() !== before;
-    if (!accepted) redrawPanels();
     if (!accepted)
       byId('tacticalEdgePressureWarning')?.replaceChildren(
         'Node ' +
@@ -2243,6 +2238,19 @@
     positionInspector();
   }
 
+  const drawnSlices = [
+    (s) => s.match,
+    (s) => s.ui.view,
+    (s) => s.ui.aiDebug,
+    (s) => s.ui.selected,
+    (s) => s.ui.clipboard,
+    (s) => s.ui.inspector,
+    (s) => s.ui.groupMode,
+    (s) => s.ui.groupEditing,
+    (s) => s.ui.bulkSelection,
+    (s) => s.ui.bulkEdges,
+  ];
+
   function forgetStaleInspection() {
     const before = store.getSnapshot();
     if (state.round !== previousRound) {
@@ -2267,6 +2275,13 @@
   function redrawPanels() {
     renderGroupBar();
     showInspector();
+  }
+
+  function redrawPanelsUnlessCommitted(command) {
+    const before = store.getSnapshot();
+    const result = command();
+    if (store.getSnapshot() === before) redrawPanels();
+    return result;
   }
 
   function plannedNodeCount() {
@@ -2295,7 +2310,8 @@
   });
   store.subscribe((snapshot, previous) => {
     if (GameStore.changed(snapshot, previous, (s) => s.ui.camera)) positionInspector();
-    if (GameStore.onlyTheCameraMoved(snapshot, previous) || forgetStaleInspection()) return;
+    if (!drawnSlices.some((read) => GameStore.changed(snapshot, previous, read))) return;
+    if (forgetStaleInspection()) return;
     drawTacticalLayer();
   });
   render();

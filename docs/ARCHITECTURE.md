@@ -102,8 +102,9 @@ order, so the three map layers keep their order:
    while the map tab is shown), the order list, the log and the tab state.
 2. `ux.js` sets the camera viewBox, the wide layout of the other tabs and the
    starting camera of a new map.
-3. `tactical-ui.js` repositions the inspector on a camera change. On any other
-   change it draws edge hit areas, selection and group rings into one
+3. `tactical-ui.js` repositions the inspector on a camera change. When the match,
+   the view, the AI debug switch, the selection, the inspector, the clipboard or
+   the group changes, it draws edge hit areas, selection and group rings into one
    `.tactical-selection` layer, the group bar and the inspector for one node,
    one edge, the node group or the connection group, which it updates in place
    to keep drafts and focus. A rejected command commits nothing, so the

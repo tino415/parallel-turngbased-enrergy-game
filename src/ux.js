@@ -122,11 +122,11 @@
     if(isFirst || state.round===1) store.setCamera(startingCamera());
   }
   store.subscribe((snapshot,previous)=>{
-    if(!snapshot.match || GameStore.onlyTheCameraMoved(snapshot,previous)) return;
+    if(!snapshot.match) return;
     const changed=(read)=>GameStore.changed(snapshot,previous,read);
     if(changed(s=>s.ui.view)) document.querySelector('.layout').classList.toggle('ux-wide-view',currentView!=='map');
     if(changed(s=>s.match)) startOnNewMaps();
-    redrawCamera();
+    if([s=>s.match,s=>s.ui.view,s=>s.ui.aiDebug].some(changed)) redrawCamera();
   });
   byId('zoomIn').onclick=()=>zoomUX(1.25);
   byId('zoomOut').onclick=()=>zoomUX(.8);
