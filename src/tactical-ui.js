@@ -1870,7 +1870,7 @@
     input.value = String(Number(percent.toFixed(1)));
     input.setAttribute('aria-label', 'Order energy as a percentage of active energy');
     input.onchange = () => {
-      const share = Number(input.value);
+      const share = input.value.trim() === '' ? NaN : Number(input.value);
       const wanted = selectors.activeShareAmount(currentMatch(), source, share);
       if (!Number.isFinite(share) || share < 0 || share > 100 || wanted > limit + 1e-8) {
         byId('tacticalEdgeError').textContent =
