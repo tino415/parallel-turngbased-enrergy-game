@@ -3,12 +3,15 @@ import { test, expect } from '@playwright/test';
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => {
+    const match = structuredClone(store.getSnapshot().match),
+      { state, orders, policies } = match;
     for (const node of state.nodes) {
       if (node.owner === null) continue;
       node.active = 123456789012.3 * (1 + node.id / 7);
       node.invested = 98765432109.8 * (1 + node.id / 5);
     }
     orders[0] = { invest: 0, edges: { 1: 45678901234.5 } };
+    store.replaceMatch(match);
     render();
   });
   await page.locator('#fit').click();

@@ -81,7 +81,6 @@
       );
       connection.classList.add('tactical-flow-connection');
     }
-    graph.querySelectorAll('line.ux-flow-overlay').forEach((line) => line.remove());
     if (store.getSnapshot().ui.aiDebug) drawAiPlans(graph, element);
   };
 
@@ -123,9 +122,10 @@
 
   let { active, editing } = store.getSnapshot().ui.inspector;
   let { groupMode, groupEditing, bulkSelection, bulkEdges } = store.getSnapshot().ui;
-  store.subscribe(({ ui }) => {
+  store.subscribe(({ ui }, previous) => {
     ({ active, editing } = ui.inspector);
     ({ groupMode, groupEditing, bulkSelection, bulkEdges } = ui);
+    if (ui.camera !== previous.ui.camera) positionInspector();
   });
   const groupIds = () => (groupMode ? bulkSelection : []);
   const groupEdges = () => (groupMode ? bulkEdges : []);
@@ -192,11 +192,6 @@
         y:
           (center.y - rect.top) * factor - ((pinch.center.y - rect.top) * factor - pinch.y) * ratio,
       });
-      const graph = svg.querySelector('g');
-      graph?.setAttribute(
-        'transform',
-        'translate(' + camera.x + ' ' + camera.y + ') scale(' + scale + ')',
-      );
     },
     true,
   );

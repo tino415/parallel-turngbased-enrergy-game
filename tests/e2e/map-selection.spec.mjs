@@ -4,7 +4,10 @@ import { visibleMapTop } from './support/game.mjs';
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => {
+    const match = structuredClone(store.getSnapshot().match),
+      { state, orders, policies } = match;
     orders[0] = { invest: 0, edges: { 1: 4 } };
+    store.replaceMatch(match);
     render();
   });
   await page.locator('#fit').click();
