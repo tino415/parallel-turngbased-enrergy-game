@@ -56,6 +56,11 @@ npm run format       # apply prettier
 npm run simulate     # AI strategy simulations, see scripts/
 ```
 
+`test:ui` runs for minutes. An agent starts it in the background with a deadline,
+`mkdir -p reports && timeout 900 npm run test:ui > reports/test-ui.log 2>&1`, waits for the
+completion notification and reads the log's `tail`. Never a foreground `sleep`,
+and never `until grep … <task>.output; do sleep …; done`.
+
 To play it locally:
 
 ```sh
@@ -102,3 +107,7 @@ service worker `sw.js`, registered by `src/service-worker-registration.js`.
 `.github/workflows/` runs the same `npm run check` and `npm run test:ui`, plus
 the balance and economy simulations. The site deploys to Cloudflare from `dist/`
 through `wrangler.toml`.
+
+An agent waits for a PR's CI with one Monitor,
+`timeout 1800 gh pr checks <number> --watch --interval 300`, and reads the result
+when it ends. Never `until gh pr checks …` in a loop.
