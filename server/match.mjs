@@ -52,8 +52,36 @@ export function leaveMatch(record, { tokenHash }) {
   if (tokenHash === record.hostTokenHash)
     throw new Refusal(409, 'The host cancels the match instead');
   if (record.phase === 'finished') throw new Refusal(409, 'The match is over');
+  return vacated(record, owner, freeSeat(owner), ' left');
+}
+
+export function freeColour(record, { tokenHash, owner }) {
+  return hostChangesSeat(record, tokenHash, owner, openSeat(owner), ' was freed');
+}
+
+export function handColourToAi(record, { tokenHash, owner }) {
+  return hostChangesSeat(record, tokenHash, owner, aiSeat(owner), ' was handed to the AI');
+}
+
+function hostChangesSeat(record, tokenHash, owner, replacement, reason) {
+  requireHost(record, tokenHash);
+  const seat = record.seats[owner];
+  if (!seat) throw new Refusal(404, 'No such colour');
+  if (record.phase === 'finished') throw new Refusal(409, 'The match is over');
+  if (seat.tokenHash && seat.tokenHash === record.hostTokenHash)
+    throw new Refusal(409, 'The host keeps their own colour');
+  if (!seat.tokenHash) return revised(withSeat(record, replacement));
+  return vacated(record, owner, replacement, reason);
+}
+
+const withSeat = (record, replacement) => ({
+  ...record,
+  seats: record.seats.map((seat) => (seat.owner === replacement.owner ? replacement : seat)),
+});
+
+function vacated(record, owner, replacement, reason) {
   const leaving = record.seats[owner];
-  const seats = record.seats.map((seat) => (seat === leaving ? freeSeat(owner) : seat));
+  const { seats } = withSeat(record, replacement);
   if (record.phase === 'lobby') return revised({ ...record, seats });
   const { match } = record;
   const next = revised({
@@ -68,7 +96,10 @@ export function leaveMatch(record, { tokenHash }) {
       policies: Object.fromEntries(
         Object.entries(match.policies).filter(([id]) => match.state.nodes[id]?.owner !== owner),
       ),
-      history: [leaving.name + ' left; the AI plays ' + playerName(owner) + '.', ...match.history],
+      history: [
+        leaving.name + reason + '; the AI plays ' + playerName(owner) + '.',
+        ...match.history,
+      ],
     },
   });
   const stillWaiting = waitingFor(next).length || !next.match.humanSeats.length;
@@ -87,14 +118,17 @@ function lobbyMap(requested, seatsBefore, random) {
 }
 
 export function claimSeat(record, { owner, name, tokenHash }) {
-  if (record.phase !== 'lobby') throw new Refusal(409, 'The match has already started');
   const seat = record.seats[owner];
   if (!seat) throw new Refusal(404, 'No such colour');
+  if (record.phase === 'finished') throw new Refusal(409, 'The match is over');
+  if (seat.ai) throw new Refusal(409, 'The host gave that colour to the AI');
   if (seat.tokenHash && seat.tokenHash !== tokenHash) throw new Refusal(409, 'Colour taken');
   const cleanName = String(name ?? '')
     .trim()
     .slice(0, NAME_LENGTH);
   if (!cleanName) throw new Refusal(400, 'Type a name first');
+  if (record.phase === 'playing')
+    return joinedMidMatch(record, { owner, name: cleanName, tokenHash });
   const seats = record.seats.map((s) =>
     s.owner === owner
       ? { owner, name: cleanName, tokenHash }
@@ -103,6 +137,23 @@ export function claimSeat(record, { owner, name, tokenHash }) {
         : s,
   );
   return revised({ ...record, seats });
+}
+
+function joinedMidMatch(record, { owner, name, tokenHash }) {
+  if (record.seats[owner].tokenHash) return revised(withSeat(record, { owner, name, tokenHash }));
+  if (!record.seats[owner].open) throw new Refusal(409, 'The match has already started');
+  if (ownerOf(record, tokenHash) !== null) throw new Refusal(409, 'You already have a colour');
+  if (!record.match.state.nodes.some((node) => node.owner === owner))
+    throw new Refusal(409, 'That colour has no nodes left');
+  const { match } = record;
+  return revised({
+    ...withSeat(record, { owner, name, tokenHash }),
+    match: {
+      ...match,
+      humanSeats: [...match.humanSeats, owner],
+      history: [name + ' took ' + playerName(owner) + '.', ...match.history],
+    },
+  });
 }
 
 export function startMatch(record, { tokenHash }) {
@@ -158,10 +209,12 @@ export function viewFor(record, tokenHash) {
     host: Boolean(tokenHash) && tokenHash === record.hostTokenHash,
     you,
     options: record.options,
-    seats: record.seats.map(({ owner, name, tokenHash: taken }) => ({
+    seats: record.seats.map(({ owner, name, tokenHash: taken, open, ai }) => ({
       owner,
       name,
       taken: Boolean(taken),
+      open: Boolean(open),
+      ai: Boolean(ai),
       submitted: Boolean(record.submissions[owner]),
     })),
     waitingFor: record.phase === 'playing' ? waitingFor(record) : [],
@@ -224,6 +277,8 @@ const policiesOf = (match, owner) =>
 
 const revised = (record) => ({ ...record, revision: record.revision + 1 });
 const freeSeat = (owner) => ({ owner, name: null, tokenHash: null });
+const openSeat = (owner) => ({ ...freeSeat(owner), open: true });
+const aiSeat = (owner) => ({ ...freeSeat(owner), ai: true });
 const withoutOwner = (byOwner, owner) =>
   Object.fromEntries(Object.entries(byOwner).filter(([key]) => Number(key) !== owner));
 const claimedOwners = (record) => record.seats.filter((s) => s.tokenHash).map((s) => s.owner);

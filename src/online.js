@@ -150,8 +150,17 @@
     renderOnline();
   }
 
+  function chosenName() {
+    const typed = byId('onlineName').value.trim() || localStorage.getItem(NAME_KEY);
+    return typed || (prompt('Your name') ?? '').trim();
+  }
+
+  async function changeSeat(owner, action) {
+    await act('POST', '/seats/' + owner + '/' + action);
+  }
+
   async function takeSeat(owner) {
-    const name = byId('onlineName').value.trim();
+    const name = chosenName();
     if (!name) return showMessage('Type a name first.');
     localStorage.setItem(NAME_KEY, name);
     try {
@@ -288,19 +297,48 @@
           swatch(seat.owner),
           element('span', { className: 'online-seat-name' }, GameEngine.playerName(seat.owner)),
           element('span', { className: 'online-seat-player' }, seatText(seat)),
-          view.phase === 'lobby' && !seat.taken
+          canTake(seat)
             ? element('button', {
                 type: 'button',
                 textContent: 'Take',
                 onclick: () => takeSeat(seat.owner),
               })
             : '',
+          ...hostSeatButtons(seat),
         ),
       ),
     );
   }
 
+  function canTake(seat) {
+    if (seat.taken || seat.ai || view.phase === 'finished') return false;
+    return view.phase === 'lobby' || (seat.open && view.you === null);
+  }
+
+  function hostSeatButtons(seat) {
+    const hostsOwnColour = seat.owner === view.you;
+    if (!view.host || hostsOwnColour || view.phase === 'finished') return [];
+    return [
+      seat.taken || seat.ai
+        ? element('button', {
+            type: 'button',
+            textContent: 'Free',
+            onclick: () => changeSeat(seat.owner, 'free'),
+          })
+        : '',
+      seat.ai
+        ? ''
+        : element('button', {
+            type: 'button',
+            textContent: 'To AI',
+            onclick: () => changeSeat(seat.owner, 'ai'),
+          }),
+    ];
+  }
+
   function seatText(seat) {
+    if (seat.ai) return 'AI · closed';
+    if (!seat.taken && seat.open) return 'free · the AI plays it until someone takes it';
     if (!seat.taken) return view.phase === 'lobby' ? 'free · the AI plays it' : 'AI';
     const player = seat.name + (seat.owner === view.you ? ' (you)' : '');
     if (view.phase !== 'playing') return player;

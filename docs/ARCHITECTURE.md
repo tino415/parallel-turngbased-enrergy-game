@@ -193,6 +193,12 @@ imports and resolve rounds with the store's own `resolve`.
   Each recorded round carries the `humanSeats` it was resolved with, so the replay plans
   the AI for the same colours. The host has no Leave until the match is over; cancelling
   is the host's exit.
+- The host can free another player's colour (`POST /seats/<owner>/free`) or hand it to the AI
+  (`.../ai`), in the lobby and during play, but never their own. Freeing drops the seat's token
+  hash, so the old device becomes a spectator, and during play it leaves `humanSeats` like a
+  leave. A freed seat is `open`: anyone without a colour can take it, also mid-match, which adds
+  it to `humanSeats` and makes the round wait for them. A seat handed to the AI is `ai` and
+  cannot be taken until the host frees it.
 - The server keeps only the orders of nodes the sender owns, cleans every number,
   and shows a seat only its own policies and submitted turn. The replay (orders and
   dice seed) is sent when the match is finished, which is also when the Leaderboard

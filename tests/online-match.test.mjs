@@ -7,6 +7,8 @@ import {
   claimSeat,
   createMatch,
   forceResolve,
+  freeColour,
+  handColourToAi,
   leaveMatch,
   startMatch,
   submitTurn,
@@ -168,6 +170,8 @@ test('a seat sees its own policies and orders and nobody else sees them', () => 
     owner: 0,
     name: 'Hana',
     taken: true,
+    open: false,
+    ai: false,
     submitted: true,
   });
 });
@@ -264,4 +268,65 @@ test('a finished match hands out its replay', () => {
   const finished = turn(conquered, HOST);
   assert.equal(finished.phase, 'finished');
   assert.equal(viewFor(finished, ANN).replay.diceSeed, record.match.replay.diceSeed);
+});
+
+const BOB = 'bob-hash';
+
+test('only the host frees a colour or hands it to the AI, and never their own', () => {
+  refusal(() => freeColour(playing(), { tokenHash: ANN, owner: 0 }));
+  refusal(() => handColourToAi(playing(), { tokenHash: ANN, owner: 1 }));
+  refusal(() => freeColour(playing(), { tokenHash: HOST, owner: 0 }));
+  refusal(() => freeColour(playing(), { tokenHash: HOST, owner: 9 }));
+});
+
+test('a freed colour in the lobby can be taken by someone else and the old token loses it', () => {
+  const claimed = claimSeat(lobby(), { owner: 1, name: 'Ann', tokenHash: ANN });
+  const freed = freeColour(claimed, { tokenHash: HOST, owner: 1 });
+  assert.equal(viewFor(freed, ANN).you, null);
+  const retaken = claimSeat(freed, { owner: 1, name: 'Bob', tokenHash: BOB });
+  assert.equal(viewFor(retaken, BOB).you, 1);
+  assert.equal(viewFor(retaken, ANN).you, null);
+});
+
+test('a colour handed to the AI cannot be taken until the host frees it', () => {
+  const handed = handColourToAi(lobby(), { tokenHash: HOST, owner: 2 });
+  assert.equal(viewFor(handed, HOST).seats[2].ai, true);
+  refusal(() => claimSeat(handed, { owner: 2, name: 'Bob', tokenHash: BOB }));
+  const freed = freeColour(handed, { tokenHash: HOST, owner: 2 });
+  assert.equal(claimSeat(freed, { owner: 2, name: 'Bob', tokenHash: BOB }).seats[2].name, 'Bob');
+});
+
+test('freeing a playing colour hands it to the AI and nobody waits for it', () => {
+  const freed = freeColour(playing(), { tokenHash: HOST, owner: 1 });
+  assert.deepEqual(freed.match.humanSeats, [0]);
+  assert.deepEqual(waitingFor(freed), [0]);
+  assert.equal(viewFor(freed, ANN).you, null);
+  assert.match(freed.match.history[0], /Ann was freed; the AI plays Red/);
+});
+
+test('a colour handed to the AI mid-match is closed to takers', () => {
+  const handed = handColourToAi(playing(), { tokenHash: HOST, owner: 1 });
+  assert.deepEqual(handed.match.humanSeats, [0]);
+  assert.match(handed.match.history[0], /Ann was handed to the AI/);
+  refusal(() => claimSeat(handed, { owner: 1, name: 'Bob', tokenHash: BOB }));
+});
+
+test('the round resolves when the host frees the last player still deciding', () => {
+  const freed = freeColour(turn(playing(), HOST), { tokenHash: HOST, owner: 1 });
+  assert.equal(freed.match.state.round, 2);
+});
+
+test('a colour the host freed mid-match is taken by a newcomer who joins the round', () => {
+  const freed = freeColour(playing(), { tokenHash: HOST, owner: 1 });
+  const joined = claimSeat(freed, { owner: 1, name: 'Bob', tokenHash: BOB });
+  assert.deepEqual(joined.match.humanSeats, [0, 1]);
+  assert.deepEqual(waitingFor(joined), [0, 1]);
+  assert.equal(viewFor(joined, BOB).you, 1);
+  assert.equal(viewFor(joined, ANN).you, null);
+});
+
+test('mid-match only an open colour can be taken, and only by someone without one', () => {
+  refusal(() => claimSeat(playing(), { owner: 2, name: 'Bob', tokenHash: BOB }));
+  const opened = freeColour(playing(), { tokenHash: HOST, owner: 1 });
+  refusal(() => claimSeat(opened, { owner: 1, name: 'Hana', tokenHash: HOST }));
 });
