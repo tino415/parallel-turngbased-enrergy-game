@@ -698,17 +698,23 @@ $('cancelNewGame').onclick = () => $('newGameDialog').close();
 $('mapTab').onclick = () => switchView('map');
 $('messagesTab').onclick = () => switchView('messages');
 $('leaderboardTab').onclick = () => switchView('leaderboard');
-document.addEventListener('keydown', (event) => {
-  if (event.defaultPrevented || event.repeat || isTypingOrInOverlay(event.target)) return;
-  const shortcut = keyboardShortcutOf(event);
-  if (!shortcut) return;
-  event.preventDefault();
-  $(shortcut).click();
-});
+document.addEventListener(
+  'keydown',
+  (event) => {
+    if (event.repeat || isTypingOrInOverlay(event.target)) return;
+    const shortcut = keyboardShortcutOf(event);
+    if (!shortcut) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    $(shortcut).click();
+  },
+  true,
+);
 function keyboardShortcutOf(event) {
   const modified = event.ctrlKey || event.metaKey;
-  if (event.key === 'Enter' && modified && !event.altKey && !event.shiftKey) return 'resolve';
-  if (event.key.toLowerCase() !== 'm' || modified || event.altKey) return null;
+  if (event.altKey || event.shiftKey) return null;
+  if (event.key === 'Enter' && modified) return 'resolve';
+  if (event.code !== 'KeyM' || modified) return null;
   return currentView === 'map' ? 'messagesTab' : 'mapTab';
 }
 function isTypingOrInOverlay(target) {

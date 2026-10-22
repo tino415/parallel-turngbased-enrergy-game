@@ -1,5 +1,6 @@
 import {
   test,
+  blueNode,
   expect,
   inspector,
   edgeHit,
@@ -118,6 +119,17 @@ test('Ctrl+Enter resolves the round and a bare Enter does not', async ({ page })
   expect(await round()).toBe(1);
   await page.keyboard.press('Control+Enter');
   expect(await round()).toBe(2);
+});
+
+test('Ctrl+Enter resolves the round while a map node has focus', async ({ page }) => {
+  await blueNode(page).focus();
+  await page.keyboard.press('Control+Enter');
+  expect(await page.evaluate(() => state.round)).toBe(2);
+});
+
+test('Shift+M leaves the view alone', async ({ page }) => {
+  await page.keyboard.press('Shift+M');
+  await expect(page.locator('#mapViewport')).toBeVisible();
 });
 
 test('shortcuts do nothing while typing in a field', async ({ page }) => {
