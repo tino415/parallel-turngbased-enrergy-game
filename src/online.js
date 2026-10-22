@@ -2,6 +2,7 @@
 
 (() => {
   const POLL_MS = 4000;
+  const TICK_MS = 1000;
   const SESSION_PREFIX = 'parallel-energy-online:';
   const NAME_KEY = 'parallel-energy-online-name';
   const MAP_FIELDS = {
@@ -9,6 +10,7 @@
     players: 'onlinePlayerCount',
     density: 'onlineDensity',
     seed: 'onlineSeed',
+    turnTime: 'onlineTurnTime',
   };
   const GONE = { 404: 'This match does not exist.', 410: 'The host cancelled this match.' };
   const matchId = new URLSearchParams(location.search).get('match');
@@ -17,6 +19,8 @@
   let connectionLost = false;
   let panelOpen = false;
   let sentTurn = null;
+  let deadlineAt = null;
+  let refreshedAtDeadline = null;
   let indicators = [];
   let seatLinkItem = null;
   let seatLinkShown = false;
@@ -75,6 +79,7 @@
       if (document.visibilityState === 'visible') refresh();
     });
     window.addEventListener('online', refresh);
+    setInterval(tickCountdown, TICK_MS);
     store.subscribe(({ match }, previous) => {
       if (previous?.match.online && !match.online) leaveOnline();
       else if (view) renderTurnButtons();
@@ -96,6 +101,7 @@
     if (view && next.revision < view.revision) return;
     const previous = view;
     view = next;
+    deadlineAt = next.secondsLeft === null ? null : Date.now() + next.secondsLeft * 1000;
     const reloaded =
       !previous ||
       previous.round !== next.round ||
@@ -245,6 +251,24 @@
     for (const id of ['resolve', 'uxDockResolve']) byId(id).classList.add('primary');
   }
 
+  function tickCountdown() {
+    if (!view || deadlineAt === null) return;
+    renderIndicators();
+    byId('onlineWaiting').textContent = statusText();
+    if (Date.now() >= deadlineAt && refreshedAtDeadline !== deadlineAt) {
+      refreshedAtDeadline = deadlineAt;
+      refresh();
+    }
+  }
+
+  function countdown() {
+    if (deadlineAt === null || view.phase !== 'playing') return '';
+    const seconds = Math.max(0, Math.ceil((deadlineAt - Date.now()) / 1000));
+    const clock = (value) => String(value).padStart(2, '0');
+    const [hours, minutes] = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60];
+    return (hours ? hours + ':' + clock(minutes) : minutes) + ':' + clock(seconds % 60);
+  }
+
   function renderOnline() {
     if (!view) return;
     renderSeatLink();
@@ -338,6 +362,8 @@
 
   function seatText(seat) {
     if (seat.ai) return 'AI · closed';
+    if (seat.away && view.phase === 'playing')
+      return seat.name + ' · away · the AI plays it until they end a turn';
     if (!seat.taken && seat.open) return 'free · the AI plays it until someone takes it';
     if (!seat.taken) return view.phase === 'lobby' ? 'free · the AI plays it' : 'AI';
     const player = seat.name + (seat.owner === view.you ? ' (you)' : '');
@@ -352,7 +378,7 @@
     if (view.you === null) return 'You are watching this match.';
     if (!view.waitingFor.length) return 'Resolving the round…';
     const waiting = view.waitingFor.map((owner) => view.seats[owner].name);
-    return 'Waiting for ' + waiting.join(', ');
+    return 'Waiting for ' + waiting.join(', ') + (countdown() ? ' · ' + countdown() : '');
   }
 
   function addIndicators() {
@@ -390,7 +416,8 @@
     const playing = view.humanSeats.filter((owner) =>
       view.state.nodes.some((node) => node.owner === owner),
     );
-    return playing.length - view.waitingFor.length + '/' + playing.length;
+    const ended = playing.length - view.waitingFor.length + '/' + playing.length;
+    return countdown() ? ended + ' · ' + countdown() : ended;
   }
 
   function renderTurnButtons() {

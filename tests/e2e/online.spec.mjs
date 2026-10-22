@@ -67,7 +67,7 @@ test('two browsers play two rounds of an online match', async ({ page, browser }
   await expect(turnButton(page)).toHaveText('Turn ended ✓');
   await expect(indicator(friend)).toContainText('1/2', SLOW);
   await indicator(page).click();
-  await expect(page.locator('#onlineWaiting')).toHaveText('Waiting for Ann');
+  await expect(page.locator('#onlineWaiting')).toHaveText(/^Waiting for Ann · 23:59:\d\d$/);
   await page.getByRole('button', { name: 'Close' }).click();
   expect(await round(friend)).toBe(1);
   await endTurn(friend);
@@ -321,4 +321,45 @@ test('the host hands a colour to the AI during play and nobody waits for it', as
   await expect(indicator(page)).toContainText('0/1', SLOW);
   await endTurn(page);
   await expect.poll(() => round(page), SLOW).toBe(2);
+});
+
+async function hostTimedMatch(page, turnTime) {
+  await page.goto('/');
+  const link = await page.evaluate(async (seconds) => {
+    const response = await fetch('/api/matches', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ count: 14, players: 2, turnTime: seconds }),
+    });
+    const { id, token } = await response.json();
+    localStorage.setItem('parallel-energy-online:' + id, JSON.stringify({ token }));
+    return location.origin + location.pathname + '?match=' + id;
+  }, turnTime);
+  await page.goto(link);
+  await expect(page.locator('#onlinePanel')).toBeVisible(SLOW);
+  return link;
+}
+
+test('the round resolves when the turn timer runs out and the screens count down', async ({
+  page,
+  browser,
+}, testInfo) => {
+  page.on('dialog', (dialog) => dialog.accept());
+  const link = await hostTimedMatch(page, 6);
+  await takeColour(page, 'Hana', 'Blue');
+  const friend = await (await friendContext(browser, testInfo.project)).newPage();
+  await friend.goto(link);
+  await expect(friend.locator('#onlinePanel')).toBeVisible(SLOW);
+  await takeColour(friend, 'Ann', 'Red');
+  await expect(page.locator('.online-seat', { hasText: 'Red' })).toContainText('Ann', SLOW);
+
+  await page.getByRole('button', { name: 'Start match' }).click();
+  await expect(indicator(friend)).toContainText(/0\/2 · 0:0\d/, SLOW);
+  await expect(indicator(page)).toContainText(/0\/2 · 0:0\d/, SLOW);
+  expect(await round(friend)).toBe(1);
+
+  await endTurn(page);
+  await expect.poll(() => round(friend), SLOW).toBe(2);
+  await expect.poll(() => round(page), SLOW).toBe(2);
+  await expect(turnButton(friend)).toHaveText(/End turn/);
 });

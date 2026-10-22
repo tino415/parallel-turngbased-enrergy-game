@@ -7,6 +7,9 @@ const { generatedMatch, commands } = globalThis.GameStore;
 const MATCH_DEFAULTS = { enabled: true, reserve: 5, invest: 70 };
 const DENSITIES = ['sparse', 'normal', 'dense'];
 const NAME_LENGTH = 20;
+export const TURN_SECONDS = [120, 600, 3600, 86400];
+const DEFAULT_TURN_SECONDS = 86400;
+const MISSES_BEFORE_AI = 3;
 const POLICY_NUMBERS = [
   'reserve',
   'investPct',
@@ -23,22 +26,25 @@ export class Refusal extends Error {
   }
 }
 
-export function createMatch({ id, options, hostTokenHash, random }) {
+export function createMatch({ id, options, hostTokenHash, random, shortTurns = false }) {
   return {
     id,
     phase: 'lobby',
     revision: 0,
     hostTokenHash,
+    shortTurns,
     seatDefaults: {},
     submissions: {},
-    ...lobbyMap(options, [], random),
+    misses: {},
+    deadline: null,
+    ...lobbyMap(options, [], random, shortTurns),
   };
 }
 
 export function changeMap(record, { tokenHash, options, random }) {
   requireHost(record, tokenHash);
   if (record.phase !== 'lobby') throw new Refusal(409, 'The match has already started');
-  return revised({ ...record, ...lobbyMap(options, record.seats, random) });
+  return revised({ ...record, ...lobbyMap(options, record.seats, random, record.shortTurns) });
 }
 
 export function cancelMatch(record, { tokenHash }) {
@@ -80,15 +86,24 @@ const withSeat = (record, replacement) => ({
 });
 
 function vacated(record, owner, replacement, reason) {
+  if (record.phase === 'lobby') return revised(withSeat(record, replacement));
+  const next = handedToAi(record, owner, replacement, reason);
+  return everyoneEnded(next) ? resolved(next) : next;
+}
+
+const everyoneEnded = (record) =>
+  waitingFor(record).length === 0 && record.match.humanSeats.length > 0;
+
+function handedToAi(record, owner, replacement, reason) {
   const leaving = record.seats[owner];
   const { seats } = withSeat(record, replacement);
-  if (record.phase === 'lobby') return revised({ ...record, seats });
   const { match } = record;
-  const next = revised({
+  return revised({
     ...record,
     seats,
     submissions: withoutOwner(record.submissions, owner),
     seatDefaults: withoutOwner(record.seatDefaults, owner),
+    misses: withoutOwner(record.misses ?? {}, owner),
     match: {
       ...match,
       humanSeats: match.humanSeats.filter((human) => human !== owner),
@@ -102,12 +117,10 @@ function vacated(record, owner, replacement, reason) {
       ],
     },
   });
-  const stillWaiting = waitingFor(next).length || !next.match.humanSeats.length;
-  return stillWaiting ? next : resolved(next);
 }
 
-function lobbyMap(requested, seatsBefore, random) {
-  const options = mapOptions(requested ?? {});
+function lobbyMap(requested, seatsBefore, random, shortTurns) {
+  const options = mapOptions(requested ?? {}, shortTurns);
   const map = buildMap(options);
   const match = generatedMatch(map, MATCH_DEFAULTS, random, 0);
   return {
@@ -140,6 +153,7 @@ export function claimSeat(record, { owner, name, tokenHash }) {
 }
 
 function joinedMidMatch(record, { owner, name, tokenHash }) {
+  if (record.seats[owner].away) return returned(record, owner);
   if (record.seats[owner].tokenHash) return revised(withSeat(record, { owner, name, tokenHash }));
   if (!record.seats[owner].open) throw new Refusal(409, 'The match has already started');
   if (ownerOf(record, tokenHash) !== null) throw new Refusal(409, 'You already have a colour');
@@ -165,6 +179,7 @@ export function startMatch(record, { tokenHash }) {
   return revised({
     ...record,
     phase: 'playing',
+    deadline: null,
     match: {
       ...match,
       humanSeats,
@@ -185,12 +200,48 @@ export function submitTurn(record, { tokenHash, round, orders, policies, default
     orders: cleanOrders(orders, owns, record.match.map.edges),
     policies: cleanPolicies(policies, owns, record.match.map.edges),
   };
+  const present = record.seats[owner].away ? returned(record, owner) : record;
   const next = revised({
-    ...record,
-    seatDefaults: { ...record.seatDefaults, [owner]: cleanDefaults(defaults) },
-    submissions: { ...record.submissions, [owner]: submitted },
+    ...present,
+    seatDefaults: { ...present.seatDefaults, [owner]: cleanDefaults(defaults) },
+    submissions: { ...present.submissions, [owner]: submitted },
+    misses: withoutOwner(present.misses ?? {}, owner),
   });
   return waitingFor(next).length ? next : resolved(next);
+}
+
+export function expireTurn(record) {
+  if (record.phase !== 'playing') return record;
+  const late = waitingFor(record);
+  const misses = { ...record.misses };
+  for (const owner of late) misses[owner] = (misses[owner] ?? 0) + 1;
+  const absent = late.filter((owner) => misses[owner] >= MISSES_BEFORE_AI);
+  const replaced = absent.reduce(
+    (current, owner) =>
+      handedToAi(current, owner, { ...current.seats[owner], away: true }, ' missed three turns'),
+    { ...record, misses },
+  );
+  return resolved(replaced);
+}
+
+export function scheduled(record, now) {
+  if (record.phase !== 'playing') return { ...record, deadline: null };
+  const seconds = record.options.turnTime;
+  if (!seconds || !waitingFor(record).length) return { ...record, deadline: null };
+  return { ...record, deadline: record.deadline ?? now + seconds * 1000 };
+}
+
+function returned(record, owner) {
+  const { match } = record;
+  const seat = record.seats[owner];
+  return revised({
+    ...withSeat(record, { owner, name: seat.name, tokenHash: seat.tokenHash }),
+    match: {
+      ...match,
+      humanSeats: [...match.humanSeats, owner],
+      history: [seat.name + ' is back and plays ' + playerName(owner) + '.', ...match.history],
+    },
+  });
 }
 
 export function forceResolve(record, { tokenHash }) {
@@ -199,7 +250,7 @@ export function forceResolve(record, { tokenHash }) {
   return resolved(record);
 }
 
-export function viewFor(record, tokenHash) {
+export function viewFor(record, tokenHash, now = null) {
   const you = ownerOf(record, tokenHash);
   const { match } = record;
   return {
@@ -209,15 +260,17 @@ export function viewFor(record, tokenHash) {
     host: Boolean(tokenHash) && tokenHash === record.hostTokenHash,
     you,
     options: record.options,
-    seats: record.seats.map(({ owner, name, tokenHash: taken, open, ai }) => ({
+    seats: record.seats.map(({ owner, name, tokenHash: taken, open, ai, away }) => ({
       owner,
       name,
       taken: Boolean(taken),
       open: Boolean(open),
       ai: Boolean(ai),
+      away: Boolean(away),
       submitted: Boolean(record.submissions[owner]),
     })),
     waitingFor: record.phase === 'playing' ? waitingFor(record) : [],
+    secondsLeft: secondsLeft(record, now),
     round: match.state.round,
     state: match.state,
     map: match.map,
@@ -230,9 +283,14 @@ export function viewFor(record, tokenHash) {
   };
 }
 
+const secondsLeft = (record, now) =>
+  record.deadline === null || record.deadline === undefined || now === null
+    ? null
+    : Math.max(0, Math.ceil((record.deadline - now) / 1000));
+
 export function waitingFor(record) {
   const { nodes } = record.match.state;
-  return claimedOwners(record).filter(
+  return presentOwners(record).filter(
     (owner) => !record.submissions[owner] && nodes.some((node) => node.owner === owner),
   );
 }
@@ -251,6 +309,7 @@ function resolved(record) {
     ...record,
     phase: state.finished ? 'finished' : 'playing',
     submissions: {},
+    deadline: null,
     match: { ...match, orders: {}, policies, keptPolicies, history, state, replay },
   });
 }
@@ -282,6 +341,8 @@ const aiSeat = (owner) => ({ ...freeSeat(owner), ai: true });
 const withoutOwner = (byOwner, owner) =>
   Object.fromEntries(Object.entries(byOwner).filter(([key]) => Number(key) !== owner));
 const claimedOwners = (record) => record.seats.filter((s) => s.tokenHash).map((s) => s.owner);
+const presentOwners = (record) =>
+  record.seats.filter((s) => s.tokenHash && !s.away).map((s) => s.owner);
 
 function ownerOf(record, tokenHash) {
   if (!tokenHash) return null;
@@ -293,7 +354,7 @@ function requireHost(record, tokenHash) {
     throw new Refusal(403, 'Only the host can do that');
 }
 
-function mapOptions({ count, players, density, seed }) {
+function mapOptions({ count, players, density, seed, turnTime }, shortTurns) {
   const clamped = (value, low, high, fallback) =>
     Math.max(low, Math.min(high, Math.round(Number(value)) || fallback));
   return {
@@ -301,7 +362,15 @@ function mapOptions({ count, players, density, seed }) {
     players: clamped(players, 2, 6, 4),
     density: DENSITIES.includes(density) ? density : 'normal',
     seed: String(seed || 'energy-42').slice(0, 40),
+    turnTime: turnSeconds(turnTime, shortTurns),
   };
+}
+
+function turnSeconds(requested, shortTurns) {
+  const seconds = Number(requested);
+  if (shortTurns && Number.isInteger(seconds) && seconds > 0 && seconds < TURN_SECONDS[0])
+    return seconds;
+  return TURN_SECONDS.includes(seconds) ? seconds : DEFAULT_TURN_SECONDS;
 }
 
 const amount = (value) => (Number.isFinite(value) && value > 0 ? value : 0);

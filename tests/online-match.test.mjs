@@ -6,10 +6,12 @@ import {
   changeMap,
   claimSeat,
   createMatch,
+  expireTurn,
   forceResolve,
   freeColour,
   handColourToAi,
   leaveMatch,
+  scheduled,
   startMatch,
   submitTurn,
   viewFor,
@@ -72,7 +74,7 @@ test('the host changes the map in the lobby and everyone sees its options', () =
   const changed = changeMap(lobby(), { tokenHash: HOST, options, random: seeded('dice') });
   assert.equal(changed.match.map.N, 20);
   assert.equal(changed.seats.length, 4);
-  assert.deepEqual(viewFor(changed, ANN).options, options);
+  assert.deepEqual(viewFor(changed, ANN).options, { ...options, turnTime: 86400 });
 });
 
 test('a smaller map keeps the colours it still has and frees the rest', () => {
@@ -172,6 +174,7 @@ test('a seat sees its own policies and orders and nobody else sees them', () => 
     taken: true,
     open: false,
     ai: false,
+    away: false,
     submitted: true,
   });
 });
@@ -338,4 +341,104 @@ test('a colour freed in the lobby is no more open after the start than one never
     tokenHash: HOST,
   });
   refusal(() => claimSeat(started, { owner: 1, name: 'Bob', tokenHash: BOB }));
+});
+
+const timed = (turnTime = 600) => {
+  const created = createMatch({
+    id: 'abc',
+    options: { ...OPTIONS, turnTime },
+    hostTokenHash: HOST,
+    random: seeded('dice'),
+  });
+  const seated = claimSeat(claimSeat(created, { owner: 0, name: 'Hana', tokenHash: HOST }), {
+    owner: 1,
+    name: 'Ann',
+    tokenHash: ANN,
+  });
+  return startMatch(seated, { tokenHash: HOST });
+};
+const timeout = (record) => expireTurn(scheduled(record, 0));
+const missing = (record, rounds) =>
+  Array.from({ length: rounds }).reduce((current) => timeout(turn(current, HOST)), record);
+
+test('the host picks one of four turn times and the default is a day', () => {
+  const optionsOf = (turnTime) =>
+    createMatch({
+      id: 'abc',
+      options: { ...OPTIONS, turnTime },
+      hostTokenHash: HOST,
+      random: seeded('d'),
+    }).options.turnTime;
+  assert.deepEqual([120, 600, 3600, 86400].map(optionsOf), [120, 600, 3600, 86400]);
+  assert.equal(optionsOf(45), 86400);
+  assert.equal(optionsOf(undefined), 86400);
+});
+
+test('the deadline starts with the round and counts down in the view', () => {
+  const record = scheduled(timed(600), 1000);
+  assert.equal(record.deadline, 601000);
+  assert.equal(viewFor(record, HOST, 301000).secondsLeft, 300);
+  assert.equal(viewFor(record, HOST, 700000).secondsLeft, 0);
+  assert.equal(viewFor(lobby(), HOST, 0).secondsLeft, null);
+});
+
+test('a resolved round gets a fresh deadline and keeps none while nobody is waited for', () => {
+  const resolvedRound = turn(turn(scheduled(timed(), 0), HOST), ANN);
+  assert.equal(resolvedRound.deadline, null);
+  assert.equal(scheduled(resolvedRound, 5000).deadline, 5000 + 600 * 1000);
+});
+
+test('when the timer runs out the round resolves without the players who have not ended', () => {
+  const record = turn(scheduled(timed(), 0), HOST);
+  const after = expireTurn(record);
+  assert.equal(after.match.state.round, record.match.state.round + 1);
+  assert.deepEqual(after.submissions, {});
+  assert.equal(after.misses[1], 1);
+  assert.equal(after.seats[1].away, undefined);
+});
+
+test('a player who missed the round keeps standing policies', () => {
+  const annNode = ownNode(timed(), 1).id;
+  const policies = { [annNode]: { enabled: true, reserve: 0, investPct: 100 } };
+  const second = turn(turn(timed(), HOST), ANN, { policies });
+  const third = expireTurn(turn(second, HOST));
+  assert.equal(third.match.state.round, second.match.state.round + 1);
+  assert.ok(third.match.policies[annNode]);
+});
+
+test('three missed turns in a row hand the colour to the AI and say so', () => {
+  const twice = missing(scheduled(timed(), 0), 2);
+  assert.deepEqual(twice.match.humanSeats, [0, 1]);
+  assert.equal(twice.misses[1], 2);
+  const thrice = missing(twice, 1);
+  assert.deepEqual(thrice.match.humanSeats, [0]);
+  assert.equal(thrice.seats[1].away, true);
+  assert.equal(thrice.seats[1].tokenHash, ANN);
+  assert.ok(
+    thrice.match.history.some((line) => /^Ann missed three turns; the AI plays/.test(line)),
+  );
+  assert.deepEqual(waitingFor(thrice), [0]);
+  assert.equal(viewFor(thrice, HOST, 0).seats[1].away, true);
+});
+
+test('a player who ended a turn starts counting again', () => {
+  const twice = missing(scheduled(timed(), 0), 2);
+  const back = turn(twice, ANN);
+  assert.equal(back.misses[1], undefined);
+  assert.equal(expireTurn(back).misses[1], undefined);
+});
+
+test('an away player takes the colour back by ending a turn', () => {
+  const away = missing(scheduled(timed(), 0), 3);
+  const back = turn(away, ANN);
+  assert.equal(back.seats[1].away, undefined);
+  assert.deepEqual(back.match.humanSeats, [0, 1]);
+  assert.match(back.match.history[0], /Ann is back/);
+  assert.deepEqual(waitingFor(back), [0]);
+});
+
+test('a round with no human left to wait for has no deadline', () => {
+  const everyoneGone = [1, 2, 3].reduce((current) => timeout(current), timed());
+  assert.deepEqual(everyoneGone.match.humanSeats, []);
+  assert.equal(scheduled(everyoneGone, 0).deadline, null);
 });

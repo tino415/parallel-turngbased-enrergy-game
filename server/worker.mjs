@@ -5,10 +5,12 @@ import {
   changeMap,
   claimSeat,
   createMatch,
+  expireTurn,
   forceResolve,
   freeColour,
   handColourToAi,
   leaveMatch,
+  scheduled,
   startMatch,
   submitTurn,
   viewFor,
@@ -54,14 +56,15 @@ export class Match extends DurableObject {
       options: await request.json().catch(() => ({})),
       hostTokenHash: await hashOf(token),
       random: randomUnit,
+      shortTurns: Boolean(this.env.ALLOW_SHORT_TURNS),
     });
     await this.keep(record);
-    return json({ id, token, view: viewFor(record, record.hostTokenHash) }, 201);
+    return json({ id, token, view: viewFor(record, record.hostTokenHash, Date.now()) }, 201);
   }
 
   async handle(request, pathname, record, tokenHash) {
     const route = `${request.method} ${pathname.replace(/\/seats\/\d+/, '/seats/:owner')}`;
-    if (route === 'GET /') return json(viewFor(record, tokenHash));
+    if (route === 'GET /') return json(viewFor(record, tokenHash, Date.now()));
     if (route === 'DELETE /') return this.cancel(record, tokenHash);
     const body = request.method === 'GET' ? {} : await request.json().catch(() => ({}));
     if (route === 'POST /seats/:owner') return this.claim(record, tokenHash, pathname, body);
@@ -86,8 +89,8 @@ export class Match extends DurableObject {
     const token = known && (known.host || known.you !== null) ? null : newToken();
     const claimingHash = token ? await hashOf(token) : tokenHash;
     const next = claimSeat(record, { owner, name, tokenHash: claimingHash });
-    await this.keep(next);
-    return json({ token, view: viewFor(next, claimingHash) });
+    const kept = await this.keep(next);
+    return json({ token, view: viewFor(kept, claimingHash, Date.now()) });
   }
 
   async cancel(record, tokenHash) {
@@ -96,17 +99,26 @@ export class Match extends DurableObject {
   }
 
   async saved(record, tokenHash) {
-    await this.keep(record);
-    return json(viewFor(record, tokenHash));
+    const kept = await this.keep(record);
+    return json(viewFor(kept, tokenHash, Date.now()));
   }
 
-  async keep(record) {
-    await this.ctx.storage.put('record', record);
-    await this.ctx.storage.setAlarm(Date.now() + IDLE_LIFETIME_MS);
+  async keep(record, { active = true } = {}) {
+    const now = Date.now();
+    const next = scheduled(record, now);
+    if (active) await this.ctx.storage.put('expiresAt', now + IDLE_LIFETIME_MS);
+    const expiresAt = (await this.ctx.storage.get('expiresAt')) ?? now + IDLE_LIFETIME_MS;
+    await this.ctx.storage.put('record', next);
+    await this.ctx.storage.setAlarm(Math.min(next.deadline ?? Infinity, expiresAt));
+    return next;
   }
 
   async alarm() {
-    await this.ctx.storage.deleteAll();
+    const record = await this.ctx.storage.get('record');
+    const expiresAt = (await this.ctx.storage.get('expiresAt')) ?? 0;
+    if (!record || record.cancelled || Date.now() >= expiresAt) return this.ctx.storage.deleteAll();
+    const late = record.deadline !== null && Date.now() >= record.deadline;
+    await this.keep(late ? expireTurn(record) : record, { active: false });
   }
 }
 
