@@ -1794,7 +1794,11 @@
     const rows = [
       editorRow(
         support ? 'Send' : 'Attack',
-        [field, presetGroup(source, destination, ['all', 'surplus'])],
+        [
+          field,
+          percentField(source, destination, value, limit),
+          presetGroup(source, destination, ['all', 'surplus']),
+        ],
         softCapEnabled()
           ? help('Withdrawn energy', [
               'Energy withdrawn on Node ' +
@@ -1804,6 +1808,7 @@
                 ' editor.',
             ])
           : [],
+        { wraps: true },
       ),
       error,
     ];
@@ -1849,6 +1854,34 @@
       ' · ' +
       staysHome
     );
+  }
+
+  function percentField(source, destination, amount, limit) {
+    const percent = selectors.activeSharePercent(currentMatch(), source, amount);
+    const field = textElement('label', '', 'tactical-field');
+    field.append(textElement('span', '% of active'));
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = '0';
+    input.max = '100';
+    input.step = '1';
+    input.id = 'tacticalEdgePercent';
+    input.dataset.key = 'percent:' + source + '-' + destination;
+    input.value = String(Number(percent.toFixed(1)));
+    input.setAttribute('aria-label', 'Order energy as a percentage of active energy');
+    input.onchange = () => {
+      const share = Number(input.value);
+      const wanted = selectors.activeShareAmount(currentMatch(), source, share);
+      if (!Number.isFinite(share) || share < 0 || share > 100 || wanted > limit + 1e-8) {
+        byId('tacticalEdgeError').textContent =
+          'That share exceeds the available allocation budget.';
+        input.value = String(Number(percent.toFixed(1)));
+        return;
+      }
+      setAllocation(source, destination, wanted);
+    };
+    field.append(input);
+    return field;
   }
 
   function winChanceRow(source, destination) {
