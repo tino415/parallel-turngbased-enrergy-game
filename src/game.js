@@ -698,6 +698,23 @@ $('cancelNewGame').onclick = () => $('newGameDialog').close();
 $('mapTab').onclick = () => switchView('map');
 $('messagesTab').onclick = () => switchView('messages');
 $('leaderboardTab').onclick = () => switchView('leaderboard');
+document.addEventListener('keydown', (event) => {
+  if (event.defaultPrevented || event.repeat || isTypingOrInOverlay(event.target)) return;
+  const shortcut = keyboardShortcutOf(event);
+  if (!shortcut) return;
+  event.preventDefault();
+  $(shortcut).click();
+});
+function keyboardShortcutOf(event) {
+  const modified = event.ctrlKey || event.metaKey;
+  if (event.key === 'Enter' && modified && !event.altKey && !event.shiftKey) return 'resolve';
+  if (event.key.toLowerCase() !== 'm' || modified || event.altKey) return null;
+  return currentView === 'map' ? 'messagesTab' : 'mapTab';
+}
+function isTypingOrInOverlay(target) {
+  if (document.querySelector('dialog[open], :popover-open')) return true;
+  return Boolean(target.closest?.('input, textarea, select, [contenteditable]'));
+}
 $('zoomIn').onclick = () => {
   store.setCamera({ ...camera, scale: Math.min(5, camera.scale * 1.25) });
   render();

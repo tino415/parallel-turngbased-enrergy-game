@@ -24,11 +24,33 @@
       <div>
         <span id="score"><span id="scoreRound"></span><span id="scoreCounts"></span></span>
         <div class="view-tabs" role="tablist" aria-label="Game views">
-          <button id="mapTab" class="active" role="tab" aria-selected="true">Map</button
-          ><button id="messagesTab" role="tab" aria-selected="false">Messages</button
+          <button
+            id="mapTab"
+            class="active"
+            role="tab"
+            aria-selected="true"
+            aria-keyshortcuts="M"
+            title="Map (M)"
+          >
+            Map</button
+          ><button
+            id="messagesTab"
+            role="tab"
+            aria-selected="false"
+            aria-keyshortcuts="M"
+            title="Messages (M)"
+          >
+            Messages</button
           ><button id="leaderboardTab" role="tab" aria-selected="false">Leaderboard</button>
         </div>
-        <button class="primary" id="resolve">Resolve round</button>
+        <button
+          class="primary"
+          id="resolve"
+          aria-keyshortcuts="Control+Enter Meta+Enter"
+          title="Resolve round (Ctrl+Enter)"
+        >
+          Resolve round
+        </button>
         <button id="reset">New game</button>
         <button id="mobileSettings" type="button">Settings</button>
       </div>
