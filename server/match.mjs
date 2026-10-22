@@ -56,7 +56,7 @@ export function leaveMatch(record, { tokenHash }) {
 }
 
 export function freeColour(record, { tokenHash, owner }) {
-  return hostChangesSeat(record, tokenHash, owner, openSeat(owner), ' was freed');
+  return hostChangesSeat(record, tokenHash, owner, openSeat(record, owner), ' was freed');
 }
 
 export function handColourToAi(record, { tokenHash, owner }) {
@@ -277,7 +277,7 @@ const policiesOf = (match, owner) =>
 
 const revised = (record) => ({ ...record, revision: record.revision + 1 });
 const freeSeat = (owner) => ({ owner, name: null, tokenHash: null });
-const openSeat = (owner) => ({ ...freeSeat(owner), open: true });
+const openSeat = (record, owner) => ({ ...freeSeat(owner), open: record.phase === 'playing' });
 const aiSeat = (owner) => ({ ...freeSeat(owner), ai: true });
 const withoutOwner = (byOwner, owner) =>
   Object.fromEntries(Object.entries(byOwner).filter(([key]) => Number(key) !== owner));

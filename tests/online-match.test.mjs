@@ -330,3 +330,12 @@ test('mid-match only an open colour can be taken, and only by someone without on
   const opened = freeColour(playing(), { tokenHash: HOST, owner: 1 });
   refusal(() => claimSeat(opened, { owner: 1, name: 'Hana', tokenHash: HOST }));
 });
+
+test('a colour freed in the lobby is no more open after the start than one never taken', () => {
+  const claimed = claimSeat(lobby(), { owner: 1, name: 'Ann', tokenHash: ANN });
+  const freed = freeColour(claimed, { tokenHash: HOST, owner: 1 });
+  const started = startMatch(claimSeat(freed, { owner: 0, name: 'Hana', tokenHash: HOST }), {
+    tokenHash: HOST,
+  });
+  refusal(() => claimSeat(started, { owner: 1, name: 'Bob', tokenHash: BOB }));
+});
