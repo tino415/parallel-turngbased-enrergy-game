@@ -119,6 +119,16 @@
         </fieldset>
         <label>Your name <input id="onlineName" maxlength="20" autocomplete="nickname" /></label>
       </div>
+      <div id="onlineSeatLink" hidden>
+        <p class="muted">
+          Open this link on another device to play your colour there. Anyone with it plays your
+          colour, so keep it to yourself.
+        </p>
+        <div class="online-link">
+          <input id="onlineSeatLinkInput" readonly aria-label="My seat link" />
+          <button id="onlineSeatLinkCopy" type="button">Copy</button>
+        </div>
+      </div>
       <p id="onlineWaiting" role="status"></p>
       <ul id="onlineSeats" class="online-seats"></ul>
       <p id="onlineMessage" class="muted" role="status"></p>
