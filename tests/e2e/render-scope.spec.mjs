@@ -92,3 +92,17 @@ test('a committed policy edit survives a reload after camera and view changes', 
   await openNodeEditor(page);
   await expect(page.locator('#tacticalPolicyPercent')).toHaveValue('52');
 });
+
+test('selecting a node and opening its editor redraw the selection, not the map', async ({
+  page,
+}) => {
+  await markMapAndEditor(page);
+  const blue = page.locator('#map .node-hit[fill="#3278c8"]').first();
+  await blue.click();
+  await expect(page.locator('#map .tactical-node-selected')).toHaveCount(1);
+  expect(await mapWasRebuilt(page)).toBe(false);
+  await blue.click();
+  await expect(page.locator('#tacticalInspector')).toBeVisible();
+  expect(await mapWasRebuilt(page)).toBe(false);
+  await expect(page.locator('#map .tactical-node-selected')).toHaveCount(1);
+});

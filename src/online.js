@@ -66,7 +66,7 @@
     });
     window.addEventListener('online', refresh);
     store.subscribe(({ match }, previous) => {
-      if (previous.match.online && !match.online) leaveOnline();
+      if (previous?.match.online && !match.online) leaveOnline();
       else if (view) renderTurnButtons();
     });
   }
@@ -97,23 +97,24 @@
 
   function loadMatch(next, first) {
     const submitted = next.submission;
-    store.select(null);
-    store.replaceMatch({
-      state: next.state,
-      orders: submitted?.orders ?? {},
-      policies: { ...next.policies, ...submitted?.policies },
-      history: next.history,
-      map: next.map,
-      defaults: domDefaults(),
-      seat: next.you ?? 0,
-      humanSeats: next.humanSeats,
-      replay: next.replay,
-      online: { id: next.id },
+    store.batch(() => {
+      store.select(null);
+      store.replaceMatch({
+        state: next.state,
+        orders: submitted?.orders ?? {},
+        policies: { ...next.policies, ...submitted?.policies },
+        history: next.history,
+        map: next.map,
+        defaults: domDefaults(),
+        seat: next.you ?? 0,
+        humanSeats: next.humanSeats,
+        replay: next.replay,
+        online: { id: next.id },
+      });
+      sentTurn = submitted ? turnOf(store.getSnapshot().match) : null;
+      if (first) store.setCamera({ x: 0, y: 0, scale: 1 });
+      store.setView('map');
     });
-    sentTurn = submitted ? turnOf(store.getSnapshot().match) : null;
-    if (first) store.setCamera({ x: 0, y: 0, scale: 1 });
-    store.setView('map');
-    render();
   }
 
   async function endTurn() {
@@ -356,11 +357,9 @@
     return dot;
   };
 
-  const previousRender = render;
-  render = function () {
-    previousRender();
-    renderOnline();
-  };
+  store.subscribe((snapshot, previous) => {
+    if (GameStore.changed(snapshot, previous, (s) => s.match)) renderOnline();
+  });
 
   byId('generateOnline').onclick = () =>
     createOnlineMatch().catch((error) => alert('Could not create the match: ' + error.message));

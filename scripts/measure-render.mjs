@@ -138,7 +138,7 @@ function installStorageAndMutationCounters() {
     seen: { added: new WeakSet(), removed: new WeakSet() },
     calls: {},
     mapRebuilds: 0,
-    renderMs: 0,
+    handlingMs: 0,
   });
   window.measure = { ...fresh(), reset: () => Object.assign(window.measure, fresh()) };
   const setItem = Storage.prototype.setItem;
@@ -198,6 +198,7 @@ function countEngineCallsFromTheStore() {
 }
 
 function installRenderCounters() {
+  const count = (name) => (window.measure.calls[name] = (window.measure.calls[name] || 0) + 1);
   const counted = [
     'render',
     'renderMap',
@@ -212,26 +213,38 @@ function installRenderCounters() {
     const original = window[name];
     if (typeof original !== 'function') continue;
     window[name] = function (...args) {
-      window.measure.calls[name] = (window.measure.calls[name] || 0) + 1;
-      if (name !== 'render') return original.apply(this, args);
+      count(name);
+      return original.apply(this, args);
+    };
+  }
+  let depth = 0;
+  const timedOutermost = (original) =>
+    function (...args) {
       const started = performance.now();
+      depth += 1;
       try {
         return original.apply(this, args);
       } finally {
-        window.measure.renderMs += performance.now() - started;
+        depth -= 1;
+        if (depth === 0) window.measure.handlingMs += performance.now() - started;
       }
     };
-  }
+  window.render = timedOutermost(window.render);
+  for (const [name, method] of Object.entries(store))
+    if (typeof method === 'function' && name !== 'getSnapshot' && name !== 'subscribe')
+      store[name] = timedOutermost(method);
+  store.subscribe(() => count('notifications'));
   window.measure.reset();
 }
 
 function readCounters(page) {
   return page.evaluate(() => {
-    const { calls, mutations, mapRebuilds, writes, bytes, renderMs } = window.measure;
+    const { calls, mutations, mapRebuilds, writes, bytes, handlingMs } = window.measure;
     const sum = (field) => Object.values(mutations).reduce((total, m) => total + m[field], 0);
     return {
       renders: calls.render || 0,
-      renderMs: Math.round(renderMs * 10) / 10,
+      notifications: calls.notifications || 0,
+      handlingMs: Math.round(handlingMs * 10) / 10,
       calls: { ...calls },
       mapRebuilds,
       elementsAdded: sum('added'),
@@ -274,15 +287,16 @@ async function dragMap(page, touch) {
 
 function markdownTable(rows) {
   const header =
-    '| viewport | map | interaction | render passes | render() ms | map rebuilds | policy evaluations | forecasts | elements +/- | top regions | localStorage writes | bytes |';
-  const divider = '|' + ' --- |'.repeat(12);
+    '| viewport | map | interaction | render() calls | store notifications | commands + drawing ms | map rebuilds | policy evaluations | forecasts | elements +/- | top regions | localStorage writes | bytes |';
+  const divider = '|' + ' --- |'.repeat(13);
   const lines = rows.map((r) =>
     [
       r.viewport,
       r.map,
       r.interaction,
       r.renders,
-      r.renderMs,
+      r.notifications,
+      r.handlingMs,
       r.mapRebuilds,
       r.calls.planPolicy || 0,
       r.calls.forecast || 0,

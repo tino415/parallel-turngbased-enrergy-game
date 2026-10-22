@@ -33,7 +33,6 @@
   const aiDebug = document.getElementById('aiDebug');
   aiDebug.onchange = () => {
     store.setAiDebug(aiDebug.checked);
-    render();
   };
   if (new URLSearchParams(location.search).has('aidebug')) {
     store.setAiDebug(true);

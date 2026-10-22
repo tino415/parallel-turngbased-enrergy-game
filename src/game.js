@@ -4,14 +4,14 @@ const { selectors } = GameStore;
 const store = GameStore.createStore();
 let state, orders, policies, history, xy, edges, N, playerCount, mapSeed;
 let { view: currentView, clipboard, selected, camera } = store.getSnapshot().ui;
-store.subscribe(({ match, ui }, previous) => {
-  ({ view: currentView, clipboard, selected, camera } = ui);
-  if (camera !== previous.ui.camera) moveCamera();
-  if (match === previous.match) return;
-  ({ state, orders, policies, history } = match);
-  ({ xy, edges, N, playerCount, mapSeed } = match.map);
-  saveGame();
+store.subscribe((snapshot, previous) => {
+  ({ view: currentView, clipboard, selected, camera } = snapshot.ui);
+  if (!GameStore.changed(snapshot, previous, (s) => s.match)) return;
+  ({ state, orders, policies, history } = snapshot.match);
+  ({ xy, edges, N, playerCount, mapSeed } = snapshot.match.map);
+  if (previous !== null) saveGame();
 });
+store.subscribe(drawGame);
 const currentMatch = () => store.getSnapshot().match;
 const neighbors = (i) => selectors.neighbors(currentMatch(), i);
 const isMine = (id) => selectors.isOwn(currentMatch(), id);
@@ -30,10 +30,11 @@ function domDefaults() {
   };
 }
 function fresh() {
-  store.select(null);
-  store.replaceMatch(GameStore.classicMatch(Math.random, domDefaults()));
-  store.setCamera({ x: 0, y: 0, scale: 1 });
-  render();
+  store.batch(() => {
+    store.select(null);
+    store.replaceMatch(GameStore.classicMatch(Math.random, domDefaults()));
+    store.setCamera({ x: 0, y: 0, scale: 1 });
+  });
 }
 function mapOptions() {
   return {
@@ -100,14 +101,15 @@ function drawMapPreview(svg, positions, links, nodes) {
   }
 }
 function generate() {
-  store.select(null);
-  store.replaceMatch(
-    GameStore.generatedMatch(buildMap(mapOptions()), domDefaults(), Math.random, chosenSeat()),
-  );
-  store.setCamera({ x: 0, y: 0, scale: 1 });
-  store.setView('map');
+  store.batch(() => {
+    store.select(null);
+    store.replaceMatch(
+      GameStore.generatedMatch(buildMap(mapOptions()), domDefaults(), Math.random, chosenSeat()),
+    );
+    store.setCamera({ x: 0, y: 0, scale: 1 });
+    store.setView('map');
+  });
   $('newGameDialog').close();
-  render();
 }
 function openNewGame() {
   offerSeats();
@@ -119,19 +121,9 @@ const plan = (source) => selectors.plan(currentMatch(), source);
 const allocated = (source, p) => selectors.allocated(currentMatch(), source, p);
 const replacedSupport = (source, destination) =>
   selectors.replacedSupport(currentMatch(), source, destination);
-function setAllocation(source, destination, value) {
-  const before = currentMatch(),
-    overBudget = store.setAllocation(source, destination, value);
-  if (overBudget === undefined && currentMatch() !== before) render();
-}
 const defaultPolicy = selectors.defaultPolicy;
 function policyOrders(source) {
   return selectors.policyOrders(currentMatch(), source);
-}
-function changePolicy(source, key, value) {
-  const accepted = store.changePolicy(source, key, value);
-  render();
-  return accepted;
 }
 function updateChildrenInPlace(parent, nextChildren) {
   let index = 0;
@@ -213,7 +205,6 @@ function isFormValue(element) {
   return ['INPUT', 'SELECT', 'TEXTAREA'].includes(element.tagName);
 }
 function renderOrders() {
-  ordersDrawnFor = { match: currentMatch(), selected };
   const container = $('orders');
   container.replaceChildren();
   const ids = [...new Set([...Object.keys(orders), ...Object.keys(policies)])]
@@ -237,7 +228,6 @@ function renderOrders() {
     choose.textContent = 'Edit node ' + id;
     choose.onclick = () => {
       store.select(id);
-      render();
       $('uxOrdersDialog').close();
       showNodeOnMobile();
     };
@@ -245,7 +235,6 @@ function renderOrders() {
     remove.textContent = 'Clear ×';
     remove.onclick = () => {
       store.clearNodeOrders(id);
-      render();
     };
     top.append(choose, remove);
     row.append(top);
@@ -284,14 +273,12 @@ function renderOrders() {
 }
 function clickNode(id) {
   store.inspectNode(id);
-  render();
 }
 
 function resolve() {
   if (state.finished) return;
   if (currentMatch().online) return GameOnline.endTurn();
   store.resolve();
-  render();
 }
 
 function previewOrders() {
@@ -499,13 +486,11 @@ function attachNavigation() {
 function showNodeOnMobile() {
   if (selected === null) return;
   store.editSelectedNode();
-  render();
 }
 
 const SAVE_KEY = 'parallel-energy-game-v1';
 function switchView(view) {
   store.setView(view);
-  render();
 }
 function setActiveTab() {
   for (const [id, view] of [
@@ -550,9 +535,10 @@ function restoreGame() {
     $('autoConquer').checked = match.defaults.enabled;
     $('defaultReserve').value = match.defaults.reserve;
     $('defaultInvest').value = match.defaults.invest;
-    store.select(save.selected ?? null);
-    store.replaceMatch({ ...match, defaults: domDefaults() });
-    render();
+    store.batch(() => {
+      store.select(save.selected ?? null);
+      store.replaceMatch({ ...match, defaults: domDefaults() });
+    });
     return true;
   } catch (e) {
     console.warn('Could not restore save', e);
@@ -570,12 +556,24 @@ window.addEventListener('beforeunload', (event) => {
 window.addEventListener('pagehide', saveGame);
 
 function render() {
-  renderScore();
-  if (currentView === 'map') renderMap();
-  if (ordersAreStale()) renderOrders();
-  renderViews();
-  if (logIsStale()) renderLog();
-  setActiveTab();
+  store.refresh();
+}
+function drawGame(snapshot, previous) {
+  if (!snapshot.match) return;
+  const changed = (read) => GameStore.changed(snapshot, previous, read);
+  if (changed((s) => s.ui.camera)) moveCamera();
+  if (changed((s) => s.match)) renderScore();
+  if (
+    currentView === 'map' &&
+    [(s) => s.match, (s) => s.ui.view, (s) => s.ui.aiDebug].some(changed)
+  )
+    renderMap();
+  if (changed((s) => s.match) || changed((s) => s.ui.selected)) renderOrders();
+  if (changed((s) => s.ui.view)) {
+    renderViews();
+    setActiveTab();
+  }
+  if (changed((s) => s.match?.history)) renderLog();
 }
 function renderScore() {
   const nodes = state.nodes,
@@ -586,9 +584,23 @@ function renderScore() {
     ' · ' + playerName(mySeat()) + ' ' + mine + ' · Opponents ' + opponents;
   $('resolve').disabled = state.finished;
 }
+let lostMapFocus = null;
+function takeLostMapFocus() {
+  const focused = lostMapFocus;
+  lostMapFocus = null;
+  return focused;
+}
+function mapItemSelector(element) {
+  if (!$('map').contains(element)) return null;
+  if (element.dataset.node !== undefined) return '[data-node="' + element.dataset.node + '"]';
+  if (element.dataset.edge !== undefined) return '[data-edge="' + element.dataset.edge + '"]';
+  if (element.classList.contains('tactical-map-swap')) return '.tactical-map-swap';
+  return null;
+}
 function renderMap() {
   const nodes = state.nodes;
   const svg = $('map');
+  lostMapFocus = mapItemSelector(document.activeElement) ?? lostMapFocus;
   svg.innerHTML = '';
   svg.setAttribute(
     'viewBox',
@@ -659,16 +671,7 @@ function cameraTransform() {
 function moveCamera() {
   $('map').querySelector('g')?.setAttribute('transform', cameraTransform());
 }
-let ordersDrawnFor = null,
-  logDrawnFor = null;
-function ordersAreStale() {
-  return ordersDrawnFor?.match !== currentMatch() || ordersDrawnFor.selected !== selected;
-}
-function logIsStale() {
-  return logDrawnFor !== history;
-}
 function renderLog() {
-  logDrawnFor = history;
   $('log').replaceChildren(...history.map(messageEntry));
 }
 const ownerByPlayerName = new Map(playerOwners.map((owner) => [playerName(owner), owner]));
@@ -696,7 +699,6 @@ function nodeTooltip(n) {
 }
 $('clearAll').onclick = () => {
   store.clearAllOrders();
-  render();
 };
 $('resolve').onclick = resolve;
 $('reset').onclick = openNewGame;

@@ -112,6 +112,55 @@ test('a command that changes nothing keeps the snapshot and does not notify', ()
   assert.equal(calls.length, 0);
 });
 
+test('a batch notifies once with the snapshot from before its first command', () => {
+  const store = newStore();
+  const calls = [];
+  store.subscribe((snapshot, previous) => calls.push([snapshot, previous]));
+  const before = store.getSnapshot();
+  store.batch(() => {
+    store.select(0);
+    store.setAllocation(0, null, 2);
+    store.setView('messages');
+  });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][0], store.getSnapshot());
+  assert.equal(calls[0][1], before);
+  store.batch(() => store.clearAllOrders() && store.clearAllOrders());
+  store.batch(() => {});
+  assert.equal(calls.length, 2);
+});
+
+test('a command from a listener reaches every listener after the current change', () => {
+  const store = newStore();
+  const seen = [];
+  store.subscribe((snapshot) => {
+    if (snapshot.ui.selected === 0) store.select(1);
+  });
+  store.subscribe((snapshot, previous) => seen.push([previous.ui.selected, snapshot.ui.selected]));
+  store.select(0);
+  assert.deepEqual(seen, [
+    [null, 0],
+    [0, 1],
+  ]);
+});
+
+test('refresh notifies every listener without a previous snapshot', () => {
+  const store = newStore();
+  const calls = [];
+  store.subscribe((snapshot, previous) => calls.push([snapshot, previous]));
+  store.refresh();
+  assert.deepEqual(calls, [[store.getSnapshot(), null]]);
+  const { changed } = loadStore();
+  assert.equal(
+    changed(store.getSnapshot(), null, (s) => s.match),
+    true,
+  );
+  assert.equal(
+    changed(store.getSnapshot(), store.getSnapshot(), (s) => s.match),
+    false,
+  );
+});
+
 test('a match change keeps the ui slice identity and reports the previous snapshot', () => {
   const store = newStore();
   const before = store.getSnapshot();
