@@ -19,6 +19,8 @@ const args = Object.fromEntries(
     return [match[1], match[2]];
   }),
 );
+const known = ['matches', 'rounds', 'nodes', 'players', 'seed', 'suite'];
+for (const name of Object.keys(args)) assert.ok(known.includes(name), 'Unknown flag --' + name);
 const matches = Number(args.matches ?? 30);
 const maxRounds = Number(args.rounds ?? 300);
 const count = Number(args.nodes ?? 20);

@@ -21,26 +21,26 @@ const sections = files.map((file) => {
     '',
     '| Configuration | Eliminations | Median finish | Stalemates | Captures | Leader at 50 holds | Leader share at 50 | Reserve share at end | Capture richness | Richest node | Battle concentration | Active at end | Invested at end | Outcomes |',
     '| --- | --: | --: | --: | --: | --: | --: | --: | --: | --: | --: | --: | --: | --- |',
-    ...summaries.map((s) =>
-      [
-        s.name,
-        s.eliminations + ' of ' + metadata.matches,
-        num(s.medianFinishRound),
-        s.stalemates,
-        num(s.medianCaptures),
-        pct(s.leaderAt50Holds),
-        pct(s.medianLeaderShareAt50),
-        pct(s.medianReserveShare),
-        num(s.medianCaptureRichness),
-        num(s.medianRichestNode),
-        pct(s.medianBattleConcentration),
-        num(s.medianActiveOnMap),
-        num(s.medianInvestedOnMap),
-        outcomesOf(s),
-      ]
-        .join(' | ')
-        .replace(/^/, '| ')
-        .replace(/$/, ' |'),
+    ...summaries.map(
+      (s) =>
+        '| ' +
+        [
+          s.name,
+          s.eliminations + ' of ' + metadata.matches,
+          num(s.medianFinishRound),
+          s.stalemates,
+          num(s.medianCaptures),
+          pct(s.leaderAt50Holds),
+          pct(s.medianLeaderShareAt50),
+          pct(s.medianReserveShare),
+          num(s.medianCaptureRichness),
+          num(s.medianRichestNode),
+          pct(s.medianBattleConcentration),
+          num(s.medianActiveOnMap),
+          num(s.medianInvestedOnMap),
+          outcomesOf(s),
+        ].join(' | ') +
+        ' |',
     ),
     '',
   ].join('\n');

@@ -24,7 +24,6 @@ export function playEquilibriumMatch({
   const captures = [];
   const shares = {};
   const extracted = owners.map(() => 0);
-  const combatLoss = owners.map(() => 0);
   let lastCapture = 0;
   let decisiveRound = null;
   const combatByNode = map.nodes.map(() => 0);
@@ -56,7 +55,6 @@ export function playEquilibriumMatch({
     for (const node of state.nodes) {
       if (node.owner !== null) extracted[node.owner] += result.flows.extracted[node.id];
       const previous = before.nodes[node.id];
-      if (previous.owner !== null) combatLoss[previous.owner] += result.flows.combat[node.id];
       combatByNode[node.id] += result.flows.combat[node.id];
       if (node.owner === previous.owner) continue;
       lastCapture = before.round;
@@ -86,7 +84,7 @@ export function playEquilibriumMatch({
     rounds: state.round - 1,
     finished: state.finished,
     winner: state.finished && alive.length === 1 ? alive[0] : null,
-    leader: argmax(final),
+    leader: final.some((share) => share > 0) ? argmax(final) : null,
     leaderAt50: shares[50] ? argmax(shares[50]) : null,
     shares: { ...shares, final },
     decisiveRound,
@@ -110,9 +108,8 @@ export function playEquilibriumMatch({
     activeOnMap: state.nodes.reduce((sum, n) => sum + n.active, 0),
     investedOnMap: state.nodes.reduce((sum, n) => sum + n.invested, 0),
     extracted,
-    combatLoss,
-    battleConcentration: concentration(combatByNode),
-    trace: completed(trace, composition(state.round - 1, state.nodes, reserves), maxRounds),
+    battleConcentration: shareOfLossesOnBusiestFifth(combatByNode),
+    trace: heldToRoundBudget(trace, composition(state.round - 1, state.nodes, reserves), maxRounds),
   };
 }
 
@@ -155,17 +152,14 @@ function composition(round, nodes, reserves) {
   };
 }
 
-// A finished match keeps its last state for the rest of the round budget, so
-// traces of short and long matches can be compared round by round.
-function completed(trace, last, maxRounds) {
+function heldToRoundBudget(trace, last, maxRounds) {
   const rounds = [];
   for (let round = 10; round <= maxRounds; round += 10)
     rounds.push(trace.find((t) => t.round === round) ?? { ...last, round });
   return rounds;
 }
 
-// The share of all combat losses that fell on the fifth of nodes fought over most.
-function concentration(perNode) {
+function shareOfLossesOnBusiestFifth(perNode) {
   const sorted = [...perNode].sort((a, b) => b - a);
   const total = sorted.reduce((a, b) => a + b, 0) || 1;
   const top = sorted.slice(0, Math.max(1, Math.round(sorted.length / 5)));

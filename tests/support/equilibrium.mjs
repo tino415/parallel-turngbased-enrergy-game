@@ -45,6 +45,7 @@ export function resolveEquilibriumRound({
   playerCount,
   rng,
 }) {
+  if (state.finished) return { state, reserves, moves: [], flows: null };
   const { SOFT_CAP_RULES } = engine;
   const funded = withdraw(state.nodes, withdrawals, SOFT_CAP_RULES.withdrawalFee);
   const resolved = engine.resolveRound({

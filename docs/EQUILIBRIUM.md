@@ -8,7 +8,7 @@ when a match starts.
 
 ## The idea
 
-Every node holds a **reserve** of natural energy. Owners extract from it each round, and
+Every node holds a **reserve** of natural energy. Each round every node, neutral ones too, extracts its income from it, and
 nothing on the map is ever destroyed: decay, overflow, the withdrawal fee, both sides'
 combat losses and the principal lost on conquest all go back into a reserve. The total
 energy on the map stays the same for the whole match.
