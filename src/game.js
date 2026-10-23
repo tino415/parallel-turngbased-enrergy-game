@@ -722,11 +722,12 @@ document.addEventListener(
   'keydown',
   (event) => {
     if (event.repeat || isTypingOrInOverlay(event.target)) return;
-    const button = $(keyboardShortcutOf(event));
-    if (!isUsable(button)) return;
+    const shortcut = keyboardShortcutOf(event);
+    if (!shortcut) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    button.click();
+    const button = $(shortcut);
+    if (isUsable(button)) button.click();
   },
   true,
 );
