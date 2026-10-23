@@ -76,9 +76,13 @@ on submit: the new-game dialog and the group's invest-on-each amount.
   in place. `replayFrames` and `playerHistory` are the ones that
   resolves rounds: it re-runs the recorded ones with their recorded dice.
 - **Subscriptions** (`store.subscribe((snapshot, previous) => ...)`) run
-  synchronously after every commit. `game.js` uses one to refresh the global
-  mirrors and to autosave when `match` changed; `tactical-ui.js` uses one to
-  mirror `ui.inspector`.
+  synchronously after every commit, in the order they subscribed. A command a
+  listener issues is queued and reaches every listener after the current change.
+  `store.batch(run)` commits the commands inside `run` as one change, notified
+  once. `store.refresh()` notifies every listener with `previous === null`, so
+  a listener tests a slice with `GameStore.changed(snapshot, previous, read)`.
+  `game.js` uses one to refresh the global mirrors and to autosave when `match`
+  changed.
 - **Autosave** writes once per committed match change, plus on `pagehide` and
   `beforeunload`. Camera, view and inspector changes never write.
 - **Globals** `state`, `orders`, `policies`, `history`, `xy`, `edges`, `N`,
@@ -90,28 +94,31 @@ on submit: the new-game dialog and the group's invest-on-each amount.
 
 ## Rendering
 
-Rendering is still the explicit `render()` call each interaction made before
-the store existed, so no render runs that did not run before. `render` is
-replaced in load order, and each layer calls the previous one:
+Every renderer subscribes to the store and redraws what the slices it reads
+changed; an interaction only calls commands. The subscriptions run in script
+order, so the three map layers keep their order:
 
-1. `game.js` draws the SVG map, score, order list,
-   log and tab state.
-2. `ux.js` adds the camera viewBox, side panel, dock and income labels.
-3. `tactical-ui.js` adds edge hit areas, selection and group rings, the group
-   bar and the inspector for one node, one edge, the node group or the connection group, which it
-   updates in place to keep drafts and focus.
+1. `game.js` moves the camera transform, and draws the score, the SVG map (only
+   while the map tab is shown), the order list, the log and the tab state.
+2. `ux.js` sets the camera viewBox, the wide layout of the other tabs and the
+   starting camera of a new map.
+3. `tactical-ui.js` repositions the inspector on a camera change. When the match,
+   the view, the AI debug switch, the selection, the inspector, the clipboard or
+   the group changes, it draws edge hit areas, selection and group rings into one
+   `.tactical-selection` layer, the group bar and the inspector for one node,
+   one edge, the node group or the connection group, which it updates in place
+   to keep drafts and focus. A rejected command commits nothing, so the
+   inspector redraws itself to show the stored value again.
 
-Camera changes render nothing: a `game.js` subscriber moves the map transform and
-a `tactical-ui.js` subscriber repositions the inspector. `game.js` skips the map
-while another tab is shown, and the order list and log while their slices are
-unchanged.
+`render()` is `store.refresh()`, for the specs and the console. `renderMap`
+records the focused map item before clearing the map, and `tactical-ui.js`
+focuses it again after drawing its layer.
 
-`renderFlows` is also replaced in load order.
-The last definition wins and is the one in use.
+`renderFlows` is still replaced in load order, because each layer decorates the
+map `game.js` draws. The last definition wins and is the one in use.
 
-`leaderboard.js` stays out of the chain: it subscribes to the store and redraws
-the leaderboard when the match, the sort, the chart settings or the view changes while the tab is
-shown. `game.js` still shows and hides `#leaderboardView` with the other views.
+`leaderboard.js`, `replay.js` and `online.js` subscribe the same way.
+`game.js` shows and hides `#leaderboardView` with the other views.
 
 | DOM subtree                                                                                               | Rendered by      |
 | --------------------------------------------------------------------------------------------------------- | ---------------- |
@@ -206,7 +213,4 @@ imports and resolve rounds with the store's own `resolve`.
 
 ## Next steps
 
-- Let renderers subscribe to the slices they draw instead of being called
-  explicitly, one subtree each, and retire the `render = function` chain. The
-  order of the three layers has to survive this; `docs/RENDER_AUTOSAVE_BASELINE.md` has the numbers to compare.
 - Retire the read-only mirrors as their readers move to the snapshot.

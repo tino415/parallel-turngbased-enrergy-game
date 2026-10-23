@@ -57,7 +57,6 @@
   };
 
   let lastMap = '';
-  const originalRender = render;
   function worldBounds() {
     return (xy.length === 14 && mapSeed === 'classic') ? [800,460] : [1800,1050];
   }
@@ -115,17 +114,20 @@
     factor=next/camera.scale;
     store.setCamera({x:vw/2-(vw/2-camera.x)*factor,y:vh/2-(vh/2-camera.y)*factor,scale:next});
   }
-  render = function() {
-    originalRender();
-    document.querySelector('.layout').classList.toggle('ux-wide-view',currentView!=='map');
+  function startOnNewMaps() {
     const key=mapSeed+'/'+N+'/'+edges.length+'/'+state.round+'/'+mySeat();
-    if(key!==lastMap) {
-      const isFirst=lastMap==='';
-      lastMap=key;
-      if(isFirst || state.round===1) store.setCamera(startingCamera());
-    }
-    redrawCamera();
-  };
+    if(key===lastMap) return;
+    const isFirst=lastMap==='';
+    lastMap=key;
+    if(isFirst || state.round===1) store.setCamera(startingCamera());
+  }
+  store.subscribe((snapshot,previous)=>{
+    if(!snapshot.match) return;
+    const changed=(read)=>GameStore.changed(snapshot,previous,read);
+    if(changed(s=>s.ui.view)) document.querySelector('.layout').classList.toggle('ux-wide-view',currentView!=='map');
+    if(changed(s=>s.match)) startOnNewMaps();
+    if([s=>s.match,s=>s.ui.view,s=>s.ui.aiDebug].some(changed)) redrawCamera();
+  });
   byId('zoomIn').onclick=()=>zoomUX(1.25);
   byId('zoomOut').onclick=()=>zoomUX(.8);
   byId('fit').onclick=fitCameraUX;
@@ -134,5 +136,4 @@
   // focused input elements between parents here blurs them and immediately
   // dismisses the keyboard; the editor is already in its final layout.
   window.addEventListener('resize', redrawCamera);
-  render();
 })();

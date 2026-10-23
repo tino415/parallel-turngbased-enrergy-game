@@ -98,8 +98,9 @@
   }
 
   store.subscribe((snapshot, previous) => {
-    if (snapshot.match !== previous.match) renderNotice(snapshot.match);
-    if (snapshot.ui.replay !== previous.ui.replay || snapshot.match !== previous.match)
+    const changed = (read) => GameStore.changed(snapshot, previous, read);
+    if (changed((s) => s.match)) renderNotice(snapshot.match);
+    if (changed((s) => s.ui.replay) || changed((s) => s.match))
       renderReplay(snapshot.match, snapshot.ui.replay);
   });
   renderNotice(store.getSnapshot().match);

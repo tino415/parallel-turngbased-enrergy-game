@@ -122,10 +122,9 @@
 
   let { active, editing } = store.getSnapshot().ui.inspector;
   let { groupMode, groupEditing, bulkSelection, bulkEdges } = store.getSnapshot().ui;
-  store.subscribe(({ ui }, previous) => {
-    ({ active, editing } = ui.inspector);
-    ({ groupMode, groupEditing, bulkSelection, bulkEdges } = ui);
-    if (ui.camera !== previous.ui.camera) positionInspector();
+  store.subscribe((snapshot) => {
+    ({ active, editing } = snapshot.ui.inspector);
+    ({ groupMode, groupEditing, bulkSelection, bulkEdges } = snapshot.ui);
   });
   const groupIds = () => (groupMode ? bulkSelection : []);
   const groupEdges = () => (groupMode ? bulkEdges : []);
@@ -319,9 +318,11 @@
       showGroupHint('Only your nodes join a group.');
       return;
     }
-    store.setGroupMode(true);
-    store.toggleGroupMember(id);
-    changedGroup();
+    store.batch(() => {
+      store.setGroupMode(true);
+      store.toggleGroupMember(id);
+      changedGroup();
+    });
   }
 
   function toggleGroupEdge(a, b) {
@@ -333,47 +334,48 @@
       showGroupHint('Only connections touching your nodes join.');
       return;
     }
-    store.setGroupMode(true);
-    store.toggleGroupEdge(a, b);
-    changedGroup();
+    store.batch(() => {
+      store.setGroupMode(true);
+      store.toggleGroupEdge(a, b);
+      changedGroup();
+    });
   }
 
   function changedGroup() {
-    if (!bulkSelection.length && !bulkEdges.length) store.setGroupEditing(false);
+    const { bulkSelection, bulkEdges } = store.getSnapshot().ui;
     groupMessage = '';
+    if (!bulkSelection.length && !bulkEdges.length) store.setGroupEditing(false);
     store.dismissInspector();
-    render();
   }
 
   function editGroup() {
-    store.dismissInspector();
-    store.setGroupEditing(true);
-    render();
+    store.batch(() => {
+      store.dismissInspector();
+      store.setGroupEditing(true);
+    });
   }
 
   function closeGroupEditor() {
     store.setGroupEditing(false);
-    render();
   }
 
   function editMemberAlone(id) {
-    store.leaveGroupMode();
-    store.inspectNode(id);
-    store.editSelectedNode();
-    render();
+    store.batch(() => {
+      store.leaveGroupMode();
+      store.inspectNode(id);
+      store.editSelectedNode();
+    });
   }
 
   function leaveGroup() {
-    store.leaveGroupMode();
-    store.dismissInspector();
-    render();
+    store.batch(() => {
+      store.leaveGroupMode();
+      store.dismissInspector();
+    });
   }
 
   function showGroupHint(text) {
-    if (!groupMode) {
-      store.setGroupMode(true);
-      render();
-    }
+    if (!groupMode) store.setGroupMode(true);
     groupBar.querySelector('.tactical-group-hint').textContent = text;
   }
 
@@ -436,21 +438,16 @@
   selectButton.id = 'uxDockSelect';
   selectButton.onclick = () => {
     if (groupMode) leaveGroup();
-    else {
-      store.setGroupMode(true);
-      render();
-    }
+    else store.setGroupMode(true);
   };
   byId('uxDockResolve').before(selectButton);
 
   function chooseEdge(a, b) {
     store.inspectEdge(a, b);
-    render();
   }
 
   function dismiss() {
     store.dismissInspector();
-    render();
   }
 
   function dismissAndReturnFocus() {
@@ -465,14 +462,6 @@
     return null;
   }
 
-  function mapItemSelector(element) {
-    if (!svg.contains(element)) return null;
-    if (element.dataset.node !== undefined) return '[data-node="' + element.dataset.node + '"]';
-    if (element.dataset.edge !== undefined) return '[data-edge="' + element.dataset.edge + '"]';
-    if (element.classList.contains('tactical-map-swap')) return '.tactical-map-swap';
-    return null;
-  }
-
   function svgElement(name, attributes, parent) {
     const element = document.createElementNS('http://www.w3.org/2000/svg', name);
     for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value);
@@ -481,8 +470,10 @@
   }
 
   function drawSelection() {
-    const graph = svg.querySelector('g');
-    if (!graph || currentView !== 'map') return;
+    svg.querySelector('.tactical-selection')?.remove();
+    const map = svg.querySelector('g');
+    if (!map || currentView !== 'map') return;
+    const graph = svgElement('g', { class: 'tactical-selection' }, map);
     for (const [a, b] of edges) {
       const attributes = trimmedLine(a, b);
       if (active?.kind === 'edge' && active.a === a && active.b === b) {
@@ -608,7 +599,6 @@
   function swapDirection() {
     const { destination } = edgeDirection();
     store.setEdgeSource(destination);
-    render();
   }
 
   const bothEndsFriendly = (a, b) => isMine(a) && isMine(b);
@@ -696,7 +686,7 @@
   document.addEventListener('click', (event) => {
     if (!active || root.hidden || event.composedPath().includes(root)) return;
     if (event.target.closest('dialog, #tacticalMenu, .ux-dock, #tacticalGroupBar')) return;
-    // render() rebuilds SVG nodes synchronously: the clicked target may already
+    // A store command redraws SVG nodes synchronously: the clicked target may already
     // be detached by the time the event bubbles to document. The original
     // composed path still identifies map taps correctly.
     if (event.composedPath().includes(svg)) return;
@@ -783,8 +773,7 @@
         name: 'Pause policy this round',
         checked: Boolean(plan(id).hold),
         onChange: (checked) => {
-          store.setHold(id, checked);
-          render();
+          redrawPanelsUnlessCommitted(() => store.setHold(id, checked));
         },
       }),
       chipButton('tacticalCopyPolicy', 'Copy', 'Copy policy', () =>
@@ -1023,9 +1012,8 @@
         byId('tacticalRoundError').textContent = 'Invalid amount';
         return;
       }
-      const limit = store.setAllocation(id, target, amount);
-      if (limit === undefined) render();
-      else {
+      const limit = redrawPanelsUnlessCommitted(() => store.setAllocation(id, target, amount));
+      if (limit !== undefined) {
         input.value = shown();
         byId('tacticalRoundError').textContent =
           'Over budget: allocations cannot exceed ' + numeric(limit);
@@ -1080,10 +1068,7 @@
     button.type = 'button';
     button.id = id;
     button.setAttribute('aria-label', name);
-    button.onclick = () => {
-      act();
-      render();
-    };
+    button.onclick = () => redrawPanelsUnlessCommitted(act);
     return button;
   }
 
@@ -1154,6 +1139,10 @@
     );
     line.id = 'tacticalShares';
     return line;
+  }
+
+  function changePolicy(source, key, value) {
+    return redrawPanelsUnlessCommitted(() => store.changePolicy(source, key, value));
   }
 
   function changeShare(id, key, value) {
@@ -1346,7 +1335,7 @@
         nodeList(rejected) +
         ' would exceed 100% of surplus or reject this value.'
       : '';
-    render();
+    redrawPanels();
     return rejected.length === 0;
   }
 
@@ -1408,7 +1397,7 @@
             nodeList(skipped) +
             ' lacked energy.'
           : 'Applied to all ' + ids.length + ' nodes.';
-        render();
+        redrawPanels();
       },
     });
     block.append(
@@ -1430,7 +1419,7 @@
     button.onclick = () => {
       act();
       groupMessage = '';
-      render();
+      redrawPanels();
     };
     return button;
   }
@@ -1527,7 +1516,7 @@
       button.onclick = () => {
         store.splitOnEachEdge(pairs, kind);
         groupMessage = '';
-        render();
+        redrawPanels();
       };
       return button;
     };
@@ -1584,7 +1573,7 @@
         edgeList(skipped) +
         ' lacked energy.'
       : '';
-    render();
+    redrawPanels();
   }
 
   const edgeName = ([source, destination]) => source + ' → ' + destination;
@@ -1598,8 +1587,7 @@
       checked: view.pressured === view.attacks,
       onChange: (checked) => {
         if (checked) return applyGroupPressure(pairs, {});
-        store.stopEdgePressure(pairs);
-        render();
+        redrawPanelsUnlessCommitted(() => store.stopEdgePressure(pairs));
       },
     });
     toggle.querySelector('input').indeterminate =
@@ -1653,7 +1641,7 @@
         nodeList([...new Set(rejected.map(([source]) => source))]) +
         ' would exceed 100% of surplus or reject this value.'
       : '';
-    render();
+    redrawPanels();
     return rejected.length === 0;
   }
 
@@ -1707,19 +1695,19 @@
     );
     swap.onclick = () => {
       store.swapGroupEdge(source, destination);
-      render();
     };
     return swap;
   }
 
   function editEdgeAlone(source, destination) {
     const [a, b] = [source, destination].sort((x, y) => x - y);
-    store.leaveGroupMode();
-    store.dismissInspector();
-    store.inspectEdge(a, b);
-    store.inspectEdge(a, b);
-    store.setEdgeSource(source);
-    render();
+    store.batch(() => {
+      store.leaveGroupMode();
+      store.dismissInspector();
+      store.inspectEdge(a, b);
+      store.inspectEdge(a, b);
+      store.setEdgeSource(source);
+    });
   }
 
   function directionRow(source, destination, swappable) {
@@ -1808,7 +1796,7 @@
         input.value = String(value);
         return;
       }
-      setAllocation(source, destination, amount);
+      redrawPanelsUnlessCommitted(() => store.setAllocation(source, destination, amount));
     };
     field.append(input);
     const error = textElement('p', '', 'tactical-warning');
@@ -1900,7 +1888,7 @@
         input.value = String(Number(percent.toFixed(1)));
         return;
       }
-      setAllocation(source, destination, wanted);
+      redrawPanelsUnlessCommitted(() => store.setAllocation(source, destination, wanted));
     };
     field.append(input);
     return field;
@@ -1940,7 +1928,10 @@
           button.title = presetDescription(preset);
           button.setAttribute('aria-label', presetDescription(preset));
           button.disabled = !presetAffordable(preset, limit);
-          button.onclick = () => setAllocation(source, destination, preset.amount);
+          button.onclick = () =>
+            redrawPanelsUnlessCommitted(() =>
+              store.setAllocation(source, destination, preset.amount),
+            );
           return button;
         }),
     );
@@ -2016,8 +2007,7 @@
             name: 'Automatically send remaining surplus to Node ' + destination + ' each round',
             checked: targetsHere,
             onChange: (checked) => {
-              store.routeSurplus(source, destination, checked);
-              render();
+              redrawPanelsUnlessCommitted(() => store.routeSurplus(source, destination, checked));
             },
           }),
           ...(targetsHere
@@ -2135,9 +2125,8 @@
 
   function changeEdgePressure(source, destination, fields) {
     const before = currentMatch();
-    store.setEdgePressure(source, destination, fields);
+    redrawPanelsUnlessCommitted(() => store.setEdgePressure(source, destination, fields));
     const accepted = currentMatch() !== before;
-    render();
     if (!accepted)
       byId('tacticalEdgePressureWarning')?.replaceChildren(
         'Node ' +
@@ -2249,24 +2238,51 @@
     positionInspector();
   }
 
-  const oldRender = render;
-  render = function () {
+  const drawnSlices = [
+    (s) => s.match,
+    (s) => s.ui.view,
+    (s) => s.ui.aiDebug,
+    (s) => s.ui.selected,
+    (s) => s.ui.clipboard,
+    (s) => s.ui.inspector,
+    (s) => s.ui.groupMode,
+    (s) => s.ui.groupEditing,
+    (s) => s.ui.bulkSelection,
+    (s) => s.ui.bulkEdges,
+  ];
+
+  function forgetStaleInspection() {
+    const before = store.getSnapshot();
     if (state.round !== previousRound) {
-      store.dismissInspector();
       previousRound = state.round;
+      store.dismissInspector();
     }
     if (active?.kind === 'node' && !state.nodes[active.id]) store.forgetInspectedNode();
-    const focusedMapItem = mapItemSelector(document.activeElement);
-    oldRender();
+    return store.getSnapshot() !== before;
+  }
+
+  function drawTacticalLayer() {
+    const focusedMapItem = takeLostMapFocus() ?? mapItemSelector(document.activeElement);
     // The thumb-reachable control mirrors the authoritative round button.
     byId('uxDockResolve').disabled = byId('resolve').disabled;
     ordersCount.textContent = '(' + plannedNodeCount() + ')';
     drawSelection();
-    renderGroupBar();
     selectButton.textContent = groupMode ? 'Done' : 'Select';
-    showInspector();
+    redrawPanels();
     if (focusedMapItem) svg.querySelector(focusedMapItem)?.focus();
-  };
+  }
+
+  function redrawPanels() {
+    renderGroupBar();
+    showInspector();
+  }
+
+  function redrawPanelsUnlessCommitted(command) {
+    const before = store.getSnapshot();
+    const result = command();
+    if (store.getSnapshot() === before) redrawPanels();
+    return result;
+  }
 
   function plannedNodeCount() {
     return state.nodes.filter((node) => isMine(node.id) && (orders[node.id] || policies[node.id]))
@@ -2291,6 +2307,12 @@
     if (event.key !== 'Escape' || !active) return;
     if (anOverlayIsOpen()) return;
     dismissAndReturnFocus();
+  });
+  store.subscribe((snapshot, previous) => {
+    if (GameStore.changed(snapshot, previous, (s) => s.ui.camera)) positionInspector();
+    if (!drawnSlices.some((read) => GameStore.changed(snapshot, previous, read))) return;
+    if (forgetStaleInspection()) return;
+    drawTacticalLayer();
   });
   render();
 })();

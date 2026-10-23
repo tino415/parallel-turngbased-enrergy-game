@@ -9,7 +9,7 @@ commands, selectors and a subscription; it never touches the DOM. `src/game.js`,
 `src/ux.js`, `src/tactical-ui.js` and `src/replay.js` are the interface: they change state
 only through store commands and read the `state`, `orders`, `selected`, ... globals,
 which game.js mirrors from the store and nothing else assigns. Ownership, the
-command contract and the render chain are in `docs/ARCHITECTURE.md`. Node is used
+command contract and the render subscriptions are in `docs/ARCHITECTURE.md`. Node is used
 only for the development commands.
 
 ## Where commands run

@@ -1158,12 +1158,32 @@
   function createStore() {
     let snapshot = Object.freeze({ match: null, ui: Object.freeze(INITIAL_UI) });
     const listeners = new Set();
+    const notifications = [];
+    let notifying = false,
+      batchDepth = 0,
+      beforeBatch = null;
 
     function commit(slice, next) {
       if (snapshot[slice] === next) return;
       const previous = snapshot;
       snapshot = Object.freeze({ ...snapshot, [slice]: next });
-      for (const listener of listeners) listener(snapshot, previous);
+      if (batchDepth === 0) notify(snapshot, previous);
+    }
+    function notify(next, previous) {
+      notifications.push([next, previous]);
+      if (notifying) return;
+      notifying = true;
+      try {
+        while (notifications.length) {
+          const [current, before] = notifications.shift();
+          for (const listener of listeners) listener(current, before);
+        }
+      } catch (error) {
+        notifications.length = 0;
+        throw error;
+      } finally {
+        notifying = false;
+      }
     }
     const onMatch =
       (command) =>
@@ -1203,6 +1223,17 @@
       subscribe(listener) {
         listeners.add(listener);
         return () => listeners.delete(listener);
+      },
+      batch(run) {
+        if (batchDepth++ === 0) beforeBatch = snapshot;
+        try {
+          return run();
+        } finally {
+          if (--batchDepth === 0 && snapshot !== beforeBatch) notify(snapshot, beforeBatch);
+        }
+      },
+      refresh() {
+        notify(snapshot, null);
       },
       replaceMatch(match) {
         commit('match', match);
@@ -1309,7 +1340,11 @@
     };
   }
 
+  const changed = (snapshot, previous, read) =>
+    previous === null || read(snapshot) !== read(previous);
+
   globalThis.GameStore = Object.freeze({
+    changed,
     createStore,
     classicMatch,
     generatedMatch,

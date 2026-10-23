@@ -33,13 +33,15 @@
     button.onclick = () =>
       store.setLeaderboardChart({ runningTotal: button.dataset.runningTotal === 'true' });
 
-  store.subscribe(({ match, ui }, previous) => {
+  store.subscribe((snapshot, previous) => {
+    const { match, ui } = snapshot;
     const shown = ui.view === 'leaderboard';
-    const changed =
-      match !== previous.match ||
-      ui.leaderboardSort !== previous.ui.leaderboardSort ||
-      ui.leaderboardChart !== previous.ui.leaderboardChart ||
-      ui.view !== previous.ui.view;
+    const changed = [
+      (s) => s.match,
+      (s) => s.ui.leaderboardSort,
+      (s) => s.ui.leaderboardChart,
+      (s) => s.ui.view,
+    ].some((read) => GameStore.changed(snapshot, previous, read));
     if (shown && changed) {
       renderTable(match, ui.leaderboardSort);
       renderCharts(match, ui.leaderboardChart);
