@@ -114,3 +114,15 @@ test('the node projection uses the match rules', () => {
   const own = match.state.nodes.find((node) => node.owner === 0);
   assert.equal(GameStore.selectors.projection(match, own.id).capacity, 100);
 });
+
+test('a rule that is not a finite number falls back to its default', () => {
+  const rules = GameEngine.rulesOf({
+    rules: { production: '2', interest: null, capacity: Infinity, overflowDecay: 0.5 },
+  });
+  assert.deepEqual(plain(rules), {
+    production: 1,
+    interest: 0.1,
+    capacity: 250,
+    overflowDecay: 0.5,
+  });
+});

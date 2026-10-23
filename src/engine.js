@@ -33,7 +33,13 @@
     capacity: SOFT_CAP_RULES.capacity,
     overflowDecay: SOFT_CAP_RULES.overflowDecay,
   });
-  const rulesOf = (state) => ({ ...DEFAULT_RULES, ...state?.rules });
+  const rulesOf = (state) =>
+    Object.fromEntries(
+      Object.entries(DEFAULT_RULES).map(([name, fallback]) => {
+        const value = state?.rules?.[name];
+        return [name, typeof value === 'number' && Number.isFinite(value) ? value : fallback];
+      }),
+    );
   const incomeOf = (invested, rules) => rules.production + rules.interest * invested;
 
   // Pure, browser-independent map and economy functions.

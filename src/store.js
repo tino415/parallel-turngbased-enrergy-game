@@ -102,14 +102,14 @@
     };
   }
 
-  function generatedMatch(map, defaults, random, seat = 0, rules = null) {
+  function generatedMatch(map, defaults, random, seat = 0, chosenRules = null) {
     const colours = coloursFor(seat, map.players);
     const state = {
       round: 1,
       nodes: recoloured(map.nodes, colours),
       finished: false,
       rulesVersion: SOFT_CAP_RULES.version,
-      ...withoutDefaultRules(rules),
+      ...withoutDefaultRules(chosenRules),
     };
     return {
       state,
@@ -134,8 +134,8 @@
     };
   }
 
-  function withoutDefaultRules(rules) {
-    const complete = rulesOf({ rules });
+  function withoutDefaultRules(chosenRules) {
+    const complete = rulesOf({ rules: chosenRules });
     return sameValue(complete, { ...DEFAULT_RULES }) ? {} : { rules: complete };
   }
 
