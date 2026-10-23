@@ -31,7 +31,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npx wrangler dev --ip 127.0.0.1 --port 4173',
+    command: 'npx wrangler dev --ip 127.0.0.1 --port 4173 --var ALLOW_SHORT_TURNS:1',
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,

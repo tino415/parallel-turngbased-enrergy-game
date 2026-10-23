@@ -199,6 +199,17 @@ imports and resolve rounds with the store's own `resolve`.
   leave. A freed seat is `open`: anyone without a colour can take it, also mid-match, which adds
   it to `humanSeats` and makes the round wait for them. A seat handed to the AI is `ai` and
   cannot be taken until the host frees it.
+- The host picks a turn time in the lobby (`options.turnTime`: 2 min, 10 min, 1 h or 24 h, default
+  24 h; a match stored without one has no timer). When a round starts with a human to wait for,
+  the record gets a `deadline` and the Durable Object's alarm is set to the earlier of that and the
+  seven-day idle expiry (kept separately as `expiresAt`, which only player actions renew). At the
+  deadline `expireTurn` counts a miss for each colour that has not ended its turn and resolves the
+  round without their manual orders; their standing policies still run. The third miss in a row
+  hands the colour to the AI like a leave but keeps the token: the seat is `away`, outside
+  `humanSeats`, and ending a turn again (or taking the seat) brings it back. A view carries
+  `secondsLeft`, which the client turns into a countdown in the status button and the panel. With
+  `ALLOW_SHORT_TURNS` set, as `wrangler dev` does in the Playwright config, a match may ask for a
+  turn time under two minutes.
 - The server keeps only the orders of nodes the sender owns, cleans every number,
   and shows a seat only its own policies and submitted turn. The replay (orders and
   dice seed) is sent when the match is finished, which is also when the Leaderboard
