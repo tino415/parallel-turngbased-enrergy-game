@@ -2241,6 +2241,7 @@
   const drawnSlices = [
     (s) => s.match,
     (s) => s.ui.view,
+    (s) => s.ui.mapValues,
     (s) => s.ui.aiDebug,
     (s) => s.ui.selected,
     (s) => s.ui.clipboard,
