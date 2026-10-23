@@ -560,3 +560,14 @@ test('a support transfer offers only send all and send all surplus', () => {
     ['all', 'surplus'],
   );
 });
+
+test('a percentage order is taken from the active energy before the policy reserve', () => {
+  const store = storeWithBlueAttacker({
+    defense: 10,
+    policy: { enabled: true, reserve: 5, investPct: 0, dest: null },
+  });
+  const { selectors } = loadStore();
+  const match = () => store.getSnapshot().match;
+  assert.equal(selectors.activeShareAmount(match(), 0, 40), 8);
+  assert.equal(selectors.activeSharePercent(match(), 0, 5), 25);
+});

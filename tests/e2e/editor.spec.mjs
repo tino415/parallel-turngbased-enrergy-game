@@ -192,3 +192,13 @@ test('Settings shows the build version, commit and date', async ({ page }) => {
     /^Build: v\d+\.\d+\.\d+ · ([0-9a-f]{7}|unknown) · \d{4}-\d{2}-\d{2}$/,
   );
 });
+
+test('an attack can be set as a percentage of the source’s active energy', async ({ page }) => {
+  await openEdgeEditor(page, '0-1');
+  const active = await page.evaluate(() => state.nodes[0].active);
+  await page.locator('#tacticalEdgePercent').fill('40');
+  await page.locator('#tacticalEdgePercent').blur();
+  const sent = await page.evaluate(() => orders[0].edges[1]);
+  expect(sent).toBeCloseTo(active * 0.4, 6);
+  await expect(page.locator('#tacticalEdgeAmount')).toHaveValue(String(sent));
+});

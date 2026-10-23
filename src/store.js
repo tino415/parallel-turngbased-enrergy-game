@@ -413,6 +413,14 @@
     route: match.policies[destination]?.dest === source,
   });
 
+  const activeShareAmount = (match, source, percent) =>
+    (match.state.nodes[source].active * percent) / 100;
+
+  const activeSharePercent = (match, source, amount) => {
+    const { active } = match.state.nodes[source];
+    return active > 0 ? (amount * 100) / active : 0;
+  };
+
   function orderPresets(match, source, destination) {
     const limit = edgeLimit(match, source, destination);
     const defense = match.state.nodes[destination].active;
@@ -1366,6 +1374,8 @@
       projection,
       replacedSupport,
       orderPresets,
+      activeShareAmount,
+      activeSharePercent,
     }),
   });
 })();
