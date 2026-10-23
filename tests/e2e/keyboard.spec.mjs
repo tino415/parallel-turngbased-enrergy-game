@@ -1,5 +1,6 @@
 import {
   test,
+  blueNode,
   expect,
   inspector,
   edgeHit,
@@ -99,4 +100,55 @@ test('zoom and Fit buttons work from the keyboard', async ({ page }) => {
   await page.locator('#fit').focus();
   await page.keyboard.press(' ');
   await expect.poll(() => page.evaluate(() => camera.scale)).toBe(fitted);
+});
+
+test('M switches between the Map and Messages views', async ({ page }) => {
+  await page.keyboard.press('m');
+  await expect(page.locator('#messagesView')).toBeVisible();
+  await expect(page.locator('#mapViewport')).toBeHidden();
+  await page.keyboard.press('m');
+  await expect(page.locator('#mapViewport')).toBeVisible();
+  await page.locator('#leaderboardTab').click();
+  await page.keyboard.press('m');
+  await expect(page.locator('#mapViewport')).toBeVisible();
+});
+
+test('Ctrl+Enter resolves the round and a bare Enter does not', async ({ page }) => {
+  const round = () => page.evaluate(() => state.round);
+  await page.keyboard.press('Enter');
+  expect(await round()).toBe(1);
+  await page.keyboard.press('Control+Enter');
+  expect(await round()).toBe(2);
+});
+
+test('Ctrl+Enter resolves the round while a map node has focus', async ({ page }) => {
+  await blueNode(page).focus();
+  await page.keyboard.press('Control+Enter');
+  expect(await page.evaluate(() => state.round)).toBe(2);
+});
+
+test('Shift+M leaves the view alone', async ({ page }) => {
+  await page.keyboard.press('Shift+M');
+  await expect(page.locator('#mapViewport')).toBeVisible();
+});
+
+test('shortcuts do nothing while typing in a field', async ({ page }) => {
+  await openNodeEditor(page);
+  await inspector(page).locator('input').first().focus();
+  await page.keyboard.press('m');
+  await page.keyboard.press('Control+Enter');
+  await expect(page.locator('#mapViewport')).toBeVisible();
+  expect(await page.evaluate(() => state.round)).toBe(1);
+});
+
+test('shortcuts do nothing while a dialog is open', async ({ page }) => {
+  await page.locator('#tacticalMenu summary').click();
+  await page.locator('#tacticalMenu button').filter({ hasText: 'New game' }).click();
+  await expect(page.locator('#newGameDialog')).toBeVisible();
+  await page.locator('#cancelNewGame').focus();
+  await page.keyboard.press('m');
+  await page.keyboard.press('Control+Enter');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#mapViewport')).toBeVisible();
+  expect(await page.evaluate(() => state.round)).toBe(1);
 });
