@@ -2,8 +2,8 @@
 
 The game is ten classic scripts loaded with `defer` into one global scope, in
 this order: `engine.js`, `store.js`, `format.js`, `game.js`, `dialogs.js`,
-`leaderboard.js`, `ux.js`, `tactical-ui.js`, `replay.js`, `online.js`. Later scripts build on, and in
-places replace, functions from earlier ones.
+`leaderboard.js`, `ux.js`, `tactical-ui.js`, `replay.js`, `online.js`. Later scripts call
+functions from earlier ones and never replace them.
 
 | Module           | Owns                                                                                       | Touches the DOM |
 | ---------------- | ------------------------------------------------------------------------------------------ | --------------- |
@@ -115,19 +115,16 @@ order, so the three map layers keep their order:
 records the focused map item before clearing the map, and `tactical-ui.js`
 focuses it again after drawing its layer.
 
-`renderFlows` is still replaced in load order, because each layer decorates the
-map `game.js` draws. The last definition wins and is the one in use.
-
 `leaderboard.js`, `replay.js` and `online.js` subscribe the same way.
 `game.js` shows and hides `#leaderboardView` with the other views.
 
-| DOM subtree                                                                                               | Rendered by      |
-| --------------------------------------------------------------------------------------------------------- | ---------------- |
-| `#map` content, `#score`, `#resolve`, `#log`, `#orders`                                                   | `game.js`        |
-| `#map` viewBox and camera transform, `#uxSide*`, `#uxDock*`                                               | `ux.js`          |
-| `#tacticalInspector`, `#tacticalGroupBar`, `#tacticalMenu`, `.tactical-edge-hit`, rings, flow edge colors | `tactical-ui.js` |
-| `#leaderboardTable` rows and header sort marks, `#leaderboardCharts`                                      | `leaderboard.js` |
-| `#replayDialog`, `#gameOverNotice`, the Replay item in `#tacticalMenu`                                    | `replay.js`      |
+| DOM subtree                                                                             | Rendered by      |
+| --------------------------------------------------------------------------------------- | ---------------- |
+| `#map` content and flow colors, `#score`, `#resolve`, `#log`, `#orders`                 | `game.js`        |
+| `#map` viewBox and camera transform, `#uxSide*`, `#uxDock*`                             | `ux.js`          |
+| `#tacticalInspector`, `#tacticalGroupBar`, `#tacticalMenu`, `.tactical-edge-hit`, rings | `tactical-ui.js` |
+| `#leaderboardTable` rows and header sort marks, `#leaderboardCharts`                    | `leaderboard.js` |
+| `#replayDialog`, `#gameOverNotice`, the Replay item in `#tacticalMenu`                  | `replay.js`      |
 
 `tactical-ui.js` builds the node and connection editors inside the inspector
 from store selectors and commands.

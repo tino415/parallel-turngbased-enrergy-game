@@ -204,7 +204,7 @@ function installRenderCounters() {
     'renderMap',
     'renderOrders',
     'renderLog',
-    'renderFlows',
+    'plannedFlows',
     'saveGame',
     'previewOrders',
     'projection',
