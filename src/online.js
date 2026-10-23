@@ -166,6 +166,11 @@
     await act('POST', '/seats/' + owner + '/' + action);
   }
 
+  async function handOverHosting(seat) {
+    if (!confirm('Make ' + seat.name + ' the host? You play on as a guest.')) return;
+    await changeSeat(seat.owner, 'host');
+  }
+
   async function takeSeat(owner) {
     const name = chosenName();
     if (!name) return showMessage('Type a name first.');
@@ -358,6 +363,13 @@
             textContent: 'To AI',
             onclick: () => changeSeat(seat.owner, 'ai'),
           }),
+      seat.taken && !seat.away
+        ? element('button', {
+            type: 'button',
+            textContent: 'Make host',
+            onclick: () => handOverHosting(seat),
+          })
+        : '',
     ];
   }
 

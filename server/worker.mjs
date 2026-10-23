@@ -9,6 +9,7 @@ import {
   forceResolve,
   freeColour,
   handColourToAi,
+  handOverHosting,
   leaveMatch,
   scheduled,
   startMatch,
@@ -78,6 +79,8 @@ export class Match extends DurableObject {
         freeColour(record, { tokenHash, owner: seatOwner(pathname) }),
       'POST /seats/:owner/ai': () =>
         handColourToAi(record, { tokenHash, owner: seatOwner(pathname) }),
+      'POST /seats/:owner/host': () =>
+        handOverHosting(record, { tokenHash, owner: seatOwner(pathname) }),
     }[route];
     if (!change) return notFound();
     return this.saved(change(), tokenHash);

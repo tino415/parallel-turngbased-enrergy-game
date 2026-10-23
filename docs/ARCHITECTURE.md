@@ -199,6 +199,9 @@ imports and resolve rounds with the store's own `resolve`.
   leave. A freed seat is `open`: anyone without a colour can take it, also mid-match, which adds
   it to `humanSeats` and makes the round wait for them. A seat handed to the AI is `ai` and
   cannot be taken until the host frees it.
+- The host can make another player the host (`POST /seats/<owner>/host`), in the lobby or during
+  play: `hostTokenHash` moves to that seat's token hash, so only a seat a present player holds can
+  take it. The old host is a guest from then on and can leave like one.
 - The host picks a turn time in the lobby (`options.turnTime`: 2 min, 10 min, 1 h or 24 h, default
   24 h; a match stored without one has no timer). When a round starts with a human to wait for,
   the record gets a `deadline` and the Durable Object's alarm is set to the earlier of that and the

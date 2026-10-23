@@ -323,6 +323,31 @@ test('the host hands a colour to the AI during play and nobody waits for it', as
   await expect.poll(() => round(page), SLOW).toBe(2);
 });
 
+test('the host hands hosting to the friend, leaves, and the new host resolves', async ({
+  page,
+  browser,
+}, testInfo) => {
+  page.on('dialog', (dialog) => dialog.accept());
+  const friend = await startWithFriend(page, browser, testInfo);
+  await page.getByRole('button', { name: 'Start match' }).click();
+  await expect(indicator(page)).toContainText('0/2', SLOW);
+  await indicator(page).click();
+  await page
+    .locator('.online-seat', { hasText: 'Red' })
+    .getByRole('button', { name: 'Make host' })
+    .click();
+  await expect(page.getByRole('button', { name: 'Resolve now' })).toBeHidden(SLOW);
+  await page.getByRole('button', { name: 'Leave' }).click();
+  await expect(page).not.toHaveURL(/match=/, SLOW);
+
+  await indicator(friend).click(SLOW);
+  await expect(friend.locator('.online-seat', { hasText: 'Blue' })).toContainText('AI', SLOW);
+  await expect(friend.getByRole('button', { name: 'Resolve now' })).toBeVisible(SLOW);
+  await friend.getByRole('button', { name: 'Resolve now' }).click();
+  await expect.poll(() => round(friend), SLOW).toBe(2);
+  await expect(friend.getByRole('button', { name: 'Cancel match' })).toBeVisible();
+});
+
 async function hostTimedMatch(page, turnTime) {
   await page.goto('/');
   const link = await page.evaluate(async (seconds) => {
