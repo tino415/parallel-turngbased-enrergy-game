@@ -258,3 +258,28 @@ test('an online match centres each player on their own node and Focus finds it',
   await expect(friend.locator('#score')).toContainText('Red', SLOW);
   expect(await distanceFromMapCentre(friend, await ownNodeId(friend))).toBeLessThan(40);
 });
+
+test('the seat link continues the same colour on another device', async ({
+  page,
+  browser,
+}, testInfo) => {
+  page.on('dialog', (dialog) => dialog.accept());
+  const link = await hostOnlineMatch(page);
+  await takeColour(page, 'Hana', 'Blue');
+  await page.getByRole('button', { name: 'Start match' }).click();
+  await expect(indicator(page)).toContainText('0/1', SLOW);
+
+  await page.getByLabel('More actions').click();
+  await page.getByRole('button', { name: 'My seat link' }).click();
+  const seatLink = await page.getByLabel('My seat link', { exact: true }).inputValue();
+  expect(seatLink).toContain(new URL(link).search + '#seat=');
+
+  const phone = await (await friendContext(browser, testInfo.project)).newPage();
+  await phone.goto(seatLink);
+  await expect(turnButton(phone)).toBeEnabled(SLOW);
+  await expect.poll(() => phone.evaluate(() => location.hash)).toBe('');
+  expect(await phone.evaluate(() => state.nodes.some((node) => isMine(node.id)))).toBe(true);
+
+  await endTurn(phone);
+  await expect.poll(() => round(page), SLOW).toBe(2);
+});

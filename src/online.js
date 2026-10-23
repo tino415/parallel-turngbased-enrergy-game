@@ -18,6 +18,8 @@
   let panelOpen = false;
   let sentTurn = null;
   let indicators = [];
+  let seatLinkItem = null;
+  let seatLinkShown = false;
 
   const byId = (id) => document.getElementById(id);
   const sessionKey = (id) => SESSION_PREFIX + id;
@@ -30,6 +32,13 @@
   };
   const writeToken = (id, token) => localStorage.setItem(sessionKey(id), JSON.stringify({ token }));
   const inviteLink = (id) => location.origin + location.pathname + '?match=' + id;
+  const seatLink = (id) => inviteLink(id) + '#seat=' + encodeURIComponent(readToken(id) ?? '');
+
+  function adoptSeatFromFragment() {
+    const token = new URLSearchParams(location.hash.slice(1)).get('seat');
+    if (token && matchId) writeToken(matchId, token);
+    if (token) window.history.replaceState(null, '', location.pathname + location.search);
+  }
   const turnOf = ({ orders, policies, defaults }) => JSON.stringify({ orders, policies, defaults });
 
   async function api(method, path, body, id = matchId) {
@@ -57,6 +66,7 @@
 
   function startPolling() {
     addIndicators();
+    addSeatLinkMenuItem();
     refresh();
     polling = setInterval(() => {
       if (document.visibilityState === 'visible' && view?.phase !== 'finished') refresh();
@@ -189,6 +199,7 @@
 
   function showPanel(open) {
     panelOpen = open;
+    if (!open) seatLinkShown = false;
     renderOnline();
   }
 
@@ -214,6 +225,9 @@
     view = null;
     for (const indicator of indicators) indicator.remove();
     indicators = [];
+    seatLinkItem?.remove();
+    seatLinkItem = null;
+    seatLinkShown = false;
     byId('onlinePanel').hidden = true;
     byId('aiDebug').disabled = false;
     byId('resolve').textContent = 'Resolve round';
@@ -223,6 +237,7 @@
 
   function renderOnline() {
     if (!view) return;
+    renderSeatLink();
     renderPanel();
     renderIndicators();
     renderTurnButtons();
@@ -245,6 +260,13 @@
     byId('onlineCancel').hidden = !view.host || view.phase === 'finished';
     byId('onlineClose').hidden = lobby;
     byId('onlineLeave').hidden = view.host && view.phase !== 'finished';
+  }
+
+  function renderSeatLink() {
+    const seated = view.you !== null && readToken(view.id) !== null;
+    if (seatLinkItem) seatLinkItem.hidden = !seated;
+    byId('onlineSeatLink').hidden = !seated || !seatLinkShown;
+    if (seated) byId('onlineSeatLinkInput').value = seatLink(view.id);
   }
 
   function renderSetup() {
@@ -301,6 +323,16 @@
     for (const indicator of indicators) indicator.onclick = () => showPanel(true);
     byId('resolve').before(indicators[0]);
     byId('uxDockResolve').before(indicators[1]);
+  }
+
+  function addSeatLinkMenuItem() {
+    seatLinkItem = element('button', { type: 'button', textContent: 'My seat link', hidden: true });
+    seatLinkItem.onclick = () => {
+      byId('tacticalMenu').open = false;
+      seatLinkShown = true;
+      showPanel(true);
+    };
+    document.querySelector('.tactical-menu-content').append(seatLinkItem);
   }
 
   function renderIndicators() {
@@ -369,6 +401,11 @@
     navigator.clipboard?.writeText(byId('onlineLink').value);
     showMessage('Link copied.');
   };
+  byId('onlineSeatLinkCopy').onclick = () => {
+    byId('onlineSeatLinkInput').select();
+    navigator.clipboard?.writeText(byId('onlineSeatLinkInput').value);
+    showMessage('Seat link copied.');
+  };
   for (const id of Object.values(MAP_FIELDS))
     byId(id).addEventListener('change', () => act('PUT', '/map', chosenMap()));
   byId('onlineStart').onclick = () => act('POST', '/start');
@@ -382,5 +419,6 @@
   byId('onlineName').value = localStorage.getItem(NAME_KEY) ?? '';
 
   window.GameOnline = { endTurn };
+  adoptSeatFromFragment();
   if (matchId) startPolling();
 })();

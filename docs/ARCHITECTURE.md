@@ -195,6 +195,9 @@ imports and resolve rounds with the store's own `resolve`.
   the result into the store with `replaceMatch`, marked `match.online`. An online match
   is never autosaved, `store.resolve` does nothing in it, and the AI debug view is off,
   because it would show hidden orders. `sw.js` leaves `/api/` to the network.
+- ☰ › "My seat link" shows `?match=<id>#seat=<token>`. A browser that opens it stores the token
+  from the fragment, which never reaches a server log, and removes it from the address bar,
+  so the same colour plays on a second device. Whoever holds the link plays that colour.
 - Nothing of an online match floats over the map during play. A button beside End turn
   (in the phone dock and the desktop header) shows a green dot and how many of the
   playing humans ended their turn, and opens `#onlinePanel`, which is also the lobby.
