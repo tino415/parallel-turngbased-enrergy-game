@@ -397,6 +397,9 @@
       return button;
     };
     const edit = action('Edit', editGroup);
+    edit.id = 'tacticalGroupEdit';
+    edit.setAttribute('aria-keyshortcuts', 'E');
+    edit.title = 'Shortcut: E';
     edit.disabled = bulkSelection.length === 0 && bulkEdges.length === 0;
     const helper = (label, predicate) => {
       const button = action(label, () => selectOwnNodes(predicate));

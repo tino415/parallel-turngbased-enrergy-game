@@ -722,11 +722,11 @@ document.addEventListener(
   'keydown',
   (event) => {
     if (event.repeat || isTypingOrInOverlay(event.target)) return;
-    const shortcut = keyboardShortcutOf(event);
-    if (!shortcut) return;
+    const button = $(keyboardShortcutOf(event));
+    if (!isUsable(button)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    $(shortcut).click();
+    button.click();
   },
   true,
 );
@@ -734,8 +734,14 @@ function keyboardShortcutOf(event) {
   const modified = event.ctrlKey || event.metaKey;
   if (event.altKey || event.shiftKey) return null;
   if (event.key === 'Enter' && modified) return 'resolve';
-  if (event.code !== 'KeyM' || modified) return null;
-  return currentView === 'map' ? 'messagesTab' : 'mapTab';
+  if (modified) return null;
+  if (event.code === 'KeyM') return currentView === 'map' ? 'messagesTab' : 'mapTab';
+  if (event.code === 'KeyL') return 'leaderboardTab';
+  if (event.code === 'KeyE') return 'tacticalGroupEdit';
+  return null;
+}
+function isUsable(button) {
+  return Boolean(button && !button.disabled && !button.closest('[hidden]'));
 }
 function isTypingOrInOverlay(target) {
   if (document.querySelector('dialog[open], :popover-open')) return true;
