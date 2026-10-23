@@ -24,31 +24,31 @@ places replace, functions from earlier ones.
 change goes through a store command, and a slice keeps its identity until a
 command really changes it.
 
-| Value                                               | Slice                 | Saved | Written by                          |
-| --------------------------------------------------- | --------------------- | ----- | ----------------------------------- |
-| `state` (round, nodes, finished, rulesVersion)      | `match.state`         | yes   | `resolve`, `replaceMatch`           |
-| manual orders per node                              | `match.orders`        | yes   | allocation and order commands       |
-| persistent policies per node                        | `match.policies`      | yes   | policy commands, `resolve`          |
-| policies of nodes lost, per colour                  | `match.keptPolicies`  | yes   | `resolve`                           |
-| message history                                     | `match.history`       | yes   | `resolve`, `replaceMatch`           |
-| map: `xy`, `edges`, `N`, `playerCount`, `mapSeed`   | `match.map`           | yes   | `replaceMatch`                      |
-| conquest defaults (enabled, reserve, invest)        | `match.defaults`      | yes   | `setDefaults`                       |
-| seat: the owner this browser plays                  | `match.seat`          | yes   | `classicMatch`, `generatedMatch`    |
-| replay record: dice seed, start state, round inputs | `match.replay`        | yes   | `resolve`, `replaceMatch`           |
-| selected node                                       | `ui.selected`         | yes¹  | `select`, inspector commands        |
-| view tab                                            | `ui.view`             | no    | `setView`                           |
-| Leaderboard sort column and direction               | `ui.leaderboardSort`  | no    | `sortLeaderboard`                   |
-| Leaderboard chart: series, running total, focus     | `ui.leaderboardChart` | no    | `setLeaderboardChart`               |
-| camera (`x`, `y`, `scale`)                          | `ui.camera`           | no    | `setCamera`                         |
-| policy clipboard                                    | `ui.clipboard`        | no    | `copyPolicy`                        |
-| node group selected on the map                      | `ui.bulkSelection`    | no    | group commands, `resolve`²          |
-| connection group, each as `[source, destination]`   | `ui.bulkEdges`        | no    | group commands, `resolve`²          |
-| group mode on the map                               | `ui.groupMode`        | no    | `setGroupMode`, `leaveGroupMode`    |
-| group editor open                                   | `ui.groupEditing`     | no    | `setGroupEditing`, `leaveGroupMode` |
-| inspector target, editing, focused node             | `ui.inspector`        | no    | inspector commands                  |
-| AI debug view (AI plans on the map and inspector)   | `ui.aiDebug`          | no    | `setAiDebug`, `?aidebug` in the URL |
-| map values: amounts or standing policies            | `ui.mapValues`        | no    | `setMapValues`                      |
-| replay frame and play state                         | `ui.replay`           | no    | replay commands                     |
+| Value                                                 | Slice                 | Saved | Written by                          |
+| ----------------------------------------------------- | --------------------- | ----- | ----------------------------------- |
+| `state` (round, nodes, finished, rulesVersion, rules) | `match.state`         | yes   | `resolve`, `replaceMatch`           |
+| manual orders per node                                | `match.orders`        | yes   | allocation and order commands       |
+| persistent policies per node                          | `match.policies`      | yes   | policy commands, `resolve`          |
+| policies of nodes lost, per colour                    | `match.keptPolicies`  | yes   | `resolve`                           |
+| message history                                       | `match.history`       | yes   | `resolve`, `replaceMatch`           |
+| map: `xy`, `edges`, `N`, `playerCount`, `mapSeed`     | `match.map`           | yes   | `replaceMatch`                      |
+| conquest defaults (enabled, reserve, invest)          | `match.defaults`      | yes   | `setDefaults`                       |
+| seat: the owner this browser plays                    | `match.seat`          | yes   | `classicMatch`, `generatedMatch`    |
+| replay record: dice seed, start state, round inputs   | `match.replay`        | yes   | `resolve`, `replaceMatch`           |
+| selected node                                         | `ui.selected`         | yes¹  | `select`, inspector commands        |
+| view tab                                              | `ui.view`             | no    | `setView`                           |
+| Leaderboard sort column and direction                 | `ui.leaderboardSort`  | no    | `sortLeaderboard`                   |
+| Leaderboard chart: series, running total, focus       | `ui.leaderboardChart` | no    | `setLeaderboardChart`               |
+| camera (`x`, `y`, `scale`)                            | `ui.camera`           | no    | `setCamera`                         |
+| policy clipboard                                      | `ui.clipboard`        | no    | `copyPolicy`                        |
+| node group selected on the map                        | `ui.bulkSelection`    | no    | group commands, `resolve`²          |
+| connection group, each as `[source, destination]`     | `ui.bulkEdges`        | no    | group commands, `resolve`²          |
+| group mode on the map                                 | `ui.groupMode`        | no    | `setGroupMode`, `leaveGroupMode`    |
+| group editor open                                     | `ui.groupEditing`     | no    | `setGroupEditing`, `leaveGroupMode` |
+| inspector target, editing, focused node               | `ui.inspector`        | no    | inspector commands                  |
+| AI debug view (AI plans on the map and inspector)     | `ui.aiDebug`          | no    | `setAiDebug`, `?aidebug` in the URL |
+| map values: amounts or standing policies              | `ui.mapValues`        | no    | `setMapValues`                      |
+| replay frame and play state                           | `ui.replay`           | no    | replay commands                     |
 
 ¹ `selected` stays in the save format so that old saves keep loading. ux.js
 clears it on load.

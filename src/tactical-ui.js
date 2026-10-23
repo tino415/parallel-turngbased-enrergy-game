@@ -769,7 +769,7 @@
           ]
         : []),
       ...(softCapEnabled()
-        ? [['Capacity', numeric(node.active + node.invested) + ' / ' + SOFT_CAP_RULES.capacity]]
+        ? [['Capacity', numeric(node.active + node.invested) + ' / ' + matchRules().capacity]]
         : []),
       ...(prediction?.overflow > 0 ? [['Overflow loss', prediction.overflow]] : []),
     ]);
@@ -862,12 +862,12 @@
     const status = investmentStatusText(id);
     if (status) rows.push(textElement('p', status, 'tactical-secondary'));
     const reserve = policy?.reserve ?? defaultPolicy().reserve;
-    if (softCapEnabled() && target !== null && target + reserve > SOFT_CAP_RULES.capacity)
+    if (softCapEnabled() && target !== null && target + reserve > matchRules().capacity)
       rows.push(
         textElement(
           'p',
           'Target plus defense floor is above the ' +
-            SOFT_CAP_RULES.capacity +
+            matchRules().capacity +
             ' capacity: overflow decay trims invested every round and the policy refills it.',
           'tactical-warning',
         ),
@@ -986,9 +986,9 @@
                 'Withdrawn energy is spendable this round and costs a ' +
                   Math.round(100 * SOFT_CAP_RULES.withdrawalFee) +
                   '% fee. Energy above ' +
-                  SOFT_CAP_RULES.capacity +
+                  matchRules().capacity +
                   ' decays ' +
-                  Math.round(100 * SOFT_CAP_RULES.overflowDecay) +
+                  Math.round(100 * matchRules().overflowDecay) +
                   '% at round end, invested energy included.',
               ]
             : []),
@@ -1468,7 +1468,7 @@
       ' invested · next ' +
       numeric(projection(id).next) +
       (softCapEnabled()
-        ? ' · ' + numeric(node.active + node.invested) + ' / ' + SOFT_CAP_RULES.capacity
+        ? ' · ' + numeric(node.active + node.invested) + ' / ' + matchRules().capacity
         : '')
     );
   }

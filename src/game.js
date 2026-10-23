@@ -20,6 +20,7 @@ const $ = (id) => document.getElementById(id),
   { compactEnergy, exactEnergy } = EnergyFormat,
   fmt = exactEnergy;
 const softCapEnabled = () => selectors.softCapEnabled(currentMatch());
+const matchRules = () => selectors.rules(currentMatch());
 const withdrawal = (source, p) => selectors.withdrawal(currentMatch(), source, p);
 const availableEnergy = (source, p) => selectors.availableEnergy(currentMatch(), source, p);
 function domDefaults() {
@@ -42,6 +43,21 @@ function mapOptions() {
     players: Number($('playerCount').value),
     density: $('density').value,
     seed: $('seed').value || 'energy-42',
+  };
+}
+function chosenRules() {
+  const { DEFAULT_RULES } = GameEngine;
+  const between = (id, min, max, fallback) => {
+    const value = Number($(id).value);
+    return $(id).value !== '' && Number.isFinite(value)
+      ? Math.max(min, Math.min(max, value))
+      : fallback;
+  };
+  return {
+    production: between('ruleProduction', 0, 100, DEFAULT_RULES.production),
+    interest: between('ruleInterest', 0, 100, 100 * DEFAULT_RULES.interest) / 100,
+    capacity: between('ruleCapacity', 10, 100000, DEFAULT_RULES.capacity),
+    overflowDecay: between('ruleOverflowDecay', 0, 100, 100 * DEFAULT_RULES.overflowDecay) / 100,
   };
 }
 function chosenSeat() {
@@ -104,7 +120,13 @@ function generate() {
   store.batch(() => {
     store.select(null);
     store.replaceMatch(
-      GameStore.generatedMatch(buildMap(mapOptions()), domDefaults(), Math.random, chosenSeat()),
+      GameStore.generatedMatch(
+        buildMap(mapOptions()),
+        domDefaults(),
+        Math.random,
+        chosenSeat(),
+        chosenRules(),
+      ),
     );
     store.setCamera({ x: 0, y: 0, scale: 1 });
     store.setView('map');

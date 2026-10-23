@@ -12,6 +12,8 @@
     coloursFor,
     recoloured,
     firstOwners,
+    rulesOf,
+    DEFAULT_RULES,
     SOFT_CAP_RULES,
   } = GameEngine;
   const HISTORY_LIMIT = 70;
@@ -100,13 +102,14 @@
     };
   }
 
-  function generatedMatch(map, defaults, random, seat = 0) {
+  function generatedMatch(map, defaults, random, seat = 0, rules = null) {
     const colours = coloursFor(seat, map.players);
     const state = {
       round: 1,
       nodes: recoloured(map.nodes, colours),
       finished: false,
       rulesVersion: SOFT_CAP_RULES.version,
+      ...withoutDefaultRules(rules),
     };
     return {
       state,
@@ -129,6 +132,11 @@
       defaults,
       replay: newReplay(state, random, seat),
     };
+  }
+
+  function withoutDefaultRules(rules) {
+    const complete = rulesOf({ rules });
+    return sameValue(complete, { ...DEFAULT_RULES }) ? {} : { rules: complete };
   }
 
   function newReplay(start, random, seat) {
@@ -244,6 +252,7 @@
   const ownersOf = (match) => match.map.owners ?? firstOwners(match.map.playerCount);
   const isOwn = (match, id) => match.state.nodes[id]?.owner === seatOf(match);
   const softCapEnabled = (match) => match.state?.rulesVersion === SOFT_CAP_RULES.version;
+  const rules = (match) => rulesOf(match.state);
   const defaultPolicy = () => ({ enabled: true, reserve: 5, investPct: 50, dest: null });
   const plan = (match, source) => match.orders[source] ?? { invest: 0, withdraw: 0, edges: {} };
   const allocated = (match, source, p = plan(match, source)) =>
@@ -429,7 +438,7 @@
       match.state.nodes[id],
       incoming,
       scheduled.filter((o) => o.source === id),
-      { softCap: softCapEnabled(match), withdraw: totalWithdrawal(match, id) },
+      { softCap: softCapEnabled(match), withdraw: totalWithdrawal(match, id), rules: rules(match) },
     );
   });
 
@@ -1455,6 +1464,7 @@
       seatOf,
       ownersOf,
       softCapEnabled,
+      rules,
       defaultPolicy,
       plan,
       allocated,
