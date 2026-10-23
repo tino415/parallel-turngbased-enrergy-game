@@ -63,6 +63,47 @@ test('Shift+click builds a group from own nodes only, without opening the editor
   expect((await ui(page)).bulkSelection).toEqual([0, 1]);
 });
 
+test('Shift+click keeps the selected node in the group it starts', async ({ page }) => {
+  await giveBlue(page, { 1: {} });
+  await node(page, 0).click();
+  await node(page, 1).click({ modifiers: ['Shift'] });
+  await expect(groupBar(page)).toContainText('2 selected');
+  expect((await ui(page)).bulkSelection).toEqual([0, 1]);
+});
+
+test('Shift+click on the selected node turns it into a group of one', async ({ page }) => {
+  await giveBlue(page, { 1: {} });
+  await node(page, 0).click();
+  await node(page, 0).click({ modifiers: ['Shift'] });
+  await expect(groupBar(page)).toContainText('1 selected');
+  expect((await ui(page)).bulkSelection).toEqual([0]);
+});
+
+test('a refused Shift+click keeps the selected node in the group and closes its inspector', async ({
+  page,
+}) => {
+  await giveBlue(page, { 1: {} });
+  await node(page, 0).click();
+  await node(page, 3).click({ modifiers: ['Shift'] });
+  await expect(groupBar(page)).toContainText('Only your nodes join a group.');
+  await expect(groupBar(page)).toContainText('1 selected');
+  await expect(inspector(page)).toBeHidden();
+  await expect(page.locator('#map .tactical-node-selected')).toHaveCount(0);
+});
+
+test('a group member looks like the selected node', async ({ page }) => {
+  await giveBlue(page, { 1: {} });
+  await node(page, 0).click();
+  const look = (selector) =>
+    page.locator(selector).evaluate((element) => {
+      const style = getComputedStyle(element);
+      return [style.stroke, style.strokeWidth, style.strokeDasharray, element.getAttribute('r')];
+    });
+  const selectedLook = await look('#map .tactical-node-selected');
+  await node(page, 1).click({ modifiers: ['Shift'] });
+  expect(await look('#map .tactical-group-member >> nth=0')).toEqual(selectedLook);
+});
+
 test('a refused Shift+click on a node shows its reason before any group exists', async ({
   page,
 }) => {
