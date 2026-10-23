@@ -401,12 +401,34 @@
     };
     const edit = action('Edit', editGroup);
     edit.disabled = bulkSelection.length === 0 && bulkEdges.length === 0;
+    const helper = (label, predicate) => {
+      const button = action(label, () => selectOwnNodes(predicate));
+      button.disabled = bulkEdges.length > 0;
+      return button;
+    };
     updateChildrenInPlace(groupBar, [
       textElement('strong', groupCount() + ' selected'),
+      helper('All', () => true),
+      helper('Border', isBorderNode),
+      helper('Interior', (id) => !isBorderNode(id)),
       edit,
       action('Done', leaveGroup),
       textElement('span', '', 'tactical-group-hint'),
     ]);
+  }
+
+  function isBorderNode(id) {
+    return selectors.neighbors(currentMatch(), id).some((other) => !isMine(other));
+  }
+
+  function selectOwnNodes(predicate) {
+    const ids = state.nodes.map((node) => node.id).filter((id) => isMine(id) && predicate(id));
+    if (!ids.length) {
+      showGroupHint('No such nodes.');
+      return;
+    }
+    store.setBulkSelection(ids);
+    changedGroup();
   }
 
   function groupCount() {

@@ -217,8 +217,46 @@ test('an empty-map tap keeps the group and Done leaves it', async ({ page }) => 
   await openGroup(page, [0, 1]);
   await page.locator('#map').dispatchEvent('click');
   await expect(inspector(page)).toContainText('Group · 2 nodes');
-  await expect(groupBar(page).getByRole('button')).toHaveText(['Edit', 'Done']);
+  await expect(groupBar(page).getByRole('button')).toHaveText([
+    'All',
+    'Border',
+    'Interior',
+    'Edit',
+    'Done',
+  ]);
   await groupBar(page).getByRole('button', { name: 'Done' }).click();
   await expect(groupBar(page)).toBeHidden();
   await expect(inspector(page)).toBeHidden();
+});
+
+test('All, Border and Interior select own nodes by whether they touch a foreign node', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const around = await page.evaluate(() => [0, ...selectors.neighbors(currentMatch(), 0)]);
+  await giveBlue(page, Object.fromEntries(around.map((id) => [id, {}])));
+  const own = () =>
+    page.evaluate(() => {
+      const match = currentMatch();
+      const mine = state.nodes.map((n) => n.id).filter((id) => selectors.isOwn(match, id));
+      const border = mine.filter((id) =>
+        selectors.neighbors(match, id).some((other) => !selectors.isOwn(match, other)),
+      );
+      return { all: mine, border, interior: mine.filter((id) => !border.includes(id)) };
+    });
+  const selection = async () => (await ui(page)).bulkSelection.slice().sort((a, b) => a - b);
+  await page.evaluate(() => {
+    store.setGroupMode(true);
+    render();
+  });
+  const expected = await own();
+  expect(expected.border.length).toBeGreaterThan(0);
+  expect(expected.interior.length).toBeGreaterThan(0);
+
+  await groupBar(page).getByRole('button', { name: 'All' }).click();
+  expect(await selection()).toEqual(expected.all.sort((a, b) => a - b));
+  await groupBar(page).getByRole('button', { name: 'Border' }).click();
+  expect(await selection()).toEqual(expected.border.sort((a, b) => a - b));
+  await groupBar(page).getByRole('button', { name: 'Interior' }).click();
+  expect(await selection()).toEqual(expected.interior.sort((a, b) => a - b));
 });
