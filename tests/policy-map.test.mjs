@@ -51,3 +51,25 @@ test('the map shows amounts until the player switches to policies', () => {
   store.setMapValues('anything else');
   assert.equal(store.getSnapshot().ui.mapValues, 'absolute');
 });
+
+test('a pressure edge to an enemy node shows its share, minimum and bank', () => {
+  const { GameStore, store } = matchWithPolicy({ enabled: true, reserve: 5, investPct: 40 });
+  const match = store.getSnapshot().match;
+  const enemy = match.map.edges
+    .flatMap(([a, b]) => (a === 0 ? [b] : b === 0 ? [a] : []))
+    .find((id) => match.state.nodes[id].owner !== 0);
+  assert.notEqual(enemy, undefined);
+  store.replaceMatch({
+    ...match,
+    policies: {
+      0: { ...match.policies[0], pressure: { [enemy]: { pct: 20, min: 6, bank: 3 } } },
+    },
+  });
+  const attack = GameStore.selectors
+    .policyRoutes(store.getSnapshot().match)
+    .find((route) => route.type === 'attack');
+  assert.equal(attack.dest, enemy);
+  assert.equal(attack.pct, 20);
+  assert.equal(attack.minimum, 6);
+  assert.equal(attack.bank, 3);
+});

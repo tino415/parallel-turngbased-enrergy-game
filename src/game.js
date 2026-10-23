@@ -849,4 +849,5 @@ $('fit').onclick = () => {
   store.setCamera({ x: 0, y: 0, scale: 1 });
 };
 if (!restoreGame()) fresh();
+renderMapValuesButton();
 attachNavigation();

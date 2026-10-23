@@ -369,12 +369,16 @@
     return [...manual, ...automatic];
   });
 
+  const finitePositive = (value, fallback) =>
+    Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : fallback;
+
   const pressureEdgesOf = (match, source) =>
     Object.entries(match.policies[source]?.pressure ?? {})
       .map(([dest, settings]) => ({
         dest: Number(dest),
-        pct: settings.pct,
-        min: settings.min ?? 10,
+        pct: Math.min(100, finitePositive(settings?.pct, 0)),
+        min: finitePositive(settings?.min, 10),
+        bank: finitePositive(settings?.bank, 0),
       }))
       .filter((edge) => edge.pct > 0 && neighbors(match, source).includes(edge.dest));
 
@@ -386,28 +390,28 @@
         const policy = match.policies[source],
           edges = pressureEdgesOf(match, source),
           shares = policyShares(policy, edges),
-          pressure = edges.map((edge, i) => ({
-            source,
-            dest: edge.dest,
-            type: 'attack',
-            pct: shares.pressure[i],
-            minimum: edge.min,
-            bank: policy.pressure[edge.dest].bank ?? 0,
-          })),
+          pressure = edges
+            .map((edge, i) => ({
+              source,
+              dest: edge.dest,
+              type: 'attack',
+              pct: shares.pressure[i],
+              minimum: edge.min,
+              bank: edge.bank,
+            }))
+            .filter((route) => !isOwn(match, route.dest)),
           transferable =
             policy.dest !== null &&
             neighbors(match, source).includes(policy.dest) &&
             isOwn(match, policy.dest),
-          transfer = transferable
-            ? [
-                {
-                  source,
-                  dest: policy.dest,
-                  type: 'transfer',
-                  pct: Math.max(0, 100 - shares.invest - shares.defense - sum(shares.pressure)),
-                },
-              ]
-            : [];
+          transferPct = Math.max(
+            0,
+            100 - shares.invest - shares.defense - sum(pressure.map((route) => route.pct)),
+          ),
+          transfer =
+            transferable && transferPct >= 0.5
+              ? [{ source, dest: policy.dest, type: 'transfer', pct: transferPct }]
+              : [];
         return [...transfer, ...pressure];
       });
 
