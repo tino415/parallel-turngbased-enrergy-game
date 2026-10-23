@@ -283,3 +283,42 @@ test('the seat link continues the same colour on another device', async ({
   await endTurn(phone);
   await expect.poll(() => round(page), SLOW).toBe(2);
 });
+
+test('the host frees a colour and a second device takes it from the link', async ({
+  page,
+  browser,
+}, testInfo) => {
+  page.on('dialog', (dialog) => dialog.accept());
+  const friend = await startWithFriend(page, browser, testInfo);
+  const host = (colour) => page.locator('.online-seat', { hasText: colour });
+  await host('Red').getByRole('button', { name: 'Free' }).click();
+  await expect(host('Red')).toContainText('free', SLOW);
+  await expect(friend.locator('.online-seat.mine')).toHaveCount(0, SLOW);
+
+  const link = new URL(friend.url());
+  const newcomer = await (await friendContext(browser, testInfo.project)).newPage();
+  await newcomer.goto(link.origin + link.pathname + link.search);
+  await expect(newcomer.locator('#onlinePanel')).toBeVisible(SLOW);
+  await takeColour(newcomer, 'Bob', 'Red');
+  await expect(host('Red')).toContainText('Bob', SLOW);
+});
+
+test('the host hands a colour to the AI during play and nobody waits for it', async ({
+  page,
+  browser,
+}, testInfo) => {
+  page.on('dialog', (dialog) => dialog.accept());
+  await startWithFriend(page, browser, testInfo);
+  await page.getByRole('button', { name: 'Start match' }).click();
+  await expect(indicator(page)).toContainText('0/2', SLOW);
+  await indicator(page).click();
+  await page
+    .locator('.online-seat', { hasText: 'Red' })
+    .getByRole('button', { name: 'To AI' })
+    .click();
+  await expect(page.locator('.online-seat', { hasText: 'Red' })).toContainText('closed', SLOW);
+  await page.getByRole('button', { name: 'Close' }).click();
+  await expect(indicator(page)).toContainText('0/1', SLOW);
+  await endTurn(page);
+  await expect.poll(() => round(page), SLOW).toBe(2);
+});

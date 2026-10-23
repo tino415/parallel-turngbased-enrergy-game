@@ -6,6 +6,8 @@ import {
   claimSeat,
   createMatch,
   forceResolve,
+  freeColour,
+  handColourToAi,
   leaveMatch,
   startMatch,
   submitTurn,
@@ -58,7 +60,7 @@ export class Match extends DurableObject {
   }
 
   async handle(request, pathname, record, tokenHash) {
-    const route = `${request.method} ${pathname.replace(/\/\d+$/, '/:owner')}`;
+    const route = `${request.method} ${pathname.replace(/\/seats\/\d+/, '/seats/:owner')}`;
     if (route === 'GET /') return json(viewFor(record, tokenHash));
     if (route === 'DELETE /') return this.cancel(record, tokenHash);
     const body = request.method === 'GET' ? {} : await request.json().catch(() => ({}));
@@ -69,13 +71,17 @@ export class Match extends DurableObject {
       'PUT /turn': () => submitTurn(record, { tokenHash, ...body }),
       'POST /resolve': () => forceResolve(record, { tokenHash }),
       'POST /leave': () => leaveMatch(record, { tokenHash }),
+      'POST /seats/:owner/free': () =>
+        freeColour(record, { tokenHash, owner: seatOwner(pathname) }),
+      'POST /seats/:owner/ai': () =>
+        handColourToAi(record, { tokenHash, owner: seatOwner(pathname) }),
     }[route];
     if (!change) return notFound();
     return this.saved(change(), tokenHash);
   }
 
   async claim(record, tokenHash, pathname, { name }) {
-    const owner = Number(pathname.split('/').pop());
+    const owner = seatOwner(pathname);
     const known = tokenHash && viewFor(record, tokenHash);
     const token = known && (known.host || known.you !== null) ? null : newToken();
     const claimingHash = token ? await hashOf(token) : tokenHash;
@@ -110,6 +116,8 @@ function createOnNewObject(request, env) {
     new Request(`https://match/create?id=${id}`, { method: 'POST', body: request.body }),
   );
 }
+
+const seatOwner = (pathname) => Number(pathname.split('/')[2]);
 
 const matchObject = (env, id) => env.MATCHES.get(env.MATCHES.idFromName(id));
 
