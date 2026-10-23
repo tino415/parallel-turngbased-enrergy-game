@@ -71,7 +71,9 @@ on submit: the new-game dialog and the group's invest-on-each amount.
   rejects an over-budget amount; the caller shows the hint.
 - **Selectors** (`GameStore.selectors.<name>(match, ...)`) derive plans,
   budgets, policy orders, previews, projections and the edge source. They never
-  call `Math.random` and never change the match. `replayFrames` and `playerHistory` are the ones that
+  call `Math.random` and never change the match. `previewOrders`, `policyPlan` and
+  `projection` are computed once per match object, so a match is never changed
+  in place. `replayFrames` and `playerHistory` are the ones that
   resolves rounds: it re-runs the recorded ones with their recorded dice.
 - **Subscriptions** (`store.subscribe((snapshot, previous) => ...)`) run
   synchronously after every commit. `game.js` uses one to refresh the global
@@ -98,6 +100,11 @@ replaced in load order, and each layer calls the previous one:
 3. `tactical-ui.js` adds edge hit areas, selection and group rings, the group
    bar and the inspector for one node, one edge, the node group or the connection group, which it
    updates in place to keep drafts and focus.
+
+Camera changes render nothing: a `game.js` subscriber moves the map transform and
+a `tactical-ui.js` subscriber repositions the inspector. `game.js` skips the map
+while another tab is shown, and the order list and log while their slices are
+unchanged.
 
 `renderFlows` is also replaced in load order.
 The last definition wins and is the one in use.

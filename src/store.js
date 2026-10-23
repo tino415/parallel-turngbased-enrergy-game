@@ -16,6 +16,21 @@
   const HISTORY_LIMIT = 70;
   const TARGET_EPSILON = 1e-6;
   const sum = (values) => values.reduce((total, value) => total + value, 0);
+  const oncePerMatch = (derive) => {
+    const derived = new WeakMap();
+    return (match) => {
+      if (!derived.has(match)) derived.set(match, derive(match));
+      return derived.get(match);
+    };
+  };
+  const oncePerMatchAndNode = (derive) => {
+    const byNode = oncePerMatch(() => new Map());
+    return (match, id) => {
+      const derived = byNode(match);
+      if (!derived.has(Number(id))) derived.set(Number(id), derive(match, Number(id)));
+      return derived.get(Number(id));
+    };
+  };
 
   const CLASSIC_EDGES = [
     [0, 1],
@@ -250,7 +265,7 @@
 
   const policyOrders = (match, source) => policyPlan(match, source).orders;
 
-  function policyPlan(match, source) {
+  const policyPlan = oncePerMatchAndNode((match, source) => {
     const node = match.state.nodes[source],
       p = plan(match, source);
     return planPolicy({
@@ -268,7 +283,7 @@
       owners: match.state.nodes.map((n) => n.owner),
       source,
     });
-  }
+  });
 
   function defenseStatus(match, source) {
     const policy = match.policies[source];
@@ -334,7 +349,7 @@
     return rounds;
   }
 
-  function previewOrders(match) {
+  const previewOrders = oncePerMatch((match) => {
     const manual = Object.entries(match.orders).flatMap(([source, p]) => [
       ...(p.invest > 0
         ? [{ source: Number(source), type: 'invest', amount: p.invest, automatic: false }]
@@ -351,14 +366,14 @@
       .map(Number)
       .flatMap((source) => policyOrders(match, source));
     return [...manual, ...automatic];
-  }
+  });
 
   const aiDebugPlan = (match) =>
     match.online
       ? { orders: [], withdrawals: {} }
       : aiPlan(match.state, match.map.edges, humansOf(match));
 
-  function projection(match, id) {
+  const projection = oncePerMatchAndNode((match, id) => {
     const scheduled = previewOrders(match),
       incoming = sum(
         scheduled.filter((o) => o.dest === id && o.type === 'transfer').map((o) => o.amount),
@@ -369,7 +384,7 @@
       scheduled.filter((o) => o.source === id),
       { softCap: softCapEnabled(match), withdraw: totalWithdrawal(match, id) },
     );
-  }
+  });
 
   function withOrder(match, source, p) {
     const orders = { ...match.orders };

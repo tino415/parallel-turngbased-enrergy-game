@@ -28,16 +28,23 @@ const maps = {
 };
 
 function giveBlueTerritoryWithPolicies(count) {
-  const start = state.nodes.find((node) => node.owner === 0).id;
+  const match = store.getSnapshot().match;
+  const start = match.state.nodes.find((node) => node.owner === 0).id;
   const reached = [start];
   for (let i = 0; i < reached.length && reached.length < count; i++)
     for (const next of neighbors(reached[i]))
-      if (!reached.includes(next) && state.nodes[next].owner === null && reached.length < count)
+      if (
+        !reached.includes(next) &&
+        match.state.nodes[next].owner === null &&
+        reached.length < count
+      )
         reached.push(next);
-  for (const id of reached) {
-    Object.assign(state.nodes[id], { owner: 0, active: 12, invested: 6 });
-    policies[id] = { enabled: true, reserve: 3, investPct: 40, dest: null };
-  }
+  const nodes = match.state.nodes.map((node) =>
+    reached.includes(node.id) ? { ...node, owner: 0, active: 12, invested: 6 } : node,
+  );
+  const policies = { ...match.policies };
+  for (const id of reached) policies[id] = { enabled: true, reserve: 3, investPct: 40, dest: null };
+  store.replaceMatch({ ...match, state: { ...match.state, nodes }, policies });
   render();
 }
 
@@ -70,6 +77,7 @@ if (output) {
 async function measureInteractions(page, prepareMap, touch) {
   await page.addInitScript(seedMathRandom);
   await page.addInitScript(installStorageAndMutationCounters);
+  await page.addInitScript(countEngineCallsFromTheStore);
   page.on('dialog', (dialog) => dialog.accept());
   await page.goto(BASE + '/');
   await prepareMap(page);
@@ -93,7 +101,7 @@ async function measureInteractions(page, prepareMap, touch) {
   if (!touch)
     await step('camera: ctrl+wheel zoom', async () => {
       const box = await page.locator('#map').boundingBox();
-      await page.mouse.move(box.x + 20, box.y + 20);
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
       await page.keyboard.down('Control');
       await page.mouse.wheel(0, -100);
       await page.keyboard.up('Control');
@@ -108,9 +116,10 @@ async function measureInteractions(page, prepareMap, touch) {
     await percent.fill('61');
     await percent.blur();
   });
-  await page.getByText('Manual investment, withdrawal and allocations').click();
   await step('order edit: manual invest', async () => {
-    const invest = page.locator('#tacticalInspector [data-allocation="invest"]');
+    const invest = page
+      .locator('#tacticalInspector')
+      .getByRole('spinbutton', { name: 'Invest this round' });
     await invest.fill('2');
     await invest.blur();
   });
@@ -128,6 +137,7 @@ function installStorageAndMutationCounters() {
     mutations: {},
     seen: { added: new WeakSet(), removed: new WeakSet() },
     calls: {},
+    mapRebuilds: 0,
     renderMs: 0,
   });
   window.measure = { ...fresh(), reset: () => Object.assign(window.measure, fresh()) };
@@ -156,6 +166,10 @@ function installStorageAndMutationCounters() {
   new MutationObserver((records) => {
     for (const record of records) {
       const key = region(record.target);
+      if (record.target.id === 'map')
+        window.measure.mapRebuilds += [...record.addedNodes].filter(
+          (node) => node.nodeName === 'g',
+        ).length;
       for (const node of record.addedNodes) tally(key, 'added', unseenElements(node, 'added'));
       for (const node of record.removedNodes)
         tally(key, 'removed', unseenElements(node, 'removed'));
@@ -163,19 +177,40 @@ function installStorageAndMutationCounters() {
   }).observe(document, { childList: true, subtree: true });
 }
 
+function countEngineCallsFromTheStore() {
+  let engine;
+  const counted = (name, original) =>
+    function (...args) {
+      window.measure.calls[name] = (window.measure.calls[name] || 0) + 1;
+      return original.apply(this, args);
+    };
+  Object.defineProperty(window, 'GameEngine', {
+    configurable: true,
+    get: () => engine,
+    set(value) {
+      engine = Object.freeze({
+        ...value,
+        planPolicy: counted('planPolicy', value.planPolicy),
+        forecast: counted('forecast', value.forecast),
+      });
+    },
+  });
+}
+
 function installRenderCounters() {
   const counted = [
     'render',
+    'renderMap',
     'renderOrders',
+    'renderLog',
     'renderFlows',
-    'renderViews',
     'saveGame',
     'previewOrders',
-    'policyOrders',
     'projection',
   ];
   for (const name of counted) {
     const original = window[name];
+    if (typeof original !== 'function') continue;
     window[name] = function (...args) {
       window.measure.calls[name] = (window.measure.calls[name] || 0) + 1;
       if (name !== 'render') return original.apply(this, args);
@@ -192,12 +227,13 @@ function installRenderCounters() {
 
 function readCounters(page) {
   return page.evaluate(() => {
-    const { calls, mutations, writes, bytes, renderMs } = window.measure;
+    const { calls, mutations, mapRebuilds, writes, bytes, renderMs } = window.measure;
     const sum = (field) => Object.values(mutations).reduce((total, m) => total + m[field], 0);
     return {
       renders: calls.render || 0,
       renderMs: Math.round(renderMs * 10) / 10,
       calls: { ...calls },
+      mapRebuilds,
       elementsAdded: sum('added'),
       elementsRemoved: sum('removed'),
       regions: Object.fromEntries(
@@ -238,18 +274,18 @@ async function dragMap(page, touch) {
 
 function markdownTable(rows) {
   const header =
-    '| viewport | map | interaction | render passes | via render() | render() ms | policyOrders | projection | elements +/- | top regions | localStorage writes | bytes |';
+    '| viewport | map | interaction | render passes | render() ms | map rebuilds | policy evaluations | forecasts | elements +/- | top regions | localStorage writes | bytes |';
   const divider = '|' + ' --- |'.repeat(12);
   const lines = rows.map((r) =>
     [
       r.viewport,
       r.map,
       r.interaction,
-      r.calls.saveGame || 0,
       r.renders,
       r.renderMs,
-      r.calls.policyOrders || 0,
-      r.calls.projection || 0,
+      r.mapRebuilds,
+      r.calls.planPolicy || 0,
+      r.calls.forecast || 0,
       r.elementsAdded + ' / ' + r.elementsRemoved,
       topRegions(r.regions),
       r.storageWrites,

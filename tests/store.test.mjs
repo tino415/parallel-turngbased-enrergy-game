@@ -151,6 +151,24 @@ test('selectors never draw random numbers', () => {
   assert.equal(draws, 0);
 });
 
+test('derived previews are computed once per match and again after a commit', () => {
+  const GameStore = loadStore(),
+    store = newStore(GameStore),
+    { selectors } = GameStore;
+  store.changePolicy(0, 'enabled', true);
+  const match = store.getSnapshot().match;
+  assert.equal(selectors.previewOrders(match), selectors.previewOrders(match));
+  assert.equal(selectors.projection(match, 0), selectors.projection(match, '0'));
+  assert.equal(selectors.policyOrders(match, 0), selectors.policyOrders(match, 0));
+
+  store.setAllocation(0, 1, 5);
+  const next = store.getSnapshot().match;
+  assert.notEqual(selectors.previewOrders(next), selectors.previewOrders(match));
+  assert.ok(selectors.previewOrders(next).some((o) => o.dest === 1 && o.amount === 5));
+  assert.ok(!selectors.previewOrders(match).some((o) => o.dest === 1 && o.amount === 5));
+  assertSameData(selectors.projection(next, 0), loadStore().selectors.projection(plain(next), 0));
+});
+
 test('a save round trip keeps the match and prepends the recovery line', () => {
   const GameStore = loadStore(),
     store = newStore(GameStore);

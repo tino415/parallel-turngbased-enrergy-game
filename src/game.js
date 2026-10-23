@@ -6,6 +6,7 @@ let state, orders, policies, history, xy, edges, N, playerCount, mapSeed;
 let { view: currentView, clipboard, selected, camera } = store.getSnapshot().ui;
 store.subscribe(({ match, ui }, previous) => {
   ({ view: currentView, clipboard, selected, camera } = ui);
+  if (camera !== previous.ui.camera) moveCamera();
   if (match === previous.match) return;
   ({ state, orders, policies, history } = match);
   ({ xy, edges, N, playerCount, mapSeed } = match.map);
@@ -212,6 +213,7 @@ function isFormValue(element) {
   return ['INPUT', 'SELECT', 'TEXTAREA'].includes(element.tagName);
 }
 function renderOrders() {
+  ordersDrawnFor = { match: currentMatch(), selected };
   const container = $('orders');
   container.replaceChildren();
   const ids = [...new Set([...Object.keys(orders), ...Object.keys(policies)])]
@@ -435,7 +437,6 @@ function attachNavigation() {
         ...camera,
         scale: Math.max(0.3, Math.min(5, camera.scale * (e.deltaY < 0 ? 1.12 : 0.89))),
       });
-      render();
     },
     { passive: false },
   );
@@ -471,12 +472,6 @@ function attachNavigation() {
     const rect = svg.getBoundingClientRect();
     const factor = svg.viewBox.baseVal.width / rect.width;
     store.setCamera({ ...camera, x: drag.ox + dx * factor, y: drag.oy + dy * factor });
-    const g = svg.querySelector('g');
-    if (g)
-      g.setAttribute(
-        'transform',
-        'translate(' + camera.x + ' ' + camera.y + ') scale(' + camera.scale + ')',
-      );
   });
 
   const stop = (e) => {
@@ -575,6 +570,14 @@ window.addEventListener('beforeunload', (event) => {
 window.addEventListener('pagehide', saveGame);
 
 function render() {
+  renderScore();
+  if (currentView === 'map') renderMap();
+  if (ordersAreStale()) renderOrders();
+  renderViews();
+  if (logIsStale()) renderLog();
+  setActiveTab();
+}
+function renderScore() {
   const nodes = state.nodes,
     mine = nodes.filter((n) => isMine(n.id)).length,
     opponents = nodes.filter((n) => n.owner !== null && !isMine(n.id)).length;
@@ -582,6 +585,9 @@ function render() {
   $('scoreCounts').textContent =
     ' · ' + playerName(mySeat()) + ' ' + mine + ' · Opponents ' + opponents;
   $('resolve').disabled = state.finished;
+}
+function renderMap() {
+  const nodes = state.nodes;
   const svg = $('map');
   svg.innerHTML = '';
   svg.setAttribute(
@@ -595,9 +601,7 @@ function render() {
     parent.append(e);
     return e;
   };
-  const graph = element('g', {
-    transform: 'translate(' + camera.x + ' ' + camera.y + ') scale(' + camera.scale + ')',
-  });
+  const graph = element('g', { transform: cameraTransform() });
   for (const [a, b] of edges)
     element(
       'line',
@@ -647,11 +651,25 @@ function render() {
       clickNode(n.id);
     });
   }
-  renderOrders();
   renderFlows(svg, graph, element);
-  renderViews();
+}
+function cameraTransform() {
+  return 'translate(' + camera.x + ' ' + camera.y + ') scale(' + camera.scale + ')';
+}
+function moveCamera() {
+  $('map').querySelector('g')?.setAttribute('transform', cameraTransform());
+}
+let ordersDrawnFor = null,
+  logDrawnFor = null;
+function ordersAreStale() {
+  return ordersDrawnFor?.match !== currentMatch() || ordersDrawnFor.selected !== selected;
+}
+function logIsStale() {
+  return logDrawnFor !== history;
+}
+function renderLog() {
+  logDrawnFor = history;
   $('log').replaceChildren(...history.map(messageEntry));
-  setActiveTab();
 }
 const ownerByPlayerName = new Map(playerOwners.map((owner) => [playerName(owner), owner]));
 const playerNamePattern = new RegExp('\\b(' + [...ownerByPlayerName.keys()].join('|') + ')\\b');
@@ -723,15 +741,12 @@ function isTypingOrInOverlay(target) {
 }
 $('zoomIn').onclick = () => {
   store.setCamera({ ...camera, scale: Math.min(5, camera.scale * 1.25) });
-  render();
 };
 $('zoomOut').onclick = () => {
   store.setCamera({ ...camera, scale: Math.max(0.3, camera.scale / 1.25) });
-  render();
 };
 $('fit').onclick = () => {
   store.setCamera({ x: 0, y: 0, scale: 1 });
-  render();
 };
 if (!restoreGame()) fresh();
 attachNavigation();

@@ -67,8 +67,11 @@ test('friendly edge switches direction and the new support replaces the reverse 
   page,
 }) => {
   await page.evaluate(() => {
+    const match = structuredClone(store.getSnapshot().match),
+      { state, orders, policies } = match;
     state.nodes[1].owner = 0;
     state.nodes[1].active = 10;
+    store.replaceMatch(match);
     render();
   });
   const edge = page.locator('.tactical-edge-hit[data-edge="0-1"]');
@@ -160,10 +163,13 @@ test('manual orders can be opened from the overflow Orders review', async ({ pag
 
 test('planned arrows and income remain visible across selections', async ({ page }) => {
   await page.evaluate(() => {
+    const match = structuredClone(store.getSnapshot().match),
+      { state, orders, policies } = match;
     state.nodes[1].owner = 0;
     orders[0] = { invest: 0, withdraw: 0, edges: { 1: 4, 2: 6 } };
     orders[1] = { invest: 0, withdraw: 0, edges: { 3: 2 } };
     policies[0] = { enabled: true, reserve: 2, investPct: 0, dest: 1 };
+    store.replaceMatch(match);
     render();
   });
   const styled = page.locator('#map > g > line.tactical-flow-connection');
@@ -380,6 +386,8 @@ for (const [source, destination] of [
   }) => {
     await page.evaluate(
       ({ source, destination }) => {
+        const match = structuredClone(store.getSnapshot().match),
+          { state, orders, policies } = match;
         state.nodes[1].owner = 0;
         state.nodes[source].active = 20;
         policies[source] = {
@@ -388,6 +396,7 @@ for (const [source, destination] of [
           investPct: 50,
           dest: destination,
         };
+        store.replaceMatch(match);
         render();
       },
       { source, destination },
@@ -430,7 +439,10 @@ test('connection editor sets recurring support policy directly using default sou
   page,
 }) => {
   await page.evaluate(() => {
+    const match = structuredClone(store.getSnapshot().match),
+      { state, orders, policies } = match;
     state.nodes[1].owner = 0;
+    store.replaceMatch(match);
     render();
   });
   const edge = page.locator('.tactical-edge-hit[data-edge="0-1"]');
@@ -569,8 +581,11 @@ test.describe('node editor stays usable when node ownership changes', () => {
     await openEditor(page, edited);
     await page.evaluate(
       ([edited, opponentStart]) => {
+        const match = structuredClone(store.getSnapshot().match),
+          { state, orders, policies } = match;
         state.nodes[edited].owner = 1;
         state.nodes[opponentStart].owner = 0;
+        store.replaceMatch(match);
       },
       [edited, opponentStart],
     );
