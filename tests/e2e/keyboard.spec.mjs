@@ -152,3 +152,51 @@ test('shortcuts do nothing while a dialog is open', async ({ page }) => {
   await expect(page.locator('#mapViewport')).toBeVisible();
   expect(await page.evaluate(() => state.round)).toBe(1);
 });
+
+test('L opens the leaderboard from any view', async ({ page }) => {
+  await page.keyboard.press('l');
+  await expect(page.locator('#leaderboardView')).toBeVisible();
+  await page.keyboard.press('m');
+  await page.keyboard.press('m');
+  await expect(page.locator('#messagesView')).toBeVisible();
+  await page.keyboard.press('l');
+  await expect(page.locator('#leaderboardView')).toBeVisible();
+});
+
+test('E opens the group editor while nodes are selected and does nothing otherwise', async ({
+  page,
+}) => {
+  await page.keyboard.press('e');
+  await expect(inspector(page)).toBeHidden();
+  await page.evaluate(() => store.setGroupMode(true));
+  await expect(page.locator('#tacticalGroupEdit')).toBeDisabled();
+  await page.keyboard.press('e');
+  expect(await page.evaluate(() => store.getSnapshot().ui.groupEditing)).toBe(false);
+  await blueNode(page).click({ modifiers: ['Shift'] });
+  await expect(page.locator('#tacticalGroupBar')).toContainText('1 selected');
+  await page.keyboard.press('e');
+  await expect(inspector(page)).toBeVisible();
+  expect(await page.evaluate(() => store.getSnapshot().ui.groupEditing)).toBe(true);
+});
+
+test('E does nothing once the map gives way to another view', async ({ page }) => {
+  await blueNode(page).click({ modifiers: ['Shift'] });
+  await expect(page.locator('#tacticalGroupBar')).toContainText('1 selected');
+  await page.keyboard.press('l');
+  await page.keyboard.press('e');
+  expect(await page.evaluate(() => store.getSnapshot().ui.groupEditing)).toBe(false);
+});
+
+test('E leaves a group alone while a dialog is open', async ({ page }) => {
+  await blueNode(page).click({ modifiers: ['Shift'] });
+  await expect(page.locator('#tacticalGroupBar')).toContainText('1 selected');
+  await page.locator('#tacticalMenu summary').click();
+  await page.locator('#tacticalMenu button').filter({ hasText: 'New game' }).click();
+  await expect(page.locator('#newGameDialog')).toBeVisible();
+  await page.locator('#cancelNewGame').focus();
+  await page.keyboard.press('e');
+  await page.keyboard.press('l');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#mapViewport')).toBeVisible();
+  expect(await page.evaluate(() => store.getSnapshot().ui.groupEditing)).toBe(false);
+});
