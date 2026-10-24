@@ -108,6 +108,9 @@ service worker `sw.js`, registered by `src/service-worker-registration.js`.
 the balance and economy simulations. The site deploys to Cloudflare from `dist/`
 through `wrangler.toml`.
 
+A PR merges only on top of the current main, with green CI on that head. A PR
+behind main is rebased first and its CI waited for again.
+
 An agent waits for a PR's CI with one Monitor,
 `timeout 1800 gh pr checks <number> --watch --interval 300`, and reads the result
 when it ends. Never `until gh pr checks …` in a loop.
