@@ -69,6 +69,21 @@ export function handColourToAi(record, { tokenHash, owner }) {
   return hostChangesSeat(record, tokenHash, owner, aiSeat(owner), ' was handed to the AI');
 }
 
+export function handOverHosting(record, { tokenHash, owner }) {
+  requireHost(record, tokenHash);
+  const seat = record.seats[owner];
+  if (!seat) throw new Refusal(404, 'No such colour');
+  if (record.phase === 'finished') throw new Refusal(409, 'The match is over');
+  if (!seat.tokenHash || seat.away) throw new Refusal(409, 'Only a player can become the host');
+  if (seat.tokenHash === record.hostTokenHash) throw new Refusal(409, 'You are the host already');
+  const { match } = record;
+  return revised({
+    ...record,
+    hostTokenHash: seat.tokenHash,
+    match: { ...match, history: [seat.name + ' is the host now.', ...match.history] },
+  });
+}
+
 function hostChangesSeat(record, tokenHash, owner, replacement, reason) {
   requireHost(record, tokenHash);
   const seat = record.seats[owner];

@@ -10,6 +10,7 @@ import {
   forceResolve,
   freeColour,
   handColourToAi,
+  handOverHosting,
   leaveMatch,
   scheduled,
   startMatch,
@@ -441,4 +442,34 @@ test('a round with no human left to wait for has no deadline', () => {
   const everyoneGone = [1, 2, 3].reduce((current) => timeout(current), timed());
   assert.deepEqual(everyoneGone.match.humanSeats, []);
   assert.equal(scheduled(everyoneGone, 0).deadline, null);
+});
+
+test('only the host hands hosting over, and only to a colour a player holds', () => {
+  refusal(() => handOverHosting(playing(), { tokenHash: ANN, owner: 1 }));
+  refusal(() => handOverHosting(playing(), { tokenHash: HOST, owner: 0 }));
+  refusal(() => handOverHosting(playing(), { tokenHash: HOST, owner: 2 }));
+  refusal(() => handOverHosting(playing(), { tokenHash: HOST, owner: 9 }));
+  const away = expireTurn(expireTurn(expireTurn(turn(playing(), HOST))));
+  refusal(() => handOverHosting(away, { tokenHash: HOST, owner: 1 }));
+});
+
+test('the new host gets the host actions and the old host leaves like a guest', () => {
+  const handed = handOverHosting(playing(), { tokenHash: HOST, owner: 1 });
+  assert.equal(viewFor(handed, ANN).host, true);
+  assert.equal(viewFor(handed, HOST).host, false);
+  refusal(() => forceResolve(handed, { tokenHash: HOST }));
+  const left = leaveMatch(handed, { tokenHash: HOST });
+  assert.deepEqual(left.match.humanSeats, [1]);
+  assert.equal(forceResolve(left, { tokenHash: ANN }).match.state.round, 2);
+});
+
+test('hosting handed over in the lobby carries Start to the new host', () => {
+  const claimed = claimSeat(claimSeat(lobby(), { owner: 0, name: 'Hana', tokenHash: HOST }), {
+    owner: 1,
+    name: 'Ann',
+    tokenHash: ANN,
+  });
+  const handed = handOverHosting(claimed, { tokenHash: HOST, owner: 1 });
+  refusal(() => startMatch(handed, { tokenHash: HOST }));
+  assert.equal(startMatch(handed, { tokenHash: ANN }).phase, 'playing');
 });
