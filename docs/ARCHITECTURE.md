@@ -47,6 +47,7 @@ command really changes it.
 | group editor open                                   | `ui.groupEditing`     | no    | `setGroupEditing`, `leaveGroupMode` |
 | inspector target, editing, focused node             | `ui.inspector`        | no    | inspector commands                  |
 | AI debug view (AI plans on the map and inspector)   | `ui.aiDebug`          | no    | `setAiDebug`, `?aidebug` in the URL |
+| map values: amounts or standing policies            | `ui.mapValues`        | no    | `setMapValues`                      |
 | replay frame and play state                         | `ui.replay`           | no    | replay commands                     |
 
 ¹ `selected` stays in the save format so that old saves keep loading. ux.js

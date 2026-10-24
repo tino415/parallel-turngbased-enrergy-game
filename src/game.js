@@ -502,7 +502,7 @@ function setActiveTab() {
     button.classList.toggle('active', view === currentView);
     button.setAttribute('aria-selected', String(view === currentView));
   }
-  for (const id of ['fit', 'zoomIn', 'zoomOut']) $(id).hidden = currentView !== 'map';
+  for (const id of ['fit', 'zoomIn', 'zoomOut', 'mapValues']) $(id).hidden = currentView !== 'map';
 }
 function saveGame() {
   if (!state || currentMatch().online) return;
@@ -562,10 +562,11 @@ function drawGame(snapshot, previous) {
   if (!snapshot.match) return;
   const changed = (read) => GameStore.changed(snapshot, previous, read);
   if (changed((s) => s.ui.camera)) moveCamera();
+  if (changed((s) => s.ui.mapValues)) renderMapValuesButton();
   if (changed((s) => s.match)) renderScore();
   if (
     currentView === 'map' &&
-    [(s) => s.match, (s) => s.ui.view, (s) => s.ui.aiDebug].some(changed)
+    [(s) => s.match, (s) => s.ui.view, (s) => s.ui.aiDebug, (s) => s.ui.mapValues].some(changed)
   )
     renderMap();
   if (changed((s) => s.match) || changed((s) => s.ui.selected)) renderOrders();
@@ -663,7 +664,95 @@ function renderMap() {
       clickNode(n.id);
     });
   }
-  renderFlows(svg, graph, element);
+  renderMapValues(svg, graph, element);
+}
+function renderMapValues(svg, graph, element) {
+  if (store.getSnapshot().ui.mapValues === 'policy') renderPolicyValues(graph, element);
+  else renderFlows(svg, graph, element);
+}
+function renderPolicyValues(graph, element) {
+  for (const route of selectors.policyRoutes(currentMatch()))
+    drawPolicyRoute(graph, element, route);
+  for (const n of state.nodes) {
+    const policy = policies[n.id];
+    if (!isMine(n.id) || !policy?.enabled) continue;
+    const [x, y] = xy[n.id];
+    const label = element(
+      'text',
+      { x, y: y + 53, 'font-size': 12, fill: '#92ebc9', class: 'policy-node-label' },
+      graph,
+    );
+    label.textContent =
+      'keep ' + compactEnergy(policy.reserve) + ' / I ' + Math.round(policy.investPct) + '%';
+  }
+}
+function drawPolicyRoute(graph, element, route) {
+  const [ax, ay] = xy[route.source],
+    [bx, by] = xy[route.dest],
+    length = Math.hypot(bx - ax, by - ay) || 1,
+    ux = (bx - ax) / length,
+    uy = (by - ay) / length,
+    attack = route.type === 'attack',
+    color = attack ? '#ef886a' : '#31c9a0',
+    toX = bx - ux * 35,
+    toY = by - uy * 35;
+  const marked = (attrs) => ({
+    ...attrs,
+    class: 'policy-route',
+    'data-source': route.source,
+    'data-dest': route.dest,
+    'data-type': route.type,
+  });
+  element(
+    'line',
+    marked({
+      x1: ax + ux * 32,
+      y1: ay + uy * 32,
+      x2: toX,
+      y2: toY,
+      stroke: color,
+      'stroke-width': 3,
+      'stroke-dasharray': '2 6',
+    }),
+    graph,
+  );
+  element(
+    'path',
+    marked({
+      d:
+        'M ' +
+        toX +
+        ' ' +
+        toY +
+        ' l ' +
+        (-ux * 12 - uy * 5) +
+        ' ' +
+        (-uy * 12 + ux * 5) +
+        ' l ' +
+        uy * 10 +
+        ' ' +
+        -ux * 10 +
+        ' Z',
+      fill: color,
+    }),
+    graph,
+  );
+  const label = element(
+    'text',
+    marked({
+      x: (ax + bx) / 2 - uy * 15,
+      y: (ay + by) / 2 + ux * 15,
+      class: 'policy-route flow-label',
+    }),
+    graph,
+  );
+  label.textContent = policyRouteText(route);
+}
+function policyRouteText(route) {
+  const share = Math.round(route.pct) + '%';
+  if (route.type !== 'attack') return '→ ' + share;
+  const banked = route.bank > 0.05 ? ' · ⟂ ' + compactEnergy(route.bank) : '';
+  return '⚔ ' + share + ' · min ' + compactEnergy(route.minimum) + banked;
 }
 function cameraTransform() {
   return 'translate(' + camera.x + ' ' + camera.y + ') scale(' + camera.scale + ')';
@@ -754,8 +843,18 @@ $('zoomIn').onclick = () => {
 $('zoomOut').onclick = () => {
   store.setCamera({ ...camera, scale: Math.max(0.3, camera.scale / 1.25) });
 };
+$('mapValues').onclick = () => {
+  const policy = store.getSnapshot().ui.mapValues === 'policy';
+  store.setMapValues(policy ? 'absolute' : 'policy');
+};
+function renderMapValuesButton() {
+  const policy = store.getSnapshot().ui.mapValues === 'policy';
+  $('mapValues').setAttribute('aria-pressed', String(policy));
+  $('mapValues').textContent = policy ? 'Amounts' : 'Policies';
+}
 $('fit').onclick = () => {
   store.setCamera({ x: 0, y: 0, scale: 1 });
 };
 if (!restoreGame()) fresh();
+renderMapValuesButton();
 attachNavigation();

@@ -3,6 +3,7 @@
 (() => {
   const {
     planPolicy,
+    policyShares,
     forecast,
     resolveRound,
     seeded,
@@ -367,6 +368,52 @@
       .flatMap((source) => policyOrders(match, source));
     return [...manual, ...automatic];
   });
+
+  const finitePositive = (value, fallback) =>
+    Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : fallback;
+
+  const pressureEdgesOf = (match, source) =>
+    Object.entries(match.policies[source]?.pressure ?? {})
+      .map(([dest, settings]) => ({
+        dest: Number(dest),
+        pct: Math.min(100, finitePositive(settings?.pct, 0)),
+        min: finitePositive(settings?.min, 10),
+        bank: finitePositive(settings?.bank, 0),
+      }))
+      .filter((edge) => edge.pct > 0 && neighbors(match, source).includes(edge.dest));
+
+  const policyRoutes = (match) =>
+    match.state.nodes
+      .map((node) => node.id)
+      .filter((source) => isOwn(match, source) && match.policies[source]?.enabled)
+      .flatMap((source) => {
+        const policy = match.policies[source],
+          edges = pressureEdgesOf(match, source),
+          shares = policyShares(policy, edges),
+          pressure = edges
+            .map((edge, i) => ({
+              source,
+              dest: edge.dest,
+              type: 'attack',
+              pct: shares.pressure[i],
+              minimum: edge.min,
+              bank: edge.bank,
+            }))
+            .filter((route) => !isOwn(match, route.dest)),
+          transferable =
+            policy.dest !== null &&
+            neighbors(match, source).includes(policy.dest) &&
+            isOwn(match, policy.dest),
+          transferPct = Math.max(
+            0,
+            100 - shares.invest - shares.defense - sum(pressure.map((route) => route.pct)),
+          ),
+          transfer =
+            transferable && transferPct >= 0.5
+              ? [{ source, dest: policy.dest, type: 'transfer', pct: transferPct }]
+              : [];
+        return [...transfer, ...pressure];
+      });
 
   const aiDebugPlan = (match) =>
     match.online
@@ -1090,6 +1137,7 @@
     leaderboardChart: DEFAULT_LEADERBOARD_CHART,
     clipboard: null,
     aiDebug: false,
+    mapValues: 'absolute',
     bulkSelection: [],
     bulkEdges: [],
     groupMode: false,
@@ -1303,6 +1351,7 @@
       },
       setView: (view) => setUi('view', view),
       setAiDebug: (on) => setUi('aiDebug', Boolean(on) && !snapshot.match.online),
+      setMapValues: (mode) => setUi('mapValues', mode === 'policy' ? 'policy' : 'absolute'),
       sortLeaderboard: (column) =>
         setUi('leaderboardSort', nextLeaderboardSort(snapshot.ui.leaderboardSort, column)),
       setLeaderboardChart: (fields) =>
@@ -1406,6 +1455,7 @@
       edgePressureStatus,
       previewOrders,
       aiDebugPlan,
+      policyRoutes,
       projection,
       replacedSupport,
       orderPresets,

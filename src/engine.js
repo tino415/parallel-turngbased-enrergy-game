@@ -866,6 +866,7 @@
     buildMap,
     evaluatePolicy,
     planPolicy,
+    policyShares,
     policyWithdrawal,
     forecast,
     aiOrders,
