@@ -27,6 +27,20 @@
     withdrawalFee: 0.05,
   });
   const isSoftCap = (state) => state.rulesVersion === SOFT_CAP_RULES.version;
+  const DEFAULT_RULES = Object.freeze({
+    production: 1,
+    interest: 0.1,
+    capacity: SOFT_CAP_RULES.capacity,
+    overflowDecay: SOFT_CAP_RULES.overflowDecay,
+  });
+  const rulesOf = (state) =>
+    Object.fromEntries(
+      Object.entries(DEFAULT_RULES).map(([name, fallback]) => {
+        const value = state?.rules?.[name];
+        return [name, typeof value === 'number' && Number.isFinite(value) ? value : fallback];
+      }),
+    );
+  const incomeOf = (invested, rules) => rules.production + rules.interest * invested;
 
   // Pure, browser-independent map and economy functions.
   function seeded(seed) {
@@ -279,7 +293,7 @@
     };
   }
 
-  function applyOverflow(node, rules = SOFT_CAP_RULES) {
+  function applyOverflow(node, rules = DEFAULT_RULES) {
     const next = { ...node };
     const total = Math.max(0, next.active + next.invested);
     const loss =
@@ -292,6 +306,7 @@
   }
 
   function forecast(node, incoming, outgoing, options = {}) {
+    const rules = options.rules ?? DEFAULT_RULES;
     const withdraw = options.softCap
       ? Math.min(node.invested, Math.max(0, options.withdraw || 0))
       : 0;
@@ -300,10 +315,10 @@
     const available = node.active + withdraw * (1 - SOFT_CAP_RULES.withdrawalFee);
     const defense = Math.max(0, available - spent);
     const invested = node.invested - withdraw + invest;
-    const income = 1 + 0.1 * invested;
+    const income = incomeOf(invested, rules);
     const beforeOverflow = { ...node, active: 0.9 * (defense + incoming) + income, invested };
     const projection = options.softCap
-      ? applyOverflow(beforeOverflow)
+      ? applyOverflow(beforeOverflow, rules)
       : { node: beforeOverflow, loss: 0 };
     return {
       invest,
@@ -315,7 +330,7 @@
       next: projection.node.active,
       nextInvested: projection.node.invested,
       overflow: projection.loss,
-      capacity: options.softCap ? SOFT_CAP_RULES.capacity : null,
+      capacity: options.softCap ? rules.capacity : null,
       total: projection.node.active + projection.node.invested,
     };
   }
@@ -553,6 +568,7 @@
       rnd = (a, b) => a + rng() * (b - a),
       clamp = (v) => Math.max(0, v);
     const softCap = isSoftCap(state);
+    const rules = rulesOf(state);
     const conquered = new Set();
     const conquestPolicyOf = (owner) =>
       owner in conquestPolicies
@@ -786,7 +802,7 @@
     if (pressureResults.length)
       log('Round ' + state.round + ' · Pressure: ' + pressureResults.join(', ') + '.');
     for (const n of nodes) {
-      const income = 1 + n.invested * 0.1;
+      const income = incomeOf(n.invested, rules);
       book(n.owner, 'production', income);
       book(n.owner, 'decay', n.active * 0.1);
       n.active = clamp(n.active * 0.9 + income);
@@ -794,7 +810,7 @@
     if (softCap) {
       let totalLoss = 0;
       for (const n of nodes) {
-        const projection = applyOverflow(n);
+        const projection = applyOverflow(n, rules);
         n.active = projection.node.active;
         n.invested = projection.node.invested;
         book(n.owner, 'overflow', projection.loss);
@@ -873,6 +889,8 @@
     economicAI,
     aiPlan,
     SOFT_CAP_RULES,
+    DEFAULT_RULES,
+    rulesOf,
     applyOverflow,
     resolveRound,
   });

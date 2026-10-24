@@ -234,6 +234,12 @@ dialog#newGameDialog::backdrop {
 .generator-fields select {
   width: 100%;
 }
+.new-game-rules {
+  margin: 0 0 15px;
+}
+.new-game-rules .generator-fields {
+  margin: 10px 0 0;
+}
 #newGamePreview {
   display: block;
   width: 100%;
