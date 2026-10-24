@@ -1181,6 +1181,16 @@
     };
   }
 
+  function groupOfInspected(ui, match, kind) {
+    const { active } = ui.inspector;
+    const group = { groupMode: true, bulkSelection: [], bulkEdges: [] };
+    if (active?.kind !== kind) return group;
+    if (kind === 'node')
+      return { ...group, bulkSelection: isOwn(match, active.id) ? [active.id] : [] };
+    const destination = active.source === active.a ? active.b : active.a;
+    return { ...group, bulkEdges: orderableEdges(match, [[active.source, destination]]) };
+  }
+
   function dismissInspector(ui) {
     return {
       selected: null,
@@ -1328,6 +1338,8 @@
       setGroupEdgePressure: reporting(setGroupEdgePressure, 'rejected'),
       stopEdgePressure: onMatch(stopEdgePressure),
       setGroupMode: (on) => setUi('groupMode', on),
+      startGroupWithInspected: (kind) =>
+        updateUi(groupOfInspected(snapshot.ui, snapshot.match, kind)),
       leaveGroupMode: () =>
         updateUi({ groupMode: false, groupEditing: false, bulkSelection: [], bulkEdges: [] }),
       setGroupEditing: (on) => setUi('groupEditing', on),

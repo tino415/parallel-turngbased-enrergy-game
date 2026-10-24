@@ -349,6 +349,37 @@ test('inspecting an edge selects its friendly source, which a direction change r
   assert.equal(store.getSnapshot().ui.inspector.active.source, null);
 });
 
+test('a group started from the inspector holds the inspected item of the same kind', () => {
+  const store = newStore();
+  const group = () => {
+    const { groupMode, bulkSelection, bulkEdges } = store.getSnapshot().ui;
+    return { groupMode, bulkSelection, bulkEdges };
+  };
+  store.inspectNode(0);
+  store.startGroupWithInspected('node');
+  assertSameData(group(), { groupMode: true, bulkSelection: [0], bulkEdges: [] });
+
+  store.leaveGroupMode();
+  store.inspectEdge(1, 0);
+  store.startGroupWithInspected('edge');
+  assertSameData(group(), { groupMode: true, bulkSelection: [], bulkEdges: [[0, 1]] });
+
+  store.leaveGroupMode();
+  store.inspectNode(0);
+  store.startGroupWithInspected('edge');
+  assertSameData(group(), { groupMode: true, bulkSelection: [], bulkEdges: [] });
+
+  store.leaveGroupMode();
+  store.inspectNode(13);
+  store.startGroupWithInspected('node');
+  assertSameData(group(), { groupMode: true, bulkSelection: [], bulkEdges: [] });
+
+  store.leaveGroupMode();
+  store.inspectEdge(3, 6);
+  store.startGroupWithInspected('edge');
+  assertSameData(group(), { groupMode: true, bulkSelection: [], bulkEdges: [] });
+});
+
 test('an edge between friendly nodes opens in the direction of its surplus route', () => {
   const { selectors } = loadStore(),
     owned = (match, ids) => ({

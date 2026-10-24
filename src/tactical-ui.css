@@ -130,12 +130,14 @@ body > header #resolve {
 .tactical-edge-hit {
   cursor: pointer;
 }
-.tactical-edge-selected {
+.tactical-edge-selected,
+.tactical-group-edge {
   stroke: #ffc56d;
   stroke-width: 5;
   pointer-events: none;
 }
-.tactical-node-selected {
+.tactical-node-selected,
+.tactical-group-member {
   fill: none;
   stroke: #ffc56d;
   stroke-width: 4;
@@ -505,13 +507,6 @@ body > header #resolve {
   -webkit-user-select: none;
   user-select: none;
 }
-.tactical-group-member {
-  fill: none;
-  stroke: #9fe3c6;
-  stroke-width: 3;
-  stroke-dasharray: 6 4;
-  pointer-events: none;
-}
 #tacticalGroupBar {
   position: absolute;
   z-index: 5;
@@ -556,7 +551,8 @@ body > header #resolve {
   min-height: 34px;
   padding: 4px 8px;
 }
-.tactical-edge-selected {
+.tactical-edge-selected,
+.tactical-group-edge {
   stroke-dasharray: 14 10;
   animation: tactical-flow 0.9s linear infinite;
 }
@@ -566,7 +562,8 @@ body > header #resolve {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .tactical-edge-selected {
+  .tactical-edge-selected,
+  .tactical-group-edge {
     animation: none;
   }
 }
@@ -661,11 +658,4 @@ body > header #resolve {
 .ai-debug-plan {
   margin: 0;
   padding-left: 18px;
-}
-
-.tactical-group-edge {
-  stroke: #9fe3c6;
-  stroke-width: 7;
-  stroke-dasharray: 10 6;
-  pointer-events: none;
 }

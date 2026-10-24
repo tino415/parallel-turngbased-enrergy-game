@@ -73,6 +73,39 @@ test('Shift+click builds a group of connections from own nodes, never with nodes
   await expect(inspector(page)).toContainText('Group · 2 connections');
 });
 
+test('Shift+click keeps the selected connection in the group it starts', async ({ page }) => {
+  await giveBlue(page, blueAroundZero);
+  await edgeHit(page, '1-3').click();
+  await edgeHit(page, '2-5').click({ modifiers: ['Shift'] });
+  await expect(groupBar(page)).toContainText('2 connections selected');
+  expect((await ui(page)).bulkEdges).toEqual([
+    [1, 3],
+    [2, 5],
+  ]);
+});
+
+test('a selected node does not join a connection group started by Shift+click', async ({
+  page,
+}) => {
+  await giveBlue(page, blueAroundZero);
+  await node(page, 1).click();
+  await edgeHit(page, '2-5').click({ modifiers: ['Shift'] });
+  await expect(groupBar(page)).toContainText('1 connection selected');
+});
+
+test('a connection in a group looks like the selected connection', async ({ page }) => {
+  await giveBlue(page, blueAroundZero);
+  await edgeHit(page, '1-3').click();
+  const look = (selector) =>
+    page.locator(selector).evaluate((element) => {
+      const style = getComputedStyle(element);
+      return [style.stroke, style.strokeWidth, style.strokeDasharray];
+    });
+  const selectedLook = await look('#map .tactical-edge-selected');
+  await edgeHit(page, '2-5').click({ modifiers: ['Shift'] });
+  expect(await look('#map .tactical-group-edge >> nth=0')).toEqual(selectedLook);
+});
+
 test('a node group does not take connections', async ({ page }) => {
   await giveBlue(page, blueAroundZero);
   await node(page, 1).click({ modifiers: ['Shift'] });

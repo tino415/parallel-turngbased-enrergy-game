@@ -224,8 +224,26 @@
 
   function toggleGroupItemAt(element) {
     const id = nodeIdOf(element);
-    if (id !== null) toggleGroupNode(id);
-    else toggleGroupEdge(...edgeOf(element));
+    const edge = edgeOf(element);
+    const clickedTheInspected = !groupMode && isInspected(id, edge);
+    if (!groupMode)
+      store.batch(() => {
+        store.startGroupWithInspected(id !== null ? 'node' : 'edge');
+        store.dismissInspector();
+      });
+    if (clickedTheInspected && !groupIsEmpty()) changedGroup();
+    else if (id !== null) toggleGroupNode(id);
+    else toggleGroupEdge(...edge);
+  }
+
+  function isInspected(id, edge) {
+    if (id !== null) return active?.kind === 'node' && active.id === id;
+    return active?.kind === 'edge' && active.a === edge[0] && active.b === edge[1];
+  }
+
+  function groupIsEmpty() {
+    const { bulkSelection, bulkEdges } = store.getSnapshot().ui;
+    return !bulkSelection.length && !bulkEdges.length;
   }
 
   const isGroupItem = (element) => nodeIdOf(element) !== null || edgeOf(element) !== null;
@@ -342,9 +360,8 @@
   }
 
   function changedGroup() {
-    const { bulkSelection, bulkEdges } = store.getSnapshot().ui;
     groupMessage = '';
-    if (!bulkSelection.length && !bulkEdges.length) store.setGroupEditing(false);
+    if (groupIsEmpty()) store.setGroupEditing(false);
     store.dismissInspector();
   }
 
@@ -517,7 +534,7 @@
     for (const id of groupIds()) {
       const [x, y] = xy[id] || [];
       if (x !== undefined)
-        svgElement('circle', { cx: x, cy: y, r: 39, class: 'tactical-group-member' }, graph);
+        svgElement('circle', { cx: x, cy: y, r: 34, class: 'tactical-group-member' }, graph);
     }
     for (const [source, destination] of groupEdges())
       svgElement(
