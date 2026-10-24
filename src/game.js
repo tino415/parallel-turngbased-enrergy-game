@@ -310,71 +310,78 @@ function previewOrders() {
 function projection(id) {
   return selectors.projection(currentMatch(), id);
 }
-function renderFlows(svg, graph, element) {
-  for (const o of previewOrders()) {
-    if (o.dest === undefined || o.dest === null || o.amount <= 0.01) continue;
-    const [ax, ay] = xy[o.source],
-      [bx, by] = xy[o.dest],
-      dx = bx - ax,
-      dy = by - ay,
-      length = Math.hypot(dx, dy) || 1;
-    const fromX = ax + (dx / length) * 32,
-      fromY = ay + (dy / length) * 32,
-      toX = bx - (dx / length) * 35,
-      toY = by - (dy / length) * 35;
-    const color = o.type === 'attack' ? '#ef886a' : o.automatic ? '#31c9a0' : '#7fbeff';
-    element(
-      'line',
-      {
-        x1: fromX,
-        y1: fromY,
-        x2: toX,
-        y2: toY,
-        stroke: color,
-        'stroke-width': 3,
-        'stroke-dasharray': o.automatic ? '8 5' : 'none',
-      },
-      graph,
-    );
-    const arrow = element(
-      'path',
-      {
-        d:
-          'M ' +
-          toX +
-          ' ' +
-          toY +
-          ' l ' +
-          ((-dx / length) * 12 - (dy / length) * 5) +
-          ' ' +
-          ((-dy / length) * 12 + (dx / length) * 5) +
-          ' l ' +
-          (dy / length) * 10 +
-          ' ' +
-          (-dx / length) * 10 +
-          ' Z',
-        fill: color,
-      },
-      graph,
-    );
-    const label = element(
-      'text',
-      {
-        x: (ax + bx) / 2 - (dy / length) * 15,
-        y: (ay + by) / 2 + (dx / length) * 15,
-        class: 'flow-label',
-      },
-      graph,
-    );
-    label.textContent = compactEnergy(o.amount);
+function plannedFlows() {
+  return previewOrders().filter(
+    (order) => order.dest !== null && order.dest !== undefined && order.amount > 0.01,
+  );
+}
+const connectionKey = (a, b) => Math.min(a, b) + '-' + Math.max(a, b);
+function flowsByConnection(flows) {
+  const byConnection = new Map();
+  for (const flow of flows) {
+    const key = connectionKey(flow.source, flow.dest);
+    if (!byConnection.has(key)) byConnection.set(key, []);
+    byConnection.get(key).push(flow);
   }
-  for (const n of state.nodes) {
-    if (!isMine(n.id)) continue;
-    const p = projection(n.id),
-      [x, y] = xy[n.id];
-    const t = element('text', { x, y: y + 53, 'font-size': 12, fill: '#92ebc9' }, graph);
-    t.textContent = '+' + compactEnergy(p.income) + ' / I ' + compactEnergy(p.invest);
-  }
+  return byConnection;
+}
+function flowColor(order) {
+  if (order.type === 'attack') return '#ff987f';
+  return order.automatic ? '#76b3ff' : '#63d9af';
+}
+function connectionStyle(flows = []) {
+  if (!flows.length) return { stroke: '#71849d', 'stroke-width': 3, opacity: 0.55 };
+  const single = flows.length === 1;
+  return {
+    stroke: single ? flowColor(flows[0]) : '#b1a2fa',
+    'stroke-width': 5,
+    opacity: 0.95,
+    'stroke-dasharray': single && flows[0].automatic ? '8 5' : 'none',
+    class: 'tactical-flow-connection',
+  };
+}
+function drawFlowArrow(graph, element, order) {
+  const [ax, ay] = xy[order.source],
+    [bx, by] = xy[order.dest],
+    length = Math.hypot(bx - ax, by - ay) || 1,
+    ux = (bx - ax) / length,
+    uy = (by - ay) / length;
+  const tipX = bx - ux * 35,
+    tipY = by - uy * 35;
+  const d = `M ${tipX} ${tipY} l ${-ux * 12 - uy * 5} ${-uy * 12 + ux * 5} l ${uy * 10} ${-ux * 10} Z`;
+  element('path', { d, fill: flowColor(order), class: 'ux-flow-overlay' }, graph);
+  const label = element(
+    'text',
+    { x: (ax + bx) / 2 - uy * 15, y: (ay + by) / 2 + ux * 15, class: 'flow-label' },
+    graph,
+  );
+  label.textContent = compactEnergy(order.amount);
+}
+function drawIncomeLabel(graph, element, id) {
+  const p = projection(id),
+    [x, y] = xy[id];
+  const bank = Object.values(policies[id]?.pressure ?? {}).reduce(
+    (sum, edge) => sum + (edge.bank ?? 0),
+    0,
+  );
+  const parts = ['+' + compactEnergy(p.income), 'I ' + compactEnergy(p.invest)];
+  if (softCapEnabled() && p.overflow > 0.05) parts.push('−' + compactEnergy(p.overflow));
+  if (bank > 0.05) parts.push('⟂ ' + compactEnergy(bank));
+  const label = element(
+    'text',
+    { x, y: y + 53, 'font-size': 12, fill: '#92ebc9', class: 'ux-income-label' },
+    graph,
+  );
+  label.textContent = parts.join(' / ');
+}
+function drawAiPlans(graph, element) {
+  const layer = element('g', { class: 'ai-debug-flows' }, graph);
+  for (const order of selectors.aiDebugPlan(currentMatch()).orders)
+    if (order.amount > 0.01)
+      drawPlayerMove(element, layer, xy, 'ai-debug', {
+        ...order,
+        owner: state.nodes[order.source].owner,
+      });
 }
 function drawPlayerMove(element, layer, positions, kind, move) {
   const color = playerColor(move.owner);
@@ -638,6 +645,8 @@ function renderMap() {
     return e;
   };
   const graph = element('g', { transform: cameraTransform() });
+  const flows = mapShowsPolicies() ? [] : plannedFlows(),
+    flowsOn = flowsByConnection(flows);
   for (const [a, b] of edges)
     element(
       'line',
@@ -646,9 +655,7 @@ function renderMap() {
         y1: xy[a][1],
         x2: xy[b][0],
         y2: xy[b][1],
-        stroke: '#71849d',
-        'stroke-width': 3,
-        opacity: 0.55,
+        ...connectionStyle(flowsOn.get(connectionKey(a, b))),
       },
       graph,
     );
@@ -687,11 +694,16 @@ function renderMap() {
       clickNode(n.id);
     });
   }
-  renderMapValues(svg, graph, element);
+  if (mapShowsPolicies()) renderPolicyValues(graph, element);
+  else renderFlows(graph, element, flows, nodes);
 }
-function renderMapValues(svg, graph, element) {
-  if (store.getSnapshot().ui.mapValues === 'policy') renderPolicyValues(graph, element);
-  else renderFlows(svg, graph, element);
+function mapShowsPolicies() {
+  return store.getSnapshot().ui.mapValues === 'policy';
+}
+function renderFlows(graph, element, flows, nodes) {
+  for (const flow of flows) drawFlowArrow(graph, element, flow);
+  for (const n of nodes) if (isMine(n.id)) drawIncomeLabel(graph, element, n.id);
+  if (store.getSnapshot().ui.aiDebug) drawAiPlans(graph, element);
 }
 function renderPolicyValues(graph, element) {
   for (const route of selectors.policyRoutes(currentMatch()))

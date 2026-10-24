@@ -40,62 +40,6 @@
   }
   document.querySelector('body > header > div:last-child').append(menu);
 
-  // Planned energy travels along the connection itself; the legacy renderer
-  // supplied a second competing stroke over each connection. Retain its
-  // direction arrows, values, and economic labels but decorate the base edges
-  // instead of drawing any separate flow lines.
-  const originalRenderFlows = renderFlows;
-  renderFlows = (mapSvg, graph, element) => {
-    originalRenderFlows(mapSvg, graph, element);
-    const visible = previewOrders().filter(
-      (order) => order.dest !== null && order.dest !== undefined && order.amount > 0.01,
-    );
-    const key = (a, b) => [Math.min(a, b), Math.max(a, b)].join(':');
-    const byEdge = new Map();
-    for (const order of visible) {
-      const k = key(order.source, order.dest);
-      if (!byEdge.has(k)) byEdge.set(k, []);
-      byEdge.get(k).push(order);
-    }
-    const connections = [...graph.children]
-      .filter((child) => child.tagName === 'line')
-      .slice(0, edges.length);
-    for (const [i, [a, b]] of edges.entries()) {
-      const connection = connections[i];
-      const flows = byEdge.get(key(a, b));
-      if (!connection || !flows?.length) continue;
-      const color =
-        flows.length > 1
-          ? '#b1a2fa'
-          : flows[0].type === 'attack'
-            ? '#ff987f'
-            : flows[0].automatic
-              ? '#76b3ff'
-              : '#63d9af';
-      connection.setAttribute('stroke', color);
-      connection.setAttribute('stroke-width', '5');
-      connection.setAttribute('opacity', '.95');
-      connection.setAttribute(
-        'stroke-dasharray',
-        flows.length === 1 && flows[0].automatic ? '8 5' : 'none',
-      );
-      connection.classList.add('tactical-flow-connection');
-    }
-    if (store.getSnapshot().ui.aiDebug) drawAiPlans(graph, element);
-  };
-
-  const aiPlanOrders = () =>
-    selectors.aiDebugPlan(currentMatch()).orders.filter((order) => order.amount > 0.01);
-
-  function drawAiPlans(graph, element) {
-    const layer = element('g', { class: 'ai-debug-flows' }, graph);
-    for (const order of aiPlanOrders())
-      drawPlayerMove(element, layer, xy, 'ai-debug', {
-        ...order,
-        owner: state.nodes[order.source].owner,
-      });
-  }
-
   function aiPlanLines(id) {
     const { orders, withdrawals } = selectors.aiDebugPlan(currentMatch());
     const describe = (order) =>

@@ -32,30 +32,6 @@
   focusButton.title = 'Focus on the last inspected node';
   byId('fit').after(focusButton);
 
-  // Keep the game's normal renderer and engine; only change graphical overlays.
-  const originalRenderFlows = renderFlows;
-  renderFlows = function(svg, graph, element) {
-    for (const o of previewOrders()) {
-      if (o.dest === null || o.dest === undefined || o.amount <= .01) continue;
-      const [ax,ay] = xy[o.source], [bx,by] = xy[o.dest];
-      const dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy)||1;
-      const toX=bx-dx/len*35,toY=by-dy/len*35;
-      const color=o.type==='attack'?'#ff987f':o.automatic?'#76b3ff':'#63d9af';
-      element('path',{d:'M '+toX+' '+toY+' l '+(-dx/len*12-dy/len*5)+' '+(-dy/len*12+dx/len*5)+' l '+(dy/len*10)+' '+(-dx/len*10)+' Z',fill:color,class:'ux-flow-overlay'},graph);
-      const label=element('text',{x:(ax+bx)/2-dy/len*15,y:(ay+by)/2+dx/len*15,class:'flow-label'},graph);
-      label.textContent=compactEnergy(o.amount);
-    }
-    // Next-round income/investment previews are economic status, not flow
-    // arrows; keep them on every owned node at every zoom level.
-    for (const n of state.nodes) {
-      if (!isMine(n.id)) continue;
-      const p=projection(n.id),[x,y]=xy[n.id];
-      const t=element('text',{x,y:y+53,'font-size':12,fill:'#92ebc9',class:'ux-income-label'},graph);
-      const bank=Object.values(policies[n.id]?.pressure??{}).reduce((sum,edge)=>sum+(edge.bank??0),0);
-      t.textContent='+'+compactEnergy(p.income)+' / I '+compactEnergy(p.invest)+(softCapEnabled()&&p.overflow>.05?' / −'+compactEnergy(p.overflow):'')+(bank>.05?' / ⟂ '+compactEnergy(bank):'');
-    }
-  };
-
   let lastMap = '';
   function worldBounds() {
     return (xy.length === 14 && mapSeed === 'classic') ? [800,460] : [1800,1050];
