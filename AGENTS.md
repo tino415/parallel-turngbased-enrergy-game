@@ -53,6 +53,7 @@ npm run test:ui      # Playwright suite in tests/e2e, four viewports
 npm run build        # stamps version, commit and date into index.html, copies it, _headers, the PWA files, icons/ and src/ into dist/
 npm run icons        # renders the PNG icons from icons/icon.svg
 npm run format       # apply prettier
+npm run format:check:md  # prettier check of the Markdown only
 npm run simulate     # AI strategy simulations, see scripts/
 ```
 
@@ -107,6 +108,10 @@ service worker `sw.js`, registered by `src/service-worker-registration.js`.
 `.github/workflows/` runs the same `npm run check` and `npm run test:ui`, plus
 the balance and economy simulations. The site deploys to Cloudflare from `dist/`
 through `wrangler.toml`.
+
+`npm run format:check:md` checks the Markdown alone, and the Markdown workflow
+runs it on every PR. A PR that changes only `.md` files skips `browser-tests`:
+the job shows as skipped, which a required check accepts as passing.
 
 A PR merges only on top of the current main, with green CI on that head. A PR
 behind main is rebased first and its CI waited for again.
