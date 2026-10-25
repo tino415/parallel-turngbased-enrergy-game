@@ -640,3 +640,13 @@ dialog#newGameDialog::backdrop {
     font-size: 12px;
   }
 }
+.current-rules {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  margin: 0;
+}
+.current-rules dd {
+  margin: 0;
+  font-weight: 600;
+}

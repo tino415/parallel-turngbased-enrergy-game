@@ -39,3 +39,14 @@ test('a match started without touching the rules stores none', async ({ page }) 
   await expect(page.locator('#newGameDialog')).toBeHidden();
   expect(await page.evaluate(() => 'rules' in state)).toBe(false);
 });
+
+test('the settings dialog lists the rules of the running match', async ({ page }) => {
+  await startWithRules(page, { 'Production per node': 3, 'Overflow decay %': 50 });
+  await page.locator('#tacticalMenu summary').click();
+  await page.locator('#tacticalMenu button').filter({ hasText: 'Settings' }).click();
+  const rules = page.locator('#uxSettingsDialog #currentRules');
+  await expect(rules).toContainText('Production per node3');
+  await expect(rules).toContainText('Investment interest10%');
+  await expect(rules).toContainText('Node capacity250');
+  await expect(rules).toContainText('Overflow decay50%');
+});

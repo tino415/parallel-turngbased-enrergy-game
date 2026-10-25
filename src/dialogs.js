@@ -40,4 +40,27 @@
   }
 
   document.getElementById('settingsNewGame').onclick = openNewGame;
+
+  const currentRules = document.getElementById('currentRules');
+  const percent = (fraction) => `${Math.round(fraction * 1000) / 10}%`;
+  const ruleRows = (rules) => [
+    ['Production per node', rules.production],
+    ['Investment interest', percent(rules.interest)],
+    ['Node capacity', rules.capacity],
+    ['Overflow decay', percent(rules.overflowDecay)],
+  ];
+  const showCurrentRules = () => {
+    currentRules.replaceChildren(
+      ...ruleRows(matchRules()).flatMap(([name, value]) => {
+        const term = document.createElement('dt');
+        const description = document.createElement('dd');
+        term.textContent = name;
+        description.textContent = String(value);
+        return [term, description];
+      }),
+    );
+  };
+  settingsDialog.addEventListener('toggle', (event) => {
+    if (event.newState === 'open') showCurrentRules();
+  });
 })();
