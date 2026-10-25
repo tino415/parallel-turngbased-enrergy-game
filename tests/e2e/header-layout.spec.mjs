@@ -74,3 +74,29 @@ test('the mobile dock has no Orders button; the ☰ menu counts planned nodes', 
   });
   await expect(orders).toHaveText('Orders (1)');
 });
+
+const VIEW_COLUMN_WIDTH = 960;
+const NARROW_SCREEN_GUTTER = 12;
+
+for (const [tab, view] of [
+  ['Messages', '#messagesView'],
+  ['Leaderboard', '#leaderboardView'],
+]) {
+  test(`the ${tab} view reads as one column in the middle of the screen`, async ({ page }) => {
+    await page.getByRole('tab', { name: tab }).click();
+    await expect(page.locator(view)).toBeVisible();
+    const { screenWidth, blocks } = await page.locator(view).evaluate((section) => ({
+      screenWidth: document.documentElement.clientWidth,
+      blocks: [...section.children]
+        .map((child) => child.getBoundingClientRect())
+        .filter((box) => box.width > 0)
+        .map((box) => ({ left: box.left, right: box.right })),
+    }));
+    const gutter = Math.max(NARROW_SCREEN_GUTTER, (screenWidth - VIEW_COLUMN_WIDTH) / 2);
+    expect(blocks.length).toBeGreaterThan(1);
+    for (const block of blocks) {
+      expect(block.left).toBeCloseTo(gutter, 0);
+      expect(screenWidth - block.right).toBeCloseTo(gutter, 0);
+    }
+  });
+}
