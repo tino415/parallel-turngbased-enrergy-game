@@ -10,6 +10,7 @@
     "test:ui:report": "playwright show-report",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "format:check:md": "prettier --check \"**/*.md\"",
     "simulate": "node scripts/simulate.mjs",
     "measure:render": "node scripts/measure-render.mjs",
     "icons": "node scripts/icons.mjs"
