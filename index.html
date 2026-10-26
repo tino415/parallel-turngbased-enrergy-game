@@ -353,30 +353,36 @@
             this round</label
           >
         </div>
-        <div class="policy-box">
-          <h3>Current rules</h3>
-          <dl id="currentRules" class="current-rules"></dl>
-        </div>
-        <details>
-          <summary>Prototype rules</summary>
-          <p class="muted">
-            Nodes start with active and invested energy. Each match has a sustainable total energy
-            per owned node (active + invested; see Current rules); additional energy is allowed, but
-            part of the excess decays after production and normal active decay each round,
-            proportionally from active and invested. Withdraw invested energy into immediately
-            spendable active energy with a 5% fee. Remaining invested principal earns interest as
-            active income each turn. Active energy decays 10% and each node produces energy each
-            turn. Energy transfers only across one edge. Each node may invest once and allocate
-            energy to any number of neighboring nodes, retaining unallocated energy for defense.
-            Attacks are grouped by destination and attacker, then shuffled; attack power uses an
-            independent ±20% modifier for each combatant. Captured nodes lose a random 25–75% of
-            investment. Policies persist: reserve energy, invest surplus, and transfer to an
-            adjacent friend. Manual allocations take priority. Victory is achieved by eliminating
-            the opposing player. Neutral nodes do not have to be conquered.
-          </p>
-        </details>
         <button id="settingsNewGame" type="button">New game…</button>
         <p class="muted" id="buildVersion">Build: development</p>
+      </div>
+    </dialog>
+    <dialog id="uxRulesDialog" closedby="any" class="ux-dialog">
+      <div class="ux-dialog-header">
+        <h2>Rules</h2>
+        <button class="ux-dialog-close" type="button">Close ×</button>
+      </div>
+      <div class="ux-dialog-body">
+        <div class="policy-box">
+          <h3>This match</h3>
+          <dl id="currentRules" class="current-rules"></dl>
+        </div>
+        <h3>How a round works</h3>
+        <p class="muted">
+          Nodes start with active and invested energy. Each match has a sustainable total energy per
+          owned node (active + invested; see node capacity above); additional energy is allowed, but
+          part of the excess decays after production and normal active decay each round,
+          proportionally from active and invested. Withdraw invested energy into immediately
+          spendable active energy with a 5% fee. Remaining invested principal earns interest as
+          active income each turn. Active energy decays 10% and each node produces energy each turn.
+          Energy transfers only across one edge. Each node may invest once and allocate energy to
+          any number of neighboring nodes, retaining unallocated energy for defense. Attacks are
+          grouped by destination and attacker, then shuffled; attack power uses an independent ±20%
+          modifier for each combatant. Captured nodes lose a random 25–75% of investment. Policies
+          persist: reserve energy, invest surplus, and transfer to an adjacent friend. Manual
+          allocations take priority. Victory is achieved by eliminating the opposing player. Neutral
+          nodes do not have to be conquered.
+        </p>
       </div>
     </dialog>
     <script src="./src/engine.js" defer></script>
@@ -388,6 +394,7 @@
     <script src="./src/ux.js" defer></script>
     <script src="./src/tactical-ui.js" defer></script>
     <script src="./src/replay.js" defer></script>
+    <script src="./src/rules.js" defer></script>
     <script src="./src/online.js" defer></script>
     <script src="./src/service-worker-registration.js" defer></script>
   </body>

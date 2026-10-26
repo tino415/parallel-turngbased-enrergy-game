@@ -25,6 +25,7 @@ const APP_SHELL = [
   './src/ux.js',
   './src/tactical-ui.js',
   './src/replay.js',
+  './src/rules.js',
   './src/online.js',
   './src/service-worker-registration.js',
 ];

@@ -3,6 +3,7 @@
 (() => {
   const ordersDialog = document.getElementById('uxOrdersDialog');
   const settingsDialog = document.getElementById('uxSettingsDialog');
+  const rulesDialog = document.getElementById('uxRulesDialog');
 
   const tacticalMenu = () => document.getElementById('tacticalMenu');
   const isOverlay = (element) => element instanceof HTMLDialogElement || element === tacticalMenu();
@@ -27,7 +28,7 @@
   );
   document.addEventListener('click', closeMenuOnOutsideClick, true);
 
-  for (const dialog of [ordersDialog, settingsDialog])
+  for (const dialog of [ordersDialog, settingsDialog, rulesDialog])
     dialog.querySelector('.ux-dialog-close').onclick = () => dialog.close();
 
   const aiDebug = document.getElementById('aiDebug');
@@ -40,27 +41,4 @@
   }
 
   document.getElementById('settingsNewGame').onclick = openNewGame;
-
-  const currentRules = document.getElementById('currentRules');
-  const percent = (fraction) => `${Math.round(fraction * 1000) / 10}%`;
-  const ruleRows = (rules) => [
-    ['Production per node', rules.production],
-    ['Investment interest', percent(rules.interest)],
-    ['Node capacity', rules.capacity],
-    ['Overflow decay', percent(rules.overflowDecay)],
-  ];
-  const showCurrentRules = () => {
-    currentRules.replaceChildren(
-      ...ruleRows(matchRules()).flatMap(([name, value]) => {
-        const term = document.createElement('dt');
-        const description = document.createElement('dd');
-        term.textContent = name;
-        description.textContent = String(value);
-        return [term, description];
-      }),
-    );
-  };
-  settingsDialog.addEventListener('toggle', (event) => {
-    if (event.newState === 'open') showCurrentRules();
-  });
 })();
