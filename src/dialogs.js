@@ -3,6 +3,7 @@
 (() => {
   const ordersDialog = document.getElementById('uxOrdersDialog');
   const settingsDialog = document.getElementById('uxSettingsDialog');
+  const rulesDialog = document.getElementById('uxRulesDialog');
 
   const tacticalMenu = () => document.getElementById('tacticalMenu');
   const isOverlay = (element) => element instanceof HTMLDialogElement || element === tacticalMenu();
@@ -27,7 +28,7 @@
   );
   document.addEventListener('click', closeMenuOnOutsideClick, true);
 
-  for (const dialog of [ordersDialog, settingsDialog])
+  for (const dialog of [ordersDialog, settingsDialog, rulesDialog])
     dialog.querySelector('.ux-dialog-close').onclick = () => dialog.close();
 
   const aiDebug = document.getElementById('aiDebug');

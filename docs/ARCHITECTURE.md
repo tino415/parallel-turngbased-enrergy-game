@@ -1,22 +1,23 @@
 # Architecture: state, commands and rendering
 
-The game is ten classic scripts loaded with `defer` into one global scope, in
+The game is eleven classic scripts loaded with `defer` into one global scope, in
 this order: `engine.js`, `store.js`, `format.js`, `game.js`, `dialogs.js`,
-`leaderboard.js`, `ux.js`, `tactical-ui.js`, `replay.js`, `online.js`. Later scripts call
+`leaderboard.js`, `ux.js`, `tactical-ui.js`, `replay.js`, `rules.js`, `online.js`. Later scripts call
 functions from earlier ones and never replace them.
 
-| Module           | Owns                                                                                       | Touches the DOM |
-| ---------------- | ------------------------------------------------------------------------------------------ | --------------- |
-| `engine.js`      | Rules: map generation, policy evaluation, forecast, AI, `resolveRound`                     | no              |
-| `store.js`       | All match and interface state, commands, selectors, subscriptions                          | no              |
-| `format.js`      | Energy number formatting                                                                   | no              |
-| `game.js`        | The base renderer, map navigation, save and restore, the global mirrors                    | yes             |
-| `dialogs.js`     | Orders and Settings dialog buttons; opening a dialog or the menu closes the other overlays | yes             |
-| `leaderboard.js` | The Leaderboard tab: one row per player, sorted by the chosen column, and the round chart  | yes             |
-| `ux.js`          | Layout, dialogs, side panel, dock, camera fitting                                          | yes             |
-| `tactical-ui.js` | Map selection, node and connection groups, the inspector, pinch zoom, the ☰ menu          | yes             |
-| `replay.js`      | The replay screen, the game-over notice and the Replay menu item                           | yes             |
-| `online.js`      | The online lobby, the status bar, End turn, polling the server                             | yes             |
+| Module           | Owns                                                                                              | Touches the DOM |
+| ---------------- | ------------------------------------------------------------------------------------------------- | --------------- |
+| `engine.js`      | Rules: map generation, policy evaluation, forecast, AI, `resolveRound`                            | no              |
+| `store.js`       | All match and interface state, commands, selectors, subscriptions                                 | no              |
+| `format.js`      | Energy number formatting                                                                          | no              |
+| `game.js`        | The base renderer, map navigation, save and restore, the global mirrors                           | yes             |
+| `dialogs.js`     | Orders, Settings and Rules dialog buttons; opening a dialog or the menu closes the other overlays | yes             |
+| `leaderboard.js` | The Leaderboard tab: one row per player, sorted by the chosen column, and the round chart         | yes             |
+| `ux.js`          | Layout, dialogs, side panel, dock, camera fitting                                                 | yes             |
+| `tactical-ui.js` | Map selection, node and connection groups, the inspector, pinch zoom, the ☰ menu                 | yes             |
+| `replay.js`      | The replay screen, the game-over notice and the Replay menu item                                  | yes             |
+| `rules.js`       | The Rules dialog and its ☰ menu item: the running match's rules                                  | yes             |
+| `online.js`      | The online lobby, the status bar, End turn, polling the server                                    | yes             |
 
 ## State ownership
 
@@ -115,7 +116,7 @@ order, so the three map layers keep their order:
 records the focused map item before clearing the map, and `tactical-ui.js`
 focuses it again after drawing its layer.
 
-`leaderboard.js`, `replay.js` and `online.js` subscribe the same way.
+`leaderboard.js`, `replay.js`, `rules.js` and `online.js` subscribe the same way.
 `game.js` shows and hides `#leaderboardView` with the other views.
 
 | DOM subtree                                                                             | Rendered by      |
@@ -125,6 +126,7 @@ focuses it again after drawing its layer.
 | `#tacticalInspector`, `#tacticalGroupBar`, `#tacticalMenu`, `.tactical-edge-hit`, rings | `tactical-ui.js` |
 | `#leaderboardTable` rows and header sort marks, `#leaderboardCharts`                    | `leaderboard.js` |
 | `#replayDialog`, `#gameOverNotice`, the Replay item in `#tacticalMenu`                  | `replay.js`      |
+| `#currentRules`, the Rules item in `#tacticalMenu`                                      | `rules.js`       |
 
 `tactical-ui.js` builds the node and connection editors inside the inspector
 from store selectors and commands.

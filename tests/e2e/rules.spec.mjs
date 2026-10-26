@@ -39,3 +39,17 @@ test('a match started without touching the rules stores none', async ({ page }) 
   await expect(page.locator('#newGameDialog')).toBeHidden();
   expect(await page.evaluate(() => 'rules' in state)).toBe(false);
 });
+
+test('the Rules menu item lists the rules of the running match', async ({ page }) => {
+  await startWithRules(page, { 'Production per node': 3, 'Overflow decay %': 50 });
+  await page.getByLabel('More actions').click();
+  await page.locator('#tacticalMenu').getByRole('button', { name: 'Rules' }).click();
+  const dialog = page.locator('#uxRulesDialog');
+  await expect(dialog).toBeVisible();
+  const rules = dialog.locator('#currentRules');
+  await expect(rules).toContainText('Production per node3');
+  await expect(rules).toContainText('Investment interest10%');
+  await expect(rules).toContainText('Node capacity250');
+  await expect(rules).toContainText('Overflow decay50%');
+  await expect(page.locator('#uxSettingsDialog')).not.toContainText('Production per node');
+});
