@@ -85,7 +85,7 @@ podman compose run --rm -p 127.0.0.1:4173:4173 app \
 The Playwright suite runs Chromium only. Tests named "simulated keyboard" shrink
 the viewport to stand in for the on-screen keyboard; real Android Chrome stays
 a manual check, not a CI gate. A known defect is pinned as `test.fail()` with
-its Todoist task in the reason; remove the mark in the change that fixes it.
+its outline card in the reason; remove the mark in the change that fixes it.
 
 ## Installable app
 
