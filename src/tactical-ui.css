@@ -122,7 +122,9 @@ body > header #resolve {
 }
 #messagesView,
 #leaderboardView {
-  padding: var(--header-clearance) 12px 12px;
+  --view-column: 960px;
+  --view-gutter: max(12px, calc((100% - var(--view-column)) / 2));
+  padding: var(--header-clearance) var(--view-gutter) 12px;
 }
 .ux-dock {
   display: none !important;

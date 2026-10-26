@@ -291,7 +291,6 @@ dialog#newGameDialog::backdrop {
   --cell-padding: 6px;
   --sort-mark: 12px;
   width: 100%;
-  max-width: 760px;
   border-collapse: collapse;
   font-size: 14px;
 }
@@ -380,7 +379,6 @@ dialog#newGameDialog::backdrop {
   margin: 6px 0 0;
 }
 #leaderboardCharts {
-  max-width: 960px;
   margin-top: 24px;
 }
 #leaderboardCharts h3 {
