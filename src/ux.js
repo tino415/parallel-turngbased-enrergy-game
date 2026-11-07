@@ -34,7 +34,15 @@
 
   let lastMap = '';
   function worldBounds() {
+    if (currentView==='editor') return [CustomMap.CANVAS.width,CustomMap.CANVAS.height];
     return (xy.length === 14 && mapSeed === 'classic') ? [800,460] : [1800,1050];
+  }
+  function editorClearance() {
+    const bar=byId('mapEditorBar'),viewport=byId('mapViewport');
+    if(!bar||bar.hidden) return 0;
+    const [vw]=viewBounds();
+    const covered=bar.getBoundingClientRect().bottom-viewport.getBoundingClientRect().top+16;
+    return covered*vw/Math.max(260,viewport.clientWidth||window.innerWidth);
   }
   function viewBounds() {
     const [baseW,baseH]=worldBounds(),el=byId('mapViewport');
@@ -66,13 +74,14 @@
     return cameraFocusedOn(mine.id);
   }
   function fittedCamera() {
-    const [vw,vh,bw,bh]=viewBounds(),top=headerOverlap();
+    const [vw,vh,bw,bh]=viewBounds(),top=Math.max(headerOverlap(),editorClearance());
     if (!mobile()) {
       const scale=Math.min(1,(vh-top)/bh);
       return {x:(vw-bw*scale)/2,y:top,scale};
     }
     const scale=Math.min((vw-100)/bw,(vh-top-120)/bh);
-    return {x:(vw-bw*scale)/2,y:top+(vh-top-bh*scale)/2,scale};
+    const y=currentView==='editor'?top+10:top+(vh-top-bh*scale)/2;
+    return {x:(vw-bw*scale)/2,y,scale};
   }
   function cameraFocusedOn(id) {
     const [vw,vh]=viewBounds(),top=headerOverlap();
@@ -100,7 +109,7 @@
   store.subscribe((snapshot,previous)=>{
     if(!snapshot.match) return;
     const changed=(read)=>GameStore.changed(snapshot,previous,read);
-    if(changed(s=>s.ui.view)) document.querySelector('.layout').classList.toggle('ux-wide-view',currentView!=='map');
+    if(changed(s=>s.ui.view)) document.querySelector('.layout').classList.toggle('ux-wide-view',currentView!=='map'&&currentView!=='editor');
     if(changed(s=>s.match)) startOnNewMaps();
     if([s=>s.match,s=>s.ui.view,s=>s.ui.aiDebug,s=>s.ui.mapValues].some(changed)) redrawCamera();
   });

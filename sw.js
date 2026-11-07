@@ -27,6 +27,8 @@ const APP_SHELL = [
   './src/tactical-ui.js',
   './src/replay.js',
   './src/rules.js',
+  './src/map-editor.js',
+  './src/map-editor.css',
   './src/online.js',
   './src/service-worker-registration.js',
 ];

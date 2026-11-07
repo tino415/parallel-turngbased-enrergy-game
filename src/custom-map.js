@@ -253,6 +253,7 @@
     GRID,
     MAX_NODES,
     MIN_DISTANCE,
+    START_NODE,
     blank,
     fromGenerated,
     fromMatch,

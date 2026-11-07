@@ -436,7 +436,7 @@ function drawPlayerMove(element, layer, positions, kind, move) {
     (move.type === 'attack' ? '⚔ ' : '→ ') + compactEnergy(move.amount);
 }
 function renderViews() {
-  $('mapViewport').hidden = currentView !== 'map';
+  $('mapViewport').hidden = !mapIsShown();
   $('messagesView').hidden = currentView !== 'messages';
   $('leaderboardView').hidden = currentView !== 'leaderboard';
 }
@@ -532,7 +532,11 @@ function setActiveTab() {
     button.classList.toggle('active', view === currentView);
     button.setAttribute('aria-selected', String(view === currentView));
   }
-  for (const id of ['fit', 'zoomIn', 'zoomOut', 'mapValues']) $(id).hidden = currentView !== 'map';
+  for (const id of ['fit', 'zoomIn', 'zoomOut']) $(id).hidden = !mapIsShown();
+  $('mapValues').hidden = currentView !== 'map';
+}
+function mapIsShown() {
+  return currentView === 'map' || currentView === 'editor';
 }
 function saveGame() {
   if (!state || currentMatch().online) return;
@@ -857,7 +861,7 @@ document.addEventListener(
 );
 function keyboardShortcutOf(event) {
   const modified = event.ctrlKey || event.metaKey;
-  if (event.altKey || event.shiftKey) return null;
+  if (event.altKey || event.shiftKey || currentView === 'editor') return null;
   if (event.key === 'Enter' && modified) return 'resolve';
   if (modified) return null;
   if (event.code === 'KeyM') return currentView === 'map' ? 'messagesTab' : 'mapTab';

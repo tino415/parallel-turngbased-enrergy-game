@@ -1,9 +1,9 @@
 # Architecture: state, commands and rendering
 
-The game is twelve classic scripts loaded with `defer` into one global scope, in
+The game is thirteen classic scripts loaded with `defer` into one global scope, in
 this order: `engine.js`, `custom-map.js`, `store.js`, `format.js`, `game.js`, `dialogs.js`,
-`leaderboard.js`, `ux.js`, `tactical-ui.js`, `replay.js`, `rules.js`, `online.js`. Later scripts call
-functions from earlier ones and never replace them.
+`leaderboard.js`, `ux.js`, `tactical-ui.js`, `replay.js`, `rules.js`, `map-editor.js`,
+`online.js`. Later scripts call functions from earlier ones and never replace them.
 
 | Module           | Owns                                                                                              | Touches the DOM |
 | ---------------- | ------------------------------------------------------------------------------------------------- | --------------- |
@@ -18,6 +18,7 @@ functions from earlier ones and never replace them.
 | `tactical-ui.js` | Map selection, node and connection groups, the inspector, pinch zoom, the ☰ menu                 | yes             |
 | `replay.js`      | The replay screen, the game-over notice and the Replay menu item                                  | yes             |
 | `rules.js`       | The Rules dialog and its ☰ menu item: the running match's rules                                  | yes             |
+| `map-editor.js`  | The map editor mode: its tools, the node panel, the drawn map and its entry points                | yes             |
 | `online.js`      | The online lobby, the status bar, End turn, polling the server                                    | yes             |
 
 ## State ownership
@@ -118,8 +119,8 @@ order, so the three map layers keep their order:
 records the focused map item before clearing the map, and `tactical-ui.js`
 focuses it again after drawing its layer.
 
-`leaderboard.js`, `replay.js`, `rules.js` and `online.js` subscribe the same way.
-`game.js` shows and hides `#leaderboardView` with the other views.
+`leaderboard.js`, `replay.js`, `rules.js`, `map-editor.js` and `online.js` subscribe
+the same way. `game.js` shows and hides `#leaderboardView` with the other views.
 
 | DOM subtree                                                                             | Rendered by      |
 | --------------------------------------------------------------------------------------- | ---------------- |
@@ -129,6 +130,7 @@ focuses it again after drawing its layer.
 | `#leaderboardTable` rows and header sort marks, `#leaderboardCharts`                    | `leaderboard.js` |
 | `#replayDialog`, `#gameOverNotice`, the Replay item in `#tacticalMenu`                  | `replay.js`      |
 | `#currentRules`, the Rules item in `#tacticalMenu`                                      | `rules.js`       |
+| `#map` content while editing, `#mapEditorBar`, `#mapEditorInspector`, `#mapEditorHead`  | `map-editor.js`  |
 
 `tactical-ui.js` builds the node and connection editors inside the inspector
 from store selectors and commands.
@@ -156,6 +158,19 @@ the player switched view meanwhile. A command that changes the map remembers the
 one before it; `beginMapMove` remembers once at the start of a drag, so the
 `moveMapNode` calls that follow are one undo step. `markMapSaved` records the
 saved map, and `mapEditorDirty` compares against it.
+
+`map-editor.js` is the editor's interface, a mode of the tactical map. The ☰
+menu opens the running match's map in it and the New game dialog opens the map
+its settings would generate. While `ui.view` is `editor`, `game.js` keeps
+`#mapViewport` and the zoom buttons shown but draws nothing into `#map`, `ux.js`
+fits the camera to the editor canvas below the editor bar, `body.map-editing`
+hides the game's own controls, and `map-editor.js` draws the canvas, the
+connections and the nodes from the `editor` slice on every change, keeping the
+focused node. A press on a node stops before the map's pan gesture: a move
+beyond a few pixels drags it in the select tool, a release without one is a tap
+that the tool decides on. The bar holds the name, the tools, Undo and Redo,
+Play, which starts a match from `toGeneratorMap`, and the list of `problems`.
+The node panel edits the selected node's colour and connections.
 
 ## Replay
 

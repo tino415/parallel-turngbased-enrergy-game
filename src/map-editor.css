@@ -1,0 +1,298 @@
+body.map-editing .view-tabs,
+body.map-editing #score,
+body.map-editing #resolve,
+body.map-editing #uxReviewHead,
+body.map-editing #reset,
+body.map-editing #mobileSettings,
+body.map-editing .ux-dock,
+body.map-editing #mapValues,
+body.map-editing #focusMap,
+body.map-editing #tacticalGroupBar,
+body.map-editing #gameOverNotice {
+  display: none !important;
+}
+#mapEditorHead {
+  background: #1c304a;
+  border: 1px solid #344963;
+  border-radius: 8px;
+  padding: 9px 11px;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 50vw;
+}
+#mapEditorHead[hidden] {
+  display: none !important;
+}
+#mapEditorBar {
+  position: absolute;
+  z-index: 6;
+  top: calc(var(--header-clearance) + 8px);
+  left: 9px;
+  right: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  pointer-events: none;
+}
+#mapEditorBar[hidden] {
+  display: none !important;
+}
+#mapEditorBar > * {
+  pointer-events: auto;
+}
+.map-editor-row,
+#mapEditorTools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  max-width: 100%;
+  background: #17273fe6;
+  border: 1px solid #5b7190;
+  border-radius: 11px;
+}
+.map-editor-row {
+  width: 100%;
+}
+.map-editor-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+#mapEditorName {
+  width: 150px;
+  min-width: 0;
+}
+#mapEditorStatus {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.map-editor-spacer {
+  flex: 1 1 auto;
+}
+#mapEditorTools button[aria-pressed='true'] {
+  background: #315d94;
+  border-color: #579eec;
+}
+#mapEditorHint {
+  margin: 0;
+  padding: 0 4px;
+  font-size: 12px;
+}
+#mapEditorIssuesToggle {
+  font-size: 12px;
+  color: var(--ux-green);
+}
+#mapEditorIssuesToggle.has-issues {
+  color: #ffc56d;
+}
+#mapEditorIssuesList {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+#mapEditorIssuesList button {
+  font-size: 12px;
+  padding: 5px 9px;
+  color: #ffc56d;
+}
+#mapEditorInspector {
+  position: fixed;
+  z-index: 30;
+  right: 70px;
+  bottom: 20px;
+  width: min(320px, calc(100vw - 20px));
+  max-height: min(70dvh, 600px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #f1f6ff;
+  background: #17273f;
+  border: 1px solid #5b7190;
+  border-radius: 13px;
+  box-shadow: 0 12px 40px #000a;
+}
+#mapEditorInspector[hidden] {
+  display: none !important;
+}
+#mapEditorInspector .tactical-inspector-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.map-editor-label {
+  font-size: 12px;
+  color: var(--ux-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.map-editor-owners,
+.map-editor-chips,
+.map-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.map-editor-owners button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 6px 9px;
+}
+.map-editor-owners button[aria-pressed='true'] {
+  border-color: #fff;
+  background: #315d94;
+}
+.map-editor-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid #e0e9fa;
+}
+.map-editor-note {
+  margin: 0;
+  font-size: 12px;
+}
+.map-editor-canvas {
+  fill: #0d1a2b;
+  stroke: #33455f;
+  stroke-width: 2;
+}
+.map-editor-grid {
+  fill: none;
+  stroke: #1a2c45;
+  stroke-width: 1;
+}
+.map-editor-link {
+  stroke: #75859b;
+  stroke-width: 3;
+  opacity: 0.7;
+  pointer-events: none;
+}
+.map-editor-link-hit {
+  stroke: transparent;
+  stroke-width: 24;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+.map-editor-link-pending {
+  stroke: #ffc56d;
+  stroke-width: 3;
+  stroke-dasharray: 10 8;
+  pointer-events: none;
+}
+.map-editor-node {
+  cursor: pointer;
+}
+.map-editor-node text {
+  fill: #f1f6ff;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  font-weight: 600;
+}
+.editor-node {
+  stroke: #e0e9fa;
+  stroke-width: 2;
+}
+.map-editor-selected {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 4;
+  pointer-events: none;
+}
+.map-editor-link-start {
+  fill: none;
+  stroke: #ffc56d;
+  stroke-width: 4;
+  stroke-dasharray: 8 6;
+  pointer-events: none;
+}
+.map-editor-flag {
+  fill: none;
+  stroke: #ff7b6b;
+  stroke-width: 3;
+  stroke-dasharray: 6 6;
+  pointer-events: none;
+}
+@media (max-width: 760px) {
+  #mapEditorBar {
+    right: 62px;
+    gap: 4px;
+  }
+  .map-editor-row {
+    padding: 5px 6px;
+    gap: 4px;
+  }
+  .map-editor-row button {
+    font-size: 12px;
+    padding: 6px 8px;
+  }
+  .map-editor-name {
+    flex: 1 1 100%;
+  }
+  #mapEditorName {
+    flex: 1 1 auto;
+    width: auto;
+  }
+  #mapEditorStatus {
+    flex: 1 1 100%;
+    font-size: 11px;
+  }
+  #mapEditorHint {
+    display: none;
+  }
+  #mapEditorIssuesList {
+    display: none;
+    max-width: 100%;
+  }
+  #mapEditorBar.issues-open #mapEditorIssuesList {
+    display: flex;
+  }
+  #mapEditorTools {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 35;
+    max-width: none;
+    height: var(--tactical-action-height);
+    min-height: var(--tactical-action-height);
+    flex-wrap: nowrap;
+    gap: 5px;
+    padding: 8px 8px calc(9px + env(safe-area-inset-bottom));
+    background: #101d30;
+    border: 0;
+    border-top: 1px solid #40536d;
+    border-radius: 0;
+  }
+  #mapEditorTools button {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 2px;
+    font-size: clamp(11px, 3.2vw, 13px);
+    white-space: nowrap;
+  }
+  #mapEditorInspector {
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: var(--tactical-action-height);
+    width: 100%;
+    max-height: min(42dvh, calc(100dvh - var(--tactical-action-height) - 110px));
+    border-radius: 17px 17px 0 0;
+  }
+}
