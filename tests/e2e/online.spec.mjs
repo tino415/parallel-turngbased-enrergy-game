@@ -140,6 +140,64 @@ test('the host changes the map in the lobby and the friend sees it', async ({
   await expect(friend.locator('.online-seat', { hasText: 'Red' })).toContainText('Ann (you)');
 });
 
+const RING = {
+  format: 'peg-map/1',
+  name: 'Ring',
+  positions: [
+    [300, 300],
+    [600, 300],
+    [900, 300],
+  ],
+  links: [
+    [0, 1],
+    [1, 2],
+  ],
+  owners: [0, 1, null],
+};
+
+test('the host plays a saved map online and swaps it for a generated one', async ({
+  page,
+  browser,
+}, testInfo) => {
+  page.on('dialog', (dialog) => dialog.accept());
+  await page.goto('/');
+  await page.evaluate(
+    (library) => localStorage.setItem('parallel-energy-game-maps-v1', JSON.stringify(library)),
+    { maps: [{ id: 'ring', map: RING }] },
+  );
+  await page.getByLabel('More actions').click();
+  await page.getByRole('button', { name: 'New game' }).click();
+  await page.locator('#sourceLibrary').click();
+  await expect(page.getByRole('button', { name: 'New online match' })).toBeDisabled();
+  await page.locator('.map-card[data-map-id="ring"]').click();
+  await page.getByRole('button', { name: 'New online match' }).click();
+  await expect(page.locator('#onlinePanel')).toBeVisible(SLOW);
+  await expect(page.locator('#onlinePreviewCaption')).toHaveText(
+    'Ring · 3 nodes · 2 players · 2 links',
+  );
+  await expect(page.locator('#onlineMapChoice')).toHaveValue('library:ring');
+  await expect(page.locator('#onlineNodeCount')).toBeHidden();
+  await expect(page.locator('#onlineTurnTime')).toBeVisible();
+  expect(await page.evaluate(() => [mapSeed, state.nodes.length])).toEqual(['Ring', 3]);
+
+  const friend = await (await friendContext(browser, testInfo.project)).newPage();
+  await friend.goto(await page.locator('#onlineLink').inputValue());
+  await expect(friend.locator('#onlinePanel')).toBeVisible(SLOW);
+  await expect(friend.locator('#onlinePreviewCaption')).toContainText('Ring · 3 nodes');
+  await expect(friend.locator('#onlineMapChoice')).toHaveValue('current');
+  await expect(friend.locator('#onlineMapChoice option:checked')).toHaveText('Ring');
+  await expect(friend.locator('#onlineMapChoice')).toBeDisabled();
+  expect(await friend.evaluate(() => [mapSeed, state.nodes.length])).toEqual(['Ring', 3]);
+
+  await page.locator('#onlineMapChoice').selectOption('generated');
+  await expect(page.locator('#onlinePreviewCaption')).toContainText('30 nodes');
+  await expect(page.locator('#onlineNodeCount')).toBeVisible();
+  await expect(friend.locator('#onlinePreviewCaption')).toContainText('30 nodes', SLOW);
+  await page.locator('#onlineMapChoice').selectOption('library:ring');
+  await expect(page.locator('#onlinePreviewCaption')).toContainText('Ring · 3 nodes');
+  await expect(friend.locator('#onlinePreviewCaption')).toContainText('Ring · 3 nodes', SLOW);
+});
+
 test('the host cancels the match and the friend is told', async ({ page, browser }, testInfo) => {
   page.on('dialog', (dialog) => dialog.accept());
   const friend = await startWithFriend(page, browser, testInfo);

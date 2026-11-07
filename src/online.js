@@ -13,6 +13,7 @@
     seed: 'onlineSeed',
     turnTime: 'onlineTurnTime',
   };
+  const GENERATOR_FIELDS = ['count', 'players', 'density', 'seed'];
   const GONE = { 404: 'This match does not exist.', 410: 'The host cancelled this match.' };
   const matchId = new URLSearchParams(location.search).get('match');
   let view = null;
@@ -64,9 +65,14 @@
   }
 
   async function createOnlineMatch() {
-    const { id, token } = await api('POST', '', mapOptions(), '');
+    const { id, token } = await api('POST', '', newMatchOptions(), '');
     writeToken(id, token);
     location.assign(inviteLink(id));
+  }
+
+  function newMatchOptions() {
+    const chosen = MapLibrary.newGameChoice();
+    return chosen ? { map: chosen } : mapOptions();
   }
 
   function startPolling() {
@@ -186,8 +192,22 @@
     renderOnline();
   }
 
-  const chosenMap = () =>
-    Object.fromEntries(Object.entries(MAP_FIELDS).map(([key, id]) => [key, byId(id).value]));
+  function chosenMap() {
+    const fields = Object.fromEntries(
+      Object.entries(MAP_FIELDS).map(([key, id]) => [key, byId(id).value]),
+    );
+    const custom = chosenCustomMap();
+    return custom ? { map: custom, turnTime: fields.turnTime } : fields;
+  }
+
+  function chosenCustomMap() {
+    const choice = byId('onlineMapChoice').value;
+    if (choice === 'current') return view.options.map;
+    const entry = MapLibrary.playable().find((saved) => libraryChoice(saved) === choice);
+    return entry ? entry.file : null;
+  }
+
+  const libraryChoice = (entry) => 'library:' + entry.id;
 
   async function cancelMatch() {
     if (!confirm('Cancel this match for every player? It cannot be resumed.')) return;
@@ -312,11 +332,46 @@
   function renderSetup() {
     byId('onlineLink').value = inviteLink(view.id);
     byId('onlineMap').disabled = !view.host;
+    const custom = view.options.map ?? null;
+    renderMapChoice(custom);
+    for (const key of GENERATOR_FIELDS)
+      byId(MAP_FIELDS[key]).closest('label').hidden = custom !== null;
     for (const [key, id] of Object.entries(MAP_FIELDS))
-      if (document.activeElement !== byId(id)) byId(id).value = view.options[key];
+      if (document.activeElement !== byId(id) && key in view.options)
+        byId(id).value = view.options[key];
     drawMapPreview(byId('onlinePreview'), view.map.xy, view.map.edges, view.state.nodes);
-    byId('onlinePreviewCaption').textContent = mapCaption(view.options, view.map.edges.length);
+    byId('onlinePreviewCaption').textContent = custom
+      ? customMapCaption(custom, view.map.edges.length)
+      : mapCaption(view.options, view.map.edges.length);
   }
+
+  function renderMapChoice(custom) {
+    const select = byId('onlineMapChoice');
+    if (document.activeElement === select) return;
+    const library = MapLibrary.playable();
+    const sameFile = JSON.stringify(custom);
+    const held = library.find((entry) => JSON.stringify(entry.file) === sameFile);
+    select.replaceChildren(
+      element('option', { value: 'generated', textContent: 'Generated' }),
+      ...(custom && !held
+        ? [element('option', { value: 'current', textContent: custom.name })]
+        : []),
+      ...library.map((entry) =>
+        element('option', { value: libraryChoice(entry), textContent: entry.map.name }),
+      ),
+    );
+    select.value = custom ? (held ? libraryChoice(held) : 'current') : 'generated';
+  }
+
+  const customMapCaption = (map, links) =>
+    map.name +
+    ' · ' +
+    map.positions.length +
+    ' nodes · ' +
+    CustomMap.players(map) +
+    ' players · ' +
+    links +
+    ' links';
 
   function renderSeats() {
     byId('onlineSeats').replaceChildren(
@@ -483,7 +538,7 @@
     navigator.clipboard?.writeText(byId('onlineSeatLinkInput').value);
     showMessage('Seat link copied.');
   };
-  for (const id of Object.values(MAP_FIELDS))
+  for (const id of ['onlineMapChoice', ...Object.values(MAP_FIELDS)])
     byId(id).addEventListener('change', () => act('PUT', '/map', chosenMap()));
   byId('onlineStart').onclick = () => act('POST', '/start');
   byId('onlineResolve').onclick = () => {

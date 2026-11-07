@@ -1,8 +1,10 @@
 import '../src/engine.js';
+import '../src/custom-map.js';
 import '../src/store.js';
 
 const { buildMap, firstOwners, playerName } = globalThis.GameEngine;
 const { generatedMatch, commands } = globalThis.GameStore;
+const { CustomMap } = globalThis;
 
 const MATCH_DEFAULTS = { enabled: true, reserve: 5, invest: 70 };
 const DENSITIES = ['sparse', 'normal', 'dense'];
@@ -135,14 +137,44 @@ function handedToAi(record, owner, replacement, reason) {
 }
 
 function lobbyMap(requested, seatsBefore, random, shortTurns) {
-  const options = mapOptions(requested ?? {}, shortTurns);
-  const map = buildMap(options);
+  const { options, map } = requestedMap(requested ?? {}, shortTurns, random);
   const match = generatedMatch(map, MATCH_DEFAULTS, random, 0);
   return {
     options,
     seats: firstOwners(map.players).map((owner) => seatsBefore[owner] ?? freeSeat(owner)),
     match: { ...match, history: ['Online match created.', ...match.history.slice(1)] },
   };
+}
+
+function requestedMap(requested, shortTurns, random) {
+  if (requested.map == null) {
+    const options = mapOptions(requested, shortTurns);
+    return { options, map: buildMap(options) };
+  }
+  const custom = playableCustomMap(requested.map);
+  return {
+    options: {
+      map: JSON.parse(CustomMap.serialize(custom)),
+      turnTime: turnSeconds(requested.turnTime, shortTurns),
+    },
+    map: CustomMap.toGeneratorMap(custom, random),
+  };
+}
+
+function playableCustomMap(file) {
+  let map;
+  try {
+    map = CustomMap.parse(file);
+  } catch (error) {
+    throw new Refusal(400, error.message);
+  }
+  const problems = CustomMap.problems(map);
+  if (problems.length > 0)
+    throw new Refusal(
+      400,
+      'This map cannot be played: ' + problems.map((problem) => problem.message).join('; '),
+    );
+  return map;
 }
 
 export function claimSeat(record, { owner, name, tokenHash }) {
