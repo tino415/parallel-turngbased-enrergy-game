@@ -1,0 +1,87 @@
+#newGamePreview[hidden],
+#previewCaption[hidden],
+#editGeneratedMap[hidden],
+#generateOnline[hidden],
+#newGameDialog .generator-fields[hidden] {
+  display: none;
+}
+.map-source {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.map-source button[aria-pressed='true'] {
+  background: #315d94;
+  border-color: #579eec;
+}
+.map-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 0 0 12px;
+}
+.map-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 8px;
+  text-align: left;
+  border-radius: 10px;
+}
+.map-card svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 12/7;
+  background: #111b2a;
+  border: 1px solid #364b65;
+  border-radius: 6px;
+}
+.map-card[aria-pressed='true'] {
+  border-color: #fff;
+  background: #315d94;
+}
+.map-card-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.map-card .muted {
+  font-size: 12px;
+}
+.map-card-new {
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  border-style: dashed;
+}
+.map-library-details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+.map-library-details label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13px;
+}
+#libraryCaption {
+  flex: 1 1 100%;
+  font-size: 13px;
+}
+.map-library-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 600px) {
+  .map-gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
