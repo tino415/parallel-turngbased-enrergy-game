@@ -1222,8 +1222,80 @@
     return { frame, playing: frame < lastReplayFrame(match) };
   }
 
+  const EDITOR_TOOLS = ['select', 'node', 'link', 'owner', 'erase'];
+  const UNDO_LIMIT = 10;
+
+  const openedEditor = (map) => ({
+    map,
+    tool: 'select',
+    selected: null,
+    linkFrom: null,
+    past: [],
+    future: [],
+    saved: map,
+  });
+
+  const remembering = (editor) => ({
+    ...editor,
+    past: [...editor.past.slice(1 - UNDO_LIMIT), editor.map],
+    future: [],
+  });
+
+  function edited(editor, change) {
+    const map = change(editor.map);
+    return map === editor.map ? editor : { ...remembering(editor), map };
+  }
+
+  const nodeIn = (map, id) => (id !== null && id < map.positions.length ? id : null);
+  const shiftedPast = (node, removed) =>
+    node === null || node === removed ? null : node > removed ? node - 1 : node;
+
+  const withoutMapNode = (editor, id) => ({
+    ...edited(editor, (map) => CustomMap.removeNode(map, id)),
+    selected: shiftedPast(editor.selected, id),
+    linkFrom: shiftedPast(editor.linkFrom, id),
+  });
+
+  function linkedMapNode(editor, id) {
+    if (editor.linkFrom === null) return { ...editor, linkFrom: id, selected: id };
+    if (editor.linkFrom === id) return { ...editor, linkFrom: null };
+    return {
+      ...edited(editor, (map) => CustomMap.toggleLink(map, editor.linkFrom, id)),
+      linkFrom: null,
+      selected: id,
+    };
+  }
+
+  function undoneMapEdit(editor) {
+    if (!editor.past.length) return editor;
+    const map = editor.past.at(-1);
+    return {
+      ...editor,
+      map,
+      past: editor.past.slice(0, -1),
+      future: [editor.map, ...editor.future],
+      selected: nodeIn(map, editor.selected),
+      linkFrom: null,
+    };
+  }
+
+  function redoneMapEdit(editor) {
+    if (!editor.future.length) return editor;
+    const [map, ...future] = editor.future;
+    return {
+      ...editor,
+      map,
+      past: [...editor.past, editor.map],
+      future,
+      selected: nodeIn(map, editor.selected),
+      linkFrom: null,
+    };
+  }
+
+  const mapEditorDirty = (editor) => Boolean(editor) && !sameValue(editor.saved, editor.map);
+
   function createStore() {
-    let snapshot = Object.freeze({ match: null, ui: Object.freeze(INITIAL_UI) });
+    let snapshot = Object.freeze({ match: null, ui: Object.freeze(INITIAL_UI), editor: null });
     const listeners = new Set();
     const notifications = [];
     let notifying = false,
@@ -1266,6 +1338,13 @@
       (command) =>
       (...args) =>
         updateUi(command(snapshot.ui, ...args));
+    const onEditor =
+      (command) =>
+      (...args) => {
+        if (!snapshot.editor) return;
+        const next = command(snapshot.editor, ...args);
+        if (next !== snapshot.editor) commit('editor', Object.freeze(next));
+      };
     const ownOnly = (ids) => [...new Set(ids)].filter((id) => isOwn(snapshot.match, id));
     const bulkSelectionWith = (id, selected) => {
       const others = snapshot.ui.bulkSelection.filter((other) => other !== id);
@@ -1407,6 +1486,57 @@
         setUi('replay', toggledPlaying(snapshot.ui.replay, snapshot.match)),
       advanceReplay: () => setUi('replay', advancedReplay(snapshot.ui.replay, snapshot.match)),
       closeReplay: () => setUi('replay', null),
+      openMapEditor(map) {
+        commit('editor', Object.freeze(openedEditor(map)));
+        updateUi({ view: 'editor' });
+      },
+      closeMapEditor() {
+        commit('editor', null);
+        if (snapshot.ui.view === 'editor') updateUi({ view: 'map' });
+      },
+      setMapTool: onEditor((editor, tool) =>
+        EDITOR_TOOLS.includes(tool) ? { ...editor, tool, linkFrom: null } : editor,
+      ),
+      selectMapNode: onEditor((editor, id) =>
+        nodeIn(editor.map, id) === editor.selected
+          ? editor
+          : { ...editor, selected: nodeIn(editor.map, id) },
+      ),
+      addMapNode: onEditor((editor, position) => {
+        const next = edited(editor, (map) => CustomMap.addNode(map, position));
+        return next === editor ? editor : { ...next, selected: next.map.positions.length - 1 };
+      }),
+      beginMapMove: onEditor((editor, id) =>
+        nodeIn(editor.map, id) === null ? editor : remembering(editor),
+      ),
+      moveMapNode: onEditor((editor, id, position) => {
+        const map = CustomMap.moveNode(editor.map, id, position);
+        return map === editor.map ? editor : { ...editor, map };
+      }),
+      removeMapNode: onEditor((editor, id) =>
+        nodeIn(editor.map, id) === null ? editor : withoutMapNode(editor, id),
+      ),
+      linkMapNode: onEditor((editor, id) =>
+        nodeIn(editor.map, id) === null ? editor : linkedMapNode(editor, id),
+      ),
+      toggleMapLink: onEditor((editor, a, b) =>
+        edited(editor, (map) => CustomMap.toggleLink(map, a, b)),
+      ),
+      setMapOwner: onEditor((editor, id, owner) =>
+        edited(editor, (map) => CustomMap.setOwner(map, id, owner)),
+      ),
+      cycleMapOwner: onEditor((editor, id, step) =>
+        edited(editor, (map) => CustomMap.cycleOwner(map, id, step)),
+      ),
+      renameMap: onEditor((editor, name) => edited(editor, (map) => CustomMap.rename(map, name))),
+      clearMap: onEditor((editor) => ({
+        ...edited(editor, (map) => CustomMap.blank(map.name)),
+        selected: null,
+        linkFrom: null,
+      })),
+      undoMapEdit: onEditor(undoneMapEdit),
+      redoMapEdit: onEditor(redoneMapEdit),
+      markMapSaved: onEditor((editor) => ({ ...editor, saved: editor.map })),
     };
   }
 
@@ -1483,6 +1613,7 @@
       orderPresets,
       activeShareAmount,
       activeSharePercent,
+      mapEditorDirty,
     }),
   });
 })();

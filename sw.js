@@ -17,6 +17,7 @@ const APP_SHELL = [
   './src/replay.css',
   './src/online.css',
   './src/engine.js',
+  './src/custom-map.js',
   './src/store.js',
   './src/format.js',
   './src/game.js',

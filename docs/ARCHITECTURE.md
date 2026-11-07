@@ -1,13 +1,14 @@
 # Architecture: state, commands and rendering
 
-The game is eleven classic scripts loaded with `defer` into one global scope, in
-this order: `engine.js`, `store.js`, `format.js`, `game.js`, `dialogs.js`,
+The game is twelve classic scripts loaded with `defer` into one global scope, in
+this order: `engine.js`, `custom-map.js`, `store.js`, `format.js`, `game.js`, `dialogs.js`,
 `leaderboard.js`, `ux.js`, `tactical-ui.js`, `replay.js`, `rules.js`, `online.js`. Later scripts call
 functions from earlier ones and never replace them.
 
 | Module           | Owns                                                                                              | Touches the DOM |
 | ---------------- | ------------------------------------------------------------------------------------------------- | --------------- |
 | `engine.js`      | Rules: map generation, policy evaluation, forecast, AI, `resolveRound`                            | no              |
+| `custom-map.js`  | A hand-made map: its file format, edits, validation and the generator-shaped map it plays as      | no              |
 | `store.js`       | All match and interface state, commands, selectors, subscriptions                                 | no              |
 | `format.js`      | Energy number formatting                                                                          | no              |
 | `game.js`        | The base renderer, map navigation, save and restore, the global mirrors                           | yes             |
@@ -50,6 +51,7 @@ command really changes it.
 | AI debug view (AI plans on the map and inspector)     | `ui.aiDebug`          | no    | `setAiDebug`, `?aidebug` in the URL |
 | map values: amounts or standing policies              | `ui.mapValues`        | no    | `setMapValues`                      |
 | replay frame and play state                           | `ui.replay`           | no    | replay commands                     |
+| map editor: map, tool, selection, link start, undo    | `editor`              | no    | map editor commands                 |
 
 ¹ `selected` stays in the save format so that old saves keep loading. ux.js
 clears it on load.
@@ -130,6 +132,30 @@ focuses it again after drawing its layer.
 
 `tactical-ui.js` builds the node and connection editors inside the inspector
 from store selectors and commands.
+
+## Map editor
+
+A hand-made map is `{ name, positions, links, owners }`: integer node positions
+on the generator's 1800×1050 canvas, connections as `[lower, higher]` pairs and
+the colour that starts on each node, `null` for a neutral one. `custom-map.js`
+owns that shape: every edit is a pure function returning a new map, or the same
+map when nothing changes; `problems` lists what stops the map from being played
+(fewer than two nodes, fewer than two colours, a colour skipped in order, nodes
+nobody can reach, nodes closer than `MIN_DISTANCE` or outside the canvas);
+`toGeneratorMap` turns a playable map into what `buildMap` would have produced,
+every start node with 24 active and 14 invested and every neutral node with a
+random 3 to 7, so `generatedMatch` starts it like any other map. `serialize` and
+`parse` are the `peg-map/1` file format, and `parse` throws a message meant for
+the player.
+
+The store keeps the open editor in its third slice, `editor`: the map, the tool
+(`select`, `link`, `erase`), the selected node, the node a link starts from, and
+the `past` and `future` maps for undo. `openMapEditor` switches `ui.view` to
+`editor` and `closeMapEditor` drops the slice and returns to the map view unless
+the player switched view meanwhile. A command that changes the map remembers the
+one before it; `beginMapMove` remembers once at the start of a drag, so the
+`moveMapNode` calls that follow are one undo step. `markMapSaved` records the
+saved map, and `mapEditorDirty` compares against it.
 
 ## Replay
 
