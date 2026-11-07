@@ -24,12 +24,12 @@
     }
   }
 
+  const fileOf = (map) => JSON.parse(CustomMap.serialize(map));
+
   function writeLibrary(entries) {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({
-        maps: entries.map(({ id, map }) => ({ id, map: JSON.parse(CustomMap.serialize(map)) })),
-      }),
+      JSON.stringify({ maps: entries.map(({ id, map }) => ({ id, map: fileOf(map) })) }),
     );
   }
 
@@ -191,13 +191,15 @@
     byId('sourceGenerated').setAttribute('aria-pressed', String(!showingLibrary));
     byId('sourceLibrary').setAttribute('aria-pressed', String(showingLibrary));
     byId('sourceLibrary').textContent = maps.length ? 'My maps (' + maps.length + ')' : 'My maps';
-    for (const id of ['newGamePreview', 'previewCaption', 'editGeneratedMap', 'generateOnline'])
+    for (const id of ['newGamePreview', 'previewCaption', 'editGeneratedMap'])
       byId(id).toggleAttribute('hidden', showingLibrary);
     generatorFields.hidden = showingLibrary;
     library.hidden = !showingLibrary;
     if (!entryOf(selectedId)) selectedId = null;
     const entry = entryOf(selectedId);
-    byId('generate').disabled = showingLibrary && !(entry && CustomMap.isPlayable(entry.map));
+    const cannotStart = showingLibrary && !(entry && CustomMap.isPlayable(entry.map));
+    byId('generate').disabled = cannotStart;
+    byId('generateOnline').disabled = cannotStart;
     if (!showingLibrary) return;
     byId('mapLibraryEmpty').hidden = maps.length > 0;
     renderGallery();
@@ -351,6 +353,17 @@
     else
       saveButton.disabled =
         entryOf(editingId) !== null && !GameStore.selectors.mapEditorDirty(editor);
+  });
+
+  globalThis.MapLibrary = Object.freeze({
+    playable: () =>
+      readLibrary()
+        .filter(({ map }) => CustomMap.isPlayable(map))
+        .map(({ id, map }) => ({ id, map, file: fileOf(map) })),
+    newGameChoice: () => {
+      const entry = source === 'library' ? entryOf(selectedId) : null;
+      return entry && CustomMap.isPlayable(entry.map) ? fileOf(entry.map) : null;
+    },
   });
 
   renderLibrary();

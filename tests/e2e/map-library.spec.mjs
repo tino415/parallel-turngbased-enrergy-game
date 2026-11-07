@@ -48,13 +48,14 @@ test('Save in the editor keeps the map in My maps and Start game plays it', asyn
   await openMyMaps(page);
   await expect(page.locator('#sourceLibrary')).toHaveText('My maps (1)');
   await expect(page.locator('#newGamePreview')).toBeHidden();
-  await expect(page.locator('#generateOnline')).toBeHidden();
+  await expect(page.locator('#generateOnline')).toBeDisabled();
   await expect(page.locator('#generate')).toBeDisabled();
   const card = page.locator('.map-card[data-map-id]');
   await expect(card).toHaveCount(1);
   await expect(card).toContainText('Islands');
   await expect(card).toContainText('14 nodes · 2 players');
   await card.click();
+  await expect(page.locator('#generateOnline')).toBeEnabled();
   await expect(page.locator('#librarySeat option')).toHaveCount(2);
   await page.locator('#librarySeat').selectOption('1');
   await page.locator('#generate').click();

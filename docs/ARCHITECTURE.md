@@ -187,6 +187,13 @@ and remembers its id, so Save in the editor overwrites that entry; a map opened
 from the match or the generator is added on its first Save. Export writes the
 file through a download and Import reads one through a file input.
 
+A saved map also hosts an online match: `map-library.js` exposes `MapLibrary`,
+whose `newGameChoice` is the playable map chosen in the dialog, which New online
+match sends instead of generator options, and whose `playable` lists the saved
+maps the lobby's Map choice offers next to Generated. A match on a map this
+browser does not hold shows it as its own entry under the map's name; choosing
+a map hides the generator fields and leaves the turn time.
+
 ## Replay
 
 A round is a pure function of the state, the orders, the policies, the kept
@@ -236,8 +243,13 @@ imports and resolve rounds with the store's own `resolve`.
 - The record holds the store's match (map, state, policies, kept policies, history, replay) plus the
   seats, each seat's token hash, conquest defaults and the turn submitted for the
   round. The dice seed is the replay's `diceSeed`, generated on the server.
-- In the lobby the host can rebuild the map from new options; seats the new map still
-  has keep their player. The host's cancel replaces the record with
+- A match is created from generator options or from a hand-made map: `options.map` is a
+  `peg-map/1` file, which `custom-map.js`, loaded by the server as well, parses and checks
+  for `problems` before `toGeneratorMap` starts it; a broken or unplayable map is refused
+  with 400 and the reason. The record's `options` are then `{ map, turnTime }`, and the
+  client sends the map again with a turn time change.
+- In the lobby the host can rebuild the map from new options or send another map; seats
+  the new map still has keep their player. The host's cancel replaces the record with
   `{ id, cancelled: true }`, answered with 410. Every write moves the Durable Object's
   alarm seven days ahead, and the alarm deletes the match.
 - `match.humanSeats` lists the colours people play; the engine plans the AI for

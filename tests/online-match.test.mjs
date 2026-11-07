@@ -102,6 +102,65 @@ test('the map is fixed once the match runs', () => {
   );
 });
 
+const RING = {
+  format: 'peg-map/1',
+  name: 'Ring',
+  positions: [
+    [300, 300],
+    [600, 300],
+    [900, 300],
+  ],
+  links: [
+    [0, 1],
+    [1, 2],
+  ],
+  owners: [0, 1, null],
+};
+const fromMap = (map, turnTime) =>
+  createMatch({
+    id: 'abc',
+    options: { map, turnTime },
+    hostTokenHash: HOST,
+    random: seeded('dice'),
+  });
+
+test('a hand-made map starts a match and stays through a turn time change', () => {
+  const record = fromMap(RING, 600);
+  assert.equal(record.match.map.N, 3);
+  assert.equal(record.match.map.mapSeed, 'Ring');
+  assert.deepEqual(
+    record.match.state.nodes.map((node) => node.owner),
+    [0, 1, null],
+  );
+  assert.equal(record.seats.length, 2);
+  assert.deepEqual(record.options, { map: RING, turnTime: 600 });
+  const slower = changeMap(record, {
+    tokenHash: HOST,
+    options: { map: RING, turnTime: 3600 },
+    random: seeded('dice'),
+  });
+  assert.deepEqual(slower.options, { map: RING, turnTime: 3600 });
+  assert.equal(slower.match.map.N, 3);
+  const generated = changeMap(slower, {
+    tokenHash: HOST,
+    options: OPTIONS,
+    random: seeded('dice'),
+  });
+  assert.equal(generated.match.map.N, 14);
+  assert.equal(generated.options.map, undefined);
+});
+
+test('a broken or unplayable map is refused with its reason', () => {
+  assert.throws(() => fromMap({ hello: 'world' }), {
+    status: 400,
+    message: 'This is not a map file',
+  });
+  assert.throws(() => fromMap({ ...RING, links: [[0, 1]] }), {
+    status: 400,
+    message: /cannot be played: Node 2 cannot be reached/,
+  });
+});
+
 test('only the host cancels, and the cancelled match keeps nothing but its id', () => {
   refusal(() => cancelMatch(playing(), { tokenHash: ANN }));
   assert.deepEqual(cancelMatch(playing(), { tokenHash: HOST }), { id: 'abc', cancelled: true });

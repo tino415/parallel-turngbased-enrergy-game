@@ -37,6 +37,9 @@
 .online-map .generator-fields {
   margin: 4px 0 10px;
 }
+.online-map .generator-fields label[hidden] {
+  display: none;
+}
 .online-preview {
   display: block;
   width: 100%;
