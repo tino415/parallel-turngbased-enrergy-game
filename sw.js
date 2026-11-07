@@ -29,6 +29,8 @@ const APP_SHELL = [
   './src/rules.js',
   './src/map-editor.js',
   './src/map-editor.css',
+  './src/map-library.js',
+  './src/map-library.css',
   './src/online.js',
   './src/service-worker-registration.js',
 ];

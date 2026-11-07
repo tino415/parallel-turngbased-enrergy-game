@@ -1,9 +1,10 @@
 # Architecture: state, commands and rendering
 
-The game is thirteen classic scripts loaded with `defer` into one global scope, in
+The game is fourteen classic scripts loaded with `defer` into one global scope, in
 this order: `engine.js`, `custom-map.js`, `store.js`, `format.js`, `game.js`, `dialogs.js`,
 `leaderboard.js`, `ux.js`, `tactical-ui.js`, `replay.js`, `rules.js`, `map-editor.js`,
-`online.js`. Later scripts call functions from earlier ones and never replace them.
+`map-library.js`, `online.js`. Later scripts call functions from earlier ones and
+never replace them.
 
 | Module           | Owns                                                                                              | Touches the DOM |
 | ---------------- | ------------------------------------------------------------------------------------------------- | --------------- |
@@ -19,6 +20,7 @@ this order: `engine.js`, `custom-map.js`, `store.js`, `format.js`, `game.js`, `d
 | `replay.js`      | The replay screen, the game-over notice and the Replay menu item                                  | yes             |
 | `rules.js`       | The Rules dialog and its ☰ menu item: the running match's rules                                  | yes             |
 | `map-editor.js`  | The map editor mode: its tools, the node panel, the drawn map and its entry points                | yes             |
+| `map-library.js` | My maps: the saved maps in the New game dialog, their files, and Save in the editor               | yes             |
 | `online.js`      | The online lobby, the status bar, End turn, polling the server                                    | yes             |
 
 ## State ownership
@@ -119,8 +121,9 @@ order, so the three map layers keep their order:
 records the focused map item before clearing the map, and `tactical-ui.js`
 focuses it again after drawing its layer.
 
-`leaderboard.js`, `replay.js`, `rules.js`, `map-editor.js` and `online.js` subscribe
-the same way. `game.js` shows and hides `#leaderboardView` with the other views.
+`leaderboard.js`, `replay.js`, `rules.js`, `map-editor.js`, `map-library.js` and
+`online.js` subscribe the same way. `game.js` shows and hides `#leaderboardView`
+with the other views.
 
 | DOM subtree                                                                             | Rendered by      |
 | --------------------------------------------------------------------------------------- | ---------------- |
@@ -131,6 +134,7 @@ the same way. `game.js` shows and hides `#leaderboardView` with the other views.
 | `#replayDialog`, `#gameOverNotice`, the Replay item in `#tacticalMenu`                  | `replay.js`      |
 | `#currentRules`, the Rules item in `#tacticalMenu`                                      | `rules.js`       |
 | `#map` content while editing, `#mapEditorBar`, `#mapEditorInspector`, `#mapEditorHead`  | `map-editor.js`  |
+| `.map-source`, `#mapLibrary`, `#mapEditorSave`                                          | `map-library.js` |
 
 `tactical-ui.js` builds the node and connection editors inside the inspector
 from store selectors and commands.
@@ -171,6 +175,17 @@ beyond a few pixels drags it in the select tool, a release without one is a tap
 that the tool decides on. The bar holds the name, the tools, Undo and Redo,
 Play, which starts a match from `toGeneratorMap`, and the list of `problems`.
 The node panel edits the selected node's colour and connections.
+
+`map-library.js` keeps the saved maps, My maps, in this browser's
+`localStorage` under `parallel-energy-game-maps-v1`, each as its `peg-map/1`
+file with an id, re-read whenever the New game dialog opens and parsed with
+`parse`, so a broken entry is dropped rather than shown. The dialog's map
+source switch swaps the generator fields and preview for the gallery; a chosen
+map fills the colour choice from its start nodes, and Start game plays it
+through `toGeneratorMap` with the dialog's rules. Edit opens it in the editor
+and remembers its id, so Save in the editor overwrites that entry; a map opened
+from the match or the generator is added on its first Save. Export writes the
+file through a download and Import reads one through a file input.
 
 ## Replay
 
