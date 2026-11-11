@@ -18,6 +18,7 @@ function loadContext() {
 const { GameEngine, GameStore } = loadContext();
 const DEFAULTS = { enabled: true, reserve: '5', invest: '70' };
 const CUSTOM = { production: 3, interest: 0.2, capacity: 100, overflowDecay: 0.5 };
+const OPEN = { economy: 'open', startingDeposit: 100 };
 const smallMap = () =>
   GameEngine.buildMap({ count: 12, players: 2, density: 'normal', seed: 'rules' });
 
@@ -47,6 +48,7 @@ test('a state without rules plays by the default rules', () => {
     interest: 0.1,
     capacity: 250,
     overflowDecay: 0.25,
+    ...OPEN,
   });
   const next = quietRound(softCapState([{ id: 0, owner: 0, active: 10, invested: 20 }]));
   close(next.state.nodes[0].active, 0.9 * 10 + 1 + 0.1 * 20);
@@ -79,7 +81,7 @@ test('a generated match keeps custom rules in its state and replay start', () =>
   const match = GameStore.generatedMatch(smallMap(), DEFAULTS, () => 0.5, 0, CUSTOM);
   assert.deepEqual(plain(match.state.rules), CUSTOM);
   assert.deepEqual(plain(match.replay.start.rules), CUSTOM);
-  assert.deepEqual(plain(GameStore.selectors.rules(match)), CUSTOM);
+  assert.deepEqual(plain(GameStore.selectors.rules(match)), { ...CUSTOM, ...OPEN });
 });
 
 test('a generated match with the default rules stores none, like before', () => {
@@ -93,7 +95,7 @@ test('custom rules survive a save and reload', () => {
   const match = GameStore.generatedMatch(smallMap(), DEFAULTS, () => 0.5, 0, CUSTOM);
   const save = JSON.parse(JSON.stringify(GameStore.saveFromMatch(match, null)));
   const restored = GameStore.matchFromSave(save, DEFAULTS);
-  assert.deepEqual(plain(GameStore.selectors.rules(restored)), CUSTOM);
+  assert.deepEqual(plain(GameStore.selectors.rules(restored)), { ...CUSTOM, ...OPEN });
 });
 
 test('a save from before custom rules loads with the default rules', () => {
@@ -124,5 +126,39 @@ test('a rule that is not a finite number falls back to its default', () => {
     interest: 0.1,
     capacity: 250,
     overflowDecay: 0.5,
+    ...OPEN,
   });
+});
+
+const EQUILIBRIUM = { ...CUSTOM, economy: 'equilibrium', startingDeposit: 40 };
+
+test('an Equilibrium match gives every node its starting deposit and keeps the rules', () => {
+  const match = GameStore.generatedMatch(smallMap(), DEFAULTS, () => 0.5, 0, EQUILIBRIUM);
+  assert.ok(match.state.nodes.length > 0);
+  for (const node of match.state.nodes) assert.equal(node.deposit, 40);
+  assert.deepEqual(plain(match.state.rules), EQUILIBRIUM);
+  assert.deepEqual(plain(match.replay.start.nodes), plain(match.state.nodes));
+});
+
+test('an Equilibrium match defaults to a deposit of 100 per node', () => {
+  const match = GameStore.generatedMatch(smallMap(), DEFAULTS, () => 0.5, 0, {
+    economy: 'equilibrium',
+  });
+  for (const node of match.state.nodes) assert.equal(node.deposit, 100);
+});
+
+test('an open match has no deposits and stores no economy', () => {
+  const match = GameStore.generatedMatch(smallMap(), DEFAULTS, () => 0.5, 0, CUSTOM);
+  for (const node of match.state.nodes) assert.equal('deposit' in node, false);
+  assert.equal('economy' in match.state.rules, false);
+});
+
+test('the node projection of an Equilibrium match shows the extraction and the deposit', () => {
+  const store = GameStore.createStore({ selected: null });
+  store.replaceMatch(GameStore.generatedMatch(smallMap(), DEFAULTS, () => 0.5, 0, EQUILIBRIUM));
+  const match = store.getSnapshot().match;
+  const own = match.state.nodes.find((node) => node.owner === 0);
+  const projection = GameStore.selectors.projection(match, own.id);
+  assert.equal(projection.deposit, 40);
+  assert.ok(projection.extraction > 0);
 });

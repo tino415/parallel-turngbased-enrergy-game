@@ -104,9 +104,10 @@
 
   function generatedMatch(map, defaults, random, seat = 0, chosenRules = null) {
     const colours = coloursFor(seat, map.players);
+    const matchRules = rulesOf({ rules: chosenRules });
     const state = {
       round: 1,
-      nodes: recoloured(map.nodes, colours),
+      nodes: withStartingDeposits(recoloured(map.nodes, colours), matchRules),
       finished: false,
       rulesVersion: SOFT_CAP_RULES.version,
       ...withoutDefaultRules(chosenRules),
@@ -134,9 +135,19 @@
     };
   }
 
+  function withStartingDeposits(nodes, matchRules) {
+    if (matchRules.economy !== 'equilibrium') return nodes;
+    return nodes.map((node) => ({ ...node, deposit: matchRules.startingDeposit }));
+  }
+
   function withoutDefaultRules(chosenRules) {
     const complete = rulesOf({ rules: chosenRules });
-    return sameValue(complete, { ...DEFAULT_RULES }) ? {} : { rules: complete };
+    const stored = complete.economy === 'open' ? withoutEconomy(complete) : complete;
+    return sameValue(stored, withoutEconomy(DEFAULT_RULES)) ? {} : { rules: stored };
+  }
+
+  function withoutEconomy({ economy: _economy, startingDeposit: _deposit, ...rules }) {
+    return rules;
   }
 
   function newReplay(start, random, seat) {

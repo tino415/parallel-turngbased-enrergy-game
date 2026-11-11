@@ -27,20 +27,30 @@
     withdrawalFee: 0.05,
   });
   const isSoftCap = (state) => state.rulesVersion === SOFT_CAP_RULES.version;
+  const ECONOMIES = Object.freeze(['open', 'equilibrium']);
   const DEFAULT_RULES = Object.freeze({
     production: 1,
     interest: 0.1,
     capacity: SOFT_CAP_RULES.capacity,
     overflowDecay: SOFT_CAP_RULES.overflowDecay,
+    economy: 'open',
+    startingDeposit: 100,
   });
   const rulesOf = (state) =>
     Object.fromEntries(
       Object.entries(DEFAULT_RULES).map(([name, fallback]) => {
         const value = state?.rules?.[name];
-        return [name, typeof value === 'number' && Number.isFinite(value) ? value : fallback];
+        if (name === 'economy') return [name, ECONOMIES.includes(value) ? value : fallback];
+        const usable = typeof value === 'number' && Number.isFinite(value);
+        return [name, usable && (name !== 'startingDeposit' || value >= 0) ? value : fallback];
       }),
     );
+  const isEquilibrium = (rules) => rules.economy === 'equilibrium';
   const incomeOf = (invested, rules) => rules.production + rules.interest * invested;
+  const extractionOf = (node, rules) => {
+    const income = incomeOf(node.invested, rules);
+    return isEquilibrium(rules) ? Math.min(node.deposit, income) : income;
+  };
 
   // Pure, browser-independent map and economy functions.
   function seeded(seed) {
@@ -315,12 +325,26 @@
     const available = node.active + withdraw * (1 - SOFT_CAP_RULES.withdrawalFee);
     const defense = Math.max(0, available - spent);
     const invested = node.invested - withdraw + invest;
-    const income = incomeOf(invested, rules);
+    const income = extractionOf({ ...node, invested }, rules);
+    const decay = 0.1 * (defense + incoming);
     const beforeOverflow = { ...node, active: 0.9 * (defense + incoming) + income, invested };
     const projection = options.softCap
       ? applyOverflow(beforeOverflow, rules)
       : { node: beforeOverflow, loss: 0 };
+    const deposit = isEquilibrium(rules)
+      ? {
+          deposit: node.deposit,
+          extraction: income,
+          nextDeposit:
+            node.deposit -
+            income +
+            decay +
+            projection.loss +
+            withdraw * SOFT_CAP_RULES.withdrawalFee,
+        }
+      : {};
     return {
+      ...deposit,
       invest,
       withdraw,
       available,
@@ -383,7 +407,7 @@
 
   // Capacity-aware AI, separate from the legacy strategy. Players share the
   // same rules, but Blue is human-controlled in normal browser matches.
-  function economicAI(nodes, links, includeHuman = false, seat = 0) {
+  function economicAI(nodes, links, includeHuman = false, seat = 0, rules = DEFAULT_RULES) {
     const orders = {};
     const withdrawals = {};
     const net = 1 - SOFT_CAP_RULES.withdrawalFee;
@@ -394,6 +418,14 @@
     }
     const power = (n) => n.active + n.invested * net;
     const load = (n) => n.active + n.invested;
+    const capacityRoom = (n) => Math.max(0, rules.capacity - n.active - n.invested);
+    // At rest a node keeps active at 10 + invested while its deposit lasts, so
+    // investing half of what the node holds above 10 makes the most of it
+    // spendable; more only locks energy in principal.
+    const investmentRoom = (n) =>
+      isEquilibrium(rules)
+        ? Math.min(capacityRoom(n), Math.max(0, (load(n) + n.deposit - 10) / 2 - n.invested))
+        : capacityRoom(n);
     const weakerAlly = (ally, node) =>
       load(ally) < load(node) || (load(ally) === load(node) && ally.id > node.id);
     const garrison = (n) => Math.min(12, Math.max(2, power(n) * 0.08));
@@ -480,21 +512,20 @@
           .filter((id) => nodes[id].owner === owner)
           .filter((id) => adjacent[id].some((other) => nodes[other].owner !== owner))
           .filter((id) => distance[n.id] > 0 || weakerAlly(nodes[id], n))
-          .filter((id) => load(nodes[id]) < SOFT_CAP_RULES.capacity * 0.8)
+          .filter((id) => load(nodes[id]) < rules.capacity * 0.8)
           .sort(
             (a, b) =>
               nodes[a].active + nodes[a].invested - nodes[b].active - nodes[b].invested || a - b,
           )[0];
         if (frontier !== undefined && free > 2) {
-          const room = SOFT_CAP_RULES.capacity - nodes[frontier].active - nodes[frontier].invested;
+          const room = rules.capacity - nodes[frontier].active - nodes[frontier].invested;
           const amount = Math.max(0, Math.min(free * 0.7, room));
           if (amount > 1e-8) {
             orders[n.id] = { source: n.id, type: 'transfer', amount, dest: frontier };
             continue;
           }
         }
-        const room = Math.max(0, SOFT_CAP_RULES.capacity - n.active - n.invested);
-        const amount = Math.min(free * 0.8, room);
+        const amount = Math.min(free * 0.8, investmentRoom(n));
         const invest = amount > 1e-8 ? { source: n.id, type: 'invest', amount, dest: null } : null;
         const surplus = free - (invest?.amount ?? 0);
         const towards = nextHopToFrontier(n, distance);
@@ -533,7 +564,7 @@
 
   function aiPlan(state, links, seat = 0) {
     if (isSoftCap(state)) {
-      const { orders, withdrawals } = economicAI(state.nodes, links, false, seat);
+      const { orders, withdrawals } = economicAI(state.nodes, links, false, seat, rulesOf(state));
       return { orders: Object.values(orders).flat(), withdrawals };
     }
     return {
@@ -596,8 +627,13 @@
     const book = (owner, flow, amount) => {
       if (owner !== null) ledger[owner][flow] += amount;
     };
+    const settleInDeposit = (node, amount) => {
+      if (isEquilibrium(rules)) node.deposit += amount;
+    };
     const aiPlan =
-      softCap && aiOrdersOverride === null ? economicAI(state.nodes, links, false, seat) : null;
+      softCap && aiOrdersOverride === null
+        ? economicAI(state.nodes, links, false, seat, rules)
+        : null;
     // Withdrawal is a start-of-round order: it can fund an action from this
     // source, but neither an incoming transfer nor a later capture can.
     if (softCap) {
@@ -637,6 +673,7 @@
         n.invested -= withdrawal;
         n.active += withdrawal * (1 - SOFT_CAP_RULES.withdrawalFee);
         book(n.owner, 'withdrawalFee', withdrawal * SOFT_CAP_RULES.withdrawalFee);
+        settleInDeposit(n, withdrawal * SOFT_CAP_RULES.withdrawalFee);
       }
     }
     const allocated = (p) => p.invest + Object.values(p.edges).reduce((sum, n) => sum + n, 0);
@@ -748,6 +785,7 @@
         const defenderLoss = defenderBefore - defenderSurvived;
         book(a.owner, 'attackLoss', attackerLoss);
         book(defenderOwner, 'defenseLoss', defenderLoss);
+        settleInDeposit(node, attackerLoss + defenderLoss);
         if (a.pressure) {
           pressureResults.push(
             'Node ' +
@@ -788,7 +826,9 @@
       }
       if (node.owner !== original) {
         book(original, 'investedCeded', node.invested);
+        const principalCeded = node.invested;
         node.invested *= rnd(0.25, 0.75);
+        settleInDeposit(node, principalCeded - node.invested);
         book(node.owner, 'investedCaptured', node.invested);
         keepLostPolicy(original, node.id);
         const kept = takeKeptPolicy(node.owner, node.id);
@@ -802,9 +842,10 @@
     if (pressureResults.length)
       log('Round ' + state.round + ' · Pressure: ' + pressureResults.join(', ') + '.');
     for (const n of nodes) {
-      const income = incomeOf(n.invested, rules);
+      const income = extractionOf(n, rules);
       book(n.owner, 'production', income);
       book(n.owner, 'decay', n.active * 0.1);
+      settleInDeposit(n, n.active * 0.1 - income);
       n.active = clamp(n.active * 0.9 + income);
     }
     if (softCap) {
@@ -814,10 +855,18 @@
         n.active = projection.node.active;
         n.invested = projection.node.invested;
         book(n.owner, 'overflow', projection.loss);
+        settleInDeposit(n, projection.loss);
         totalLoss += projection.loss;
       }
       if (totalLoss > 0.05)
-        log('Round ' + state.round + ' · Overflow decay destroyed ' + fmt(totalLoss) + ' energy.');
+        log(
+          'Round ' +
+            state.round +
+            ' · Overflow decay ' +
+            (isEquilibrium(rules) ? 'moved ' : 'destroyed ') +
+            fmt(totalLoss) +
+            (isEquilibrium(rules) ? ' energy into deposits.' : ' energy.'),
+        );
     }
     for (const id of Object.keys(nextPolicies)) {
       const owner = nodes[Number(id)].owner;
