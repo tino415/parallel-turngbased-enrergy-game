@@ -20,6 +20,7 @@ const APP_SHELL = [
   './src/custom-map.js',
   './src/store.js',
   './src/format.js',
+  './src/rules-form.js',
   './src/game.js',
   './src/dialogs.js',
   './src/leaderboard.js',

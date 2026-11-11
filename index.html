@@ -96,9 +96,24 @@
         </div>
         <details id="newGameRules" class="new-game-rules">
           <summary>Rules</summary>
-          <p class="muted">Apply to Start game. Online matches play by the default rules.</p>
+          <p class="muted">Apply to Start game.</p>
           <div class="generator-fields">
             <label
+              >Economy
+              <select id="ruleEconomy">
+                <option value="open" selected>Open</option>
+                <option value="equilibrium">Equilibrium</option>
+              </select></label
+            ><label
+              >Starting deposit
+              <input
+                id="ruleStartingDeposit"
+                type="number"
+                min="10"
+                max="10000"
+                step="10"
+                value="100" /></label
+            ><label
               >Production per node
               <input
                 id="ruleProduction"
@@ -185,6 +200,48 @@
               </select></label
             >
           </div>
+          <details id="onlineRules" class="new-game-rules">
+            <summary>Rules</summary>
+            <div class="generator-fields">
+              <label
+                >Economy
+                <select id="onlineRuleEconomy">
+                  <option value="open">Open</option>
+                  <option value="equilibrium">Equilibrium</option>
+                </select></label
+              ><label
+                >Starting deposit
+                <input
+                  id="onlineRuleStartingDeposit"
+                  type="number"
+                  min="10"
+                  max="10000"
+                  step="10" /></label
+              ><label
+                >Production per node
+                <input
+                  id="onlineRuleProduction"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1" /></label
+              ><label
+                >Investment interest %
+                <input id="onlineRuleInterest" type="number" min="0" max="100" step="1" /></label
+              ><label
+                >Node capacity
+                <input
+                  id="onlineRuleCapacity"
+                  type="number"
+                  min="10"
+                  max="100000"
+                  step="10" /></label
+              ><label
+                >Overflow decay %
+                <input id="onlineRuleOverflowDecay" type="number" min="0" max="100" step="1"
+              /></label>
+            </div>
+          </details>
           <svg
             id="onlinePreview"
             class="online-preview"
@@ -267,6 +324,16 @@
                     ?</button
                   ><button type="button" class="sort">Active</button>
                 </th>
+                <th scope="col" data-column="deposit" hidden>
+                  <button
+                    type="button"
+                    class="help"
+                    popovertarget="depositHelp"
+                    aria-label="What is Deposit?"
+                  >
+                    ?</button
+                  ><button type="button" class="sort">Deposit</button>
+                </th>
                 <th scope="col" data-column="nodes">
                   <button type="button" class="sort">Nodes</button>
                 </th>
@@ -286,6 +353,14 @@
             <p>
               Energy the player can spend now, summed over all their nodes: to attack, to support
               neighbours, to invest, or kept back as defense.
+            </p>
+          </div>
+          <div id="depositHelp" class="leaderboard-help" popover>
+            <strong>Deposit</strong>
+            <p>
+              Natural energy left in the deposits of the player’s nodes. Nodes draw their income
+              from it, and every loss on a node flows back into that node’s deposit. Whoever
+              captures a node takes its deposit.
             </p>
           </div>
           <section id="leaderboardCharts" aria-labelledby="leaderboardChartsTitle">
@@ -396,6 +471,7 @@
     <script src="./src/custom-map.js" defer></script>
     <script src="./src/store.js" defer></script>
     <script src="./src/format.js" defer></script>
+    <script src="./src/rules-form.js" defer></script>
     <script src="./src/game.js" defer></script>
     <script src="./src/dialogs.js" defer></script>
     <script src="./src/leaderboard.js" defer></script>

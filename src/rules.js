@@ -27,7 +27,14 @@
   }
 
   function ruleRows(rules) {
+    const equilibrium = rules.economy === 'equilibrium';
     return [
+      ...(equilibrium
+        ? [
+            ['Economy', 'Equilibrium'],
+            ['Starting deposit', rules.startingDeposit],
+          ]
+        : []),
       ['Production per node', rules.production],
       ['Investment interest', percent(rules.interest)],
       ['Node capacity', rules.capacity],

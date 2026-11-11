@@ -706,6 +706,7 @@
     return metrics([
       ['Active', node.active],
       ['Invested', node.invested],
+      ...depositMetric(node, prediction),
       ...(prediction
         ? [
             ['Defense', prediction.defense],
@@ -717,6 +718,12 @@
         : []),
       ...(prediction?.overflow > 0 ? [['Overflow loss', prediction.overflow]] : []),
     ]);
+  }
+
+  function depositMetric(node, prediction) {
+    if (matchRules().economy !== 'equilibrium') return [];
+    const extraction = prediction ? ' · −' + numeric(prediction.extraction) : '';
+    return [['Deposit', numeric(node.deposit) + extraction]];
   }
 
   function policyChips(id, policy) {

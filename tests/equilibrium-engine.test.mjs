@@ -233,3 +233,17 @@ test('the open economy plays out round for round as it did before the economy ru
 });
 
 const ownedBy0 = (state) => state.nodes.filter((n) => n.owner === 0).length;
+
+test('the round log says where losses settled, and stays silent in the open economy', () => {
+  const attack = [{ source: 0, type: 'attack', amount: 30, dest: 1 }];
+  const { events } = resolveOnly(battleState([100, 100]), attack);
+  assert.ok(
+    events.some((line) => /Node 1's deposit \+\d/.test(line)),
+    events.join('\n'),
+  );
+  assert.ok(!events.some((line) => /Node 0's deposit/.test(line)), 'decay alone is not logged');
+
+  const open = { ...battleState([100, 100]), rules: undefined };
+  const openEvents = resolveOnly(open, attack).events;
+  assert.ok(!openEvents.some((line) => /deposit/.test(line)));
+});

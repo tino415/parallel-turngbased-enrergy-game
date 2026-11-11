@@ -13,6 +13,7 @@
     seed: 'onlineSeed',
     turnTime: 'onlineTurnTime',
   };
+  const RULES_PREFIX = 'onlineRule';
   const GENERATOR_FIELDS = ['count', 'players', 'density', 'seed'];
   const GONE = { 404: 'This match does not exist.', 410: 'The host cancelled this match.' };
   const matchId = new URLSearchParams(location.search).get('match');
@@ -72,7 +73,7 @@
 
   function newMatchOptions() {
     const chosen = MapLibrary.newGameChoice();
-    return chosen ? { map: chosen } : mapOptions();
+    return { ...(chosen ? { map: chosen } : mapOptions()), rules: chosenRules() };
   }
 
   function startPolling() {
@@ -196,8 +197,9 @@
     const fields = Object.fromEntries(
       Object.entries(MAP_FIELDS).map(([key, id]) => [key, byId(id).value]),
     );
+    const rules = RulesForm.read(RULES_PREFIX);
     const custom = chosenCustomMap();
-    return custom ? { map: custom, turnTime: fields.turnTime } : fields;
+    return custom ? { map: custom, turnTime: fields.turnTime, rules } : { ...fields, rules };
   }
 
   function chosenCustomMap() {
@@ -339,6 +341,8 @@
     for (const [key, id] of Object.entries(MAP_FIELDS))
       if (document.activeElement !== byId(id) && key in view.options)
         byId(id).value = view.options[key];
+    if (!byId('onlineRules').contains(document.activeElement))
+      RulesForm.write(RULES_PREFIX, GameEngine.rulesOf({ rules: view.options.rules }));
     drawMapPreview(byId('onlinePreview'), view.map.xy, view.map.edges, view.state.nodes);
     byId('onlinePreviewCaption').textContent = custom
       ? customMapCaption(custom, view.map.edges.length)
@@ -538,7 +542,16 @@
     navigator.clipboard?.writeText(byId('onlineSeatLinkInput').value);
     showMessage('Seat link copied.');
   };
-  for (const id of ['onlineMapChoice', ...Object.values(MAP_FIELDS)])
+  RulesForm.bind(RULES_PREFIX);
+  const RULE_FIELDS = [
+    'Economy',
+    'StartingDeposit',
+    'Production',
+    'Interest',
+    'Capacity',
+    'OverflowDecay',
+  ].map((field) => RULES_PREFIX + field);
+  for (const id of ['onlineMapChoice', ...Object.values(MAP_FIELDS), ...RULE_FIELDS])
     byId(id).addEventListener('change', () => act('PUT', '/map', chosenMap()));
   byId('onlineStart').onclick = () => act('POST', '/start');
   byId('onlineResolve').onclick = () => {

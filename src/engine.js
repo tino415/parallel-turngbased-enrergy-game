@@ -627,8 +627,11 @@
     const book = (owner, flow, amount) => {
       if (owner !== null) ledger[owner][flow] += amount;
     };
-    const settleInDeposit = (node, amount) => {
-      if (isEquilibrium(rules)) node.deposit += amount;
+    const settled = new Map();
+    const settleInDeposit = (node, amount, { routine = false } = {}) => {
+      if (!isEquilibrium(rules)) return;
+      node.deposit += amount;
+      if (!routine) settled.set(node.id, (settled.get(node.id) ?? 0) + amount);
     };
     const aiPlan =
       softCap && aiOrdersOverride === null
@@ -845,7 +848,8 @@
       const income = extractionOf(n, rules);
       book(n.owner, 'production', income);
       book(n.owner, 'decay', n.active * 0.1);
-      settleInDeposit(n, n.active * 0.1 - income);
+      settleInDeposit(n, n.active * 0.1, { routine: true });
+      if (isEquilibrium(rules)) n.deposit -= income;
       n.active = clamp(n.active * 0.9 + income);
     }
     if (softCap) {
@@ -858,16 +862,12 @@
         settleInDeposit(n, projection.loss);
         totalLoss += projection.loss;
       }
-      if (totalLoss > 0.05)
-        log(
-          'Round ' +
-            state.round +
-            ' · Overflow decay ' +
-            (isEquilibrium(rules) ? 'moved ' : 'destroyed ') +
-            fmt(totalLoss) +
-            (isEquilibrium(rules) ? ' energy into deposits.' : ' energy.'),
-        );
+      if (totalLoss > 0.05 && !isEquilibrium(rules))
+        log('Round ' + state.round + ' · Overflow decay destroyed ' + fmt(totalLoss) + ' energy.');
     }
+    for (const [id, amount] of [...settled].sort(([a], [b]) => a - b))
+      if (amount > 0.05)
+        log('Round ' + state.round + ' · Node ' + id + "'s deposit +" + fmt(amount) + '.');
     for (const id of Object.keys(nextPolicies)) {
       const owner = nodes[Number(id)].owner;
       const kept =

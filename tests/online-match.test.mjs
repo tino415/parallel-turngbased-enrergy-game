@@ -26,6 +26,7 @@ const HOST = 'host-hash';
 const ANN = 'ann-hash';
 const OPTIONS = { count: 14, players: 3, density: 'normal', seed: 'online-test' };
 const noDefaults = { enabled: false, reserve: 5, invest: 70 };
+const OPEN_RULES = globalThis.GameEngine.rulesOf({});
 
 const lobby = () =>
   createMatch({ id: 'abc', options: OPTIONS, hostTokenHash: HOST, random: seeded('dice') });
@@ -75,7 +76,68 @@ test('the host changes the map in the lobby and everyone sees its options', () =
   const changed = changeMap(lobby(), { tokenHash: HOST, options, random: seeded('dice') });
   assert.equal(changed.match.map.N, 20);
   assert.equal(changed.seats.length, 4);
-  assert.deepEqual(viewFor(changed, ANN).options, { ...options, turnTime: 86400 });
+  assert.deepEqual(viewFor(changed, ANN).options, {
+    ...options,
+    turnTime: 86400,
+    rules: globalThis.GameEngine.rulesOf({}),
+  });
+});
+
+const EQUILIBRIUM = { economy: 'equilibrium', startingDeposit: 60, capacity: 120 };
+
+test('the host picks the rules and the match is built with them', () => {
+  const record = createMatch({
+    id: 'abc',
+    options: { ...OPTIONS, rules: EQUILIBRIUM },
+    hostTokenHash: HOST,
+    random: seeded('dice'),
+  });
+  const rules = selectors.rules(record.match);
+  assert.equal(rules.economy, 'equilibrium');
+  assert.equal(rules.capacity, 120);
+  for (const node of record.match.state.nodes) assert.equal(node.deposit, 60);
+  assert.deepEqual(viewFor(record, ANN).options.rules, rules);
+});
+
+test('the rules are normalised: unknown values fall back to the defaults', () => {
+  const record = createMatch({
+    id: 'abc',
+    options: { ...OPTIONS, rules: { economy: 'gold', production: 'lots', startingDeposit: -4 } },
+    hostTokenHash: HOST,
+    random: seeded('dice'),
+  });
+  assert.deepEqual(record.options.rules, globalThis.GameEngine.rulesOf({}));
+  for (const node of record.match.state.nodes) assert.equal('deposit' in node, false);
+});
+
+test('the host changes the rules in the lobby, and a map change alone keeps them', () => {
+  const changed = changeMap(lobby(), {
+    tokenHash: HOST,
+    options: { ...OPTIONS, rules: EQUILIBRIUM },
+    random: seeded('dice'),
+  });
+  assert.equal(selectors.rules(changed.match).economy, 'equilibrium');
+  refusal(() =>
+    changeMap(lobby(), {
+      tokenHash: ANN,
+      options: { ...OPTIONS, rules: EQUILIBRIUM },
+      random: seeded('dice'),
+    }),
+  );
+  const remapped = changeMap(changed, {
+    tokenHash: HOST,
+    options: { ...OPTIONS, count: 20 },
+    random: seeded('dice'),
+  });
+  assert.equal(selectors.rules(remapped.match).economy, 'equilibrium');
+  assert.equal(remapped.match.state.nodes[0].deposit, 60);
+});
+
+test('a lobby stored before rules existed still builds an open match', () => {
+  const stored = lobby();
+  delete stored.options.rules;
+  const changed = changeMap(stored, { tokenHash: HOST, options: OPTIONS, random: seeded('dice') });
+  assert.equal(selectors.rules(changed.match).economy, 'open');
 });
 
 test('a smaller map keeps the colours it still has and frees the rest', () => {
@@ -133,13 +195,13 @@ test('a hand-made map starts a match and stays through a turn time change', () =
     [0, 1, null],
   );
   assert.equal(record.seats.length, 2);
-  assert.deepEqual(record.options, { map: RING, turnTime: 600 });
+  assert.deepEqual(record.options, { map: RING, turnTime: 600, rules: OPEN_RULES });
   const slower = changeMap(record, {
     tokenHash: HOST,
     options: { map: RING, turnTime: 3600 },
     random: seeded('dice'),
   });
-  assert.deepEqual(slower.options, { map: RING, turnTime: 3600 });
+  assert.deepEqual(slower.options, { map: RING, turnTime: 3600, rules: OPEN_RULES });
   assert.equal(slower.match.map.N, 3);
   const generated = changeMap(slower, {
     tokenHash: HOST,

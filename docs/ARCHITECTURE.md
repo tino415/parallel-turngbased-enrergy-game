@@ -6,22 +6,23 @@ this order: `engine.js`, `custom-map.js`, `store.js`, `format.js`, `game.js`, `d
 `map-library.js`, `online.js`. Later scripts call functions from earlier ones and
 never replace them.
 
-| Module           | Owns                                                                                              | Touches the DOM |
-| ---------------- | ------------------------------------------------------------------------------------------------- | --------------- |
-| `engine.js`      | Rules: map generation, policy evaluation, forecast, AI, `resolveRound`                            | no              |
-| `custom-map.js`  | A hand-made map: its file format, edits, validation and the generator-shaped map it plays as      | no              |
-| `store.js`       | All match and interface state, commands, selectors, subscriptions                                 | no              |
-| `format.js`      | Energy number formatting                                                                          | no              |
-| `game.js`        | The base renderer, map navigation, save and restore, the global mirrors                           | yes             |
-| `dialogs.js`     | Orders, Settings and Rules dialog buttons; opening a dialog or the menu closes the other overlays | yes             |
-| `leaderboard.js` | The Leaderboard tab: one row per player, sorted by the chosen column, and the round chart         | yes             |
-| `ux.js`          | Layout, dialogs, side panel, dock, camera fitting                                                 | yes             |
-| `tactical-ui.js` | Map selection, node and connection groups, the inspector, pinch zoom, the ☰ menu                 | yes             |
-| `replay.js`      | The replay screen, the game-over notice and the Replay menu item                                  | yes             |
-| `rules.js`       | The Rules dialog and its ☰ menu item: the running match's rules                                  | yes             |
-| `map-editor.js`  | The map editor mode: its tools, the node panel, the drawn map and its entry points                | yes             |
-| `map-library.js` | My maps: the saved maps in the New game dialog, their files, and Save in the editor               | yes             |
-| `online.js`      | The online lobby, the status bar, End turn, polling the server                                    | yes             |
+| Module           | Owns                                                                                                           | Touches the DOM |
+| ---------------- | -------------------------------------------------------------------------------------------------------------- | --------------- |
+| `engine.js`      | Rules: map generation, policy evaluation, forecast, AI, `resolveRound`                                         | no              |
+| `custom-map.js`  | A hand-made map: its file format, edits, validation and the generator-shaped map it plays as                   | no              |
+| `store.js`       | All match and interface state, commands, selectors, subscriptions                                              | no              |
+| `format.js`      | Energy number formatting                                                                                       | no              |
+| `rules-form.js`  | The Rules fields shared by New game and the online lobby: read, write, show the deposit only under Equilibrium | no              |
+| `game.js`        | The base renderer, map navigation, save and restore, the global mirrors                                        | yes             |
+| `dialogs.js`     | Orders, Settings and Rules dialog buttons; opening a dialog or the menu closes the other overlays              | yes             |
+| `leaderboard.js` | The Leaderboard tab: one row per player, sorted by the chosen column, and the round chart                      | yes             |
+| `ux.js`          | Layout, dialogs, side panel, dock, camera fitting                                                              | yes             |
+| `tactical-ui.js` | Map selection, node and connection groups, the inspector, pinch zoom, the ☰ menu                              | yes             |
+| `replay.js`      | The replay screen, the game-over notice and the Replay menu item                                               | yes             |
+| `rules.js`       | The Rules dialog and its ☰ menu item: the running match's rules                                               | yes             |
+| `map-editor.js`  | The map editor mode: its tools, the node panel, the drawn map and its entry points                             | yes             |
+| `map-library.js` | My maps: the saved maps in the New game dialog, their files, and Save in the editor                            | yes             |
+| `online.js`      | The online lobby, the status bar, End turn, polling the server                                                 | yes             |
 
 ## State ownership
 

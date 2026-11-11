@@ -1,6 +1,6 @@
 # Equilibrium mode
 
-**Status:** accepted 2026-11-11, not built. Every open question was settled on the
+**Status:** accepted 2026-11-11, built. Every open question was settled on the
 recommendation of the proposal; the decisions are below, with the simulations behind them.
 Equilibrium ships as a second economy next to the current rules, chosen when a match starts,
 offline and online.

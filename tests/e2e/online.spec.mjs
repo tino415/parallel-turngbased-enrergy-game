@@ -446,3 +446,41 @@ test('the round resolves when the turn timer runs out and the screens count down
   await expect.poll(() => round(page), SLOW).toBe(2);
   await expect(turnButton(friend)).toHaveText(/End turn/);
 });
+
+test('the host sets the rules in the lobby, the guest sees them read-only, and the match plays by them', async ({
+  page,
+  browser,
+}, testInfo) => {
+  const link = await hostOnlineMatch(page);
+  const rules = page.locator('#onlineRules');
+  await expect(rules).not.toHaveAttribute('open');
+  await rules.locator('summary').click();
+  await expect(page.locator('#onlineRuleStartingDeposit')).toBeHidden();
+  await page.locator('#onlineRuleEconomy').selectOption('equilibrium');
+  await expect(page.locator('#onlineRuleStartingDeposit')).toBeVisible();
+  await page.locator('#onlineRuleStartingDeposit').fill('40');
+  await page.locator('#onlineRuleCapacity').fill('150');
+
+  const friend = await (await friendContext(browser, testInfo.project)).newPage();
+  await friend.goto(link);
+  await expect(friend.locator('#onlinePanel')).toBeVisible(SLOW);
+  await friend.locator('#onlineRules summary').click();
+  await expect(friend.locator('#onlineRuleEconomy')).toHaveValue('equilibrium', SLOW);
+  await expect(friend.locator('#onlineRuleStartingDeposit')).toHaveValue('40');
+  await expect(friend.locator('#onlineRuleEconomy')).toBeDisabled();
+  await expect(friend.locator('#onlineRuleCapacity')).toBeDisabled();
+
+  await takeColour(page, 'Hana', 'Blue');
+  await page.getByRole('button', { name: 'Start match' }).click();
+  await expect(page.locator('#onlinePanel')).toBeHidden(SLOW);
+  const played = await page.evaluate(() => ({
+    rules: state.rules,
+    deposits: state.nodes.every((node) => node.deposit === 40),
+  }));
+  expect(played.rules).toMatchObject({
+    economy: 'equilibrium',
+    startingDeposit: 40,
+    capacity: 150,
+  });
+  expect(played.deposits).toBe(true);
+});
