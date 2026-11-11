@@ -716,7 +716,9 @@
     const sign = sort.direction === 'asc' ? 1 : -1;
     return ownersOf(match)
       .map((owner) => standingOf(match, owner))
-      .sort((a, b) => sign * (a[sort.column] - b[sort.column]) || a.player - b.player);
+      .sort(
+        (a, b) => sign * ((a[sort.column] ?? 0) - (b[sort.column] ?? 0)) || a.player - b.player,
+      );
   }
 
   function standingOf(match, owner) {

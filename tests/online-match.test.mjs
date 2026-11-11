@@ -594,3 +594,32 @@ test('hosting handed over in the lobby carries Start to the new host', () => {
   refusal(() => startMatch(handed, { tokenHash: HOST }));
   assert.equal(startMatch(handed, { tokenHash: ANN }).phase, 'playing');
 });
+
+test('rules outside what the form allows are clamped by the server', () => {
+  const record = createMatch({
+    id: 'abc',
+    options: {
+      ...OPTIONS,
+      rules: {
+        capacity: -5,
+        production: 1e9,
+        interest: 7,
+        overflowDecay: -1,
+        startingDeposit: 1e300,
+      },
+    },
+    hostTokenHash: HOST,
+    random: seeded('dice'),
+  });
+  assert.deepEqual(
+    { ...record.options.rules },
+    {
+      ...OPEN_RULES,
+      capacity: 10,
+      production: 100,
+      interest: 1,
+      overflowDecay: 0,
+      startingDeposit: 10000,
+    },
+  );
+});

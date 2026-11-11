@@ -147,8 +147,25 @@ function lobbyMap(requested, seatsBefore, random, shortTurns) {
   };
 }
 
+const RULE_BOUNDS = {
+  production: [0, 100],
+  interest: [0, 1],
+  capacity: [10, 100000],
+  overflowDecay: [0, 1],
+  startingDeposit: [10, 10000],
+};
+
+function boundedRules(requested) {
+  const rules = rulesOf({ rules: requested });
+  const bounded = Object.entries(RULE_BOUNDS).map(([name, [low, high]]) => [
+    name,
+    Math.max(low, Math.min(high, rules[name])),
+  ]);
+  return { ...rules, ...Object.fromEntries(bounded) };
+}
+
 function requestedMap(requested, shortTurns, random) {
-  const rules = rulesOf({ rules: requested.rules });
+  const rules = boundedRules(requested.rules);
   if (requested.map == null) {
     const options = mapOptions(requested, shortTurns);
     return { options: { ...options, rules }, map: buildMap(options) };
