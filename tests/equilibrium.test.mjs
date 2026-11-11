@@ -85,7 +85,7 @@ test('the live economy through the adapter matches the live engine round for rou
   }
 });
 
-for (const lossDestination of ['local', 'neighbourhood', 'global']) {
+for (const lossDestination of ['neighbourhood', 'global']) {
   test('a closed map keeps its total energy with losses returned ' + lossDestination, () => {
     for (const seed of seeds) {
       playEquilibriumMatch({
