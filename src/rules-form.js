@@ -3,6 +3,7 @@
 (() => {
   const byId = (id) => document.getElementById(id);
   const idOf = (prefix, field) => prefix + field;
+  const percentOf = (fraction) => Number((fraction * 100).toFixed(6));
 
   function read(prefix) {
     const { DEFAULT_RULES } = GameEngine;
@@ -30,9 +31,9 @@
     set('Economy', rules.economy);
     set('StartingDeposit', rules.startingDeposit);
     set('Production', rules.production);
-    set('Interest', Math.round(rules.interest * 100));
+    set('Interest', percentOf(rules.interest));
     set('Capacity', rules.capacity);
-    set('OverflowDecay', Math.round(rules.overflowDecay * 100));
+    set('OverflowDecay', percentOf(rules.overflowDecay));
     showDepositOnlyUnderEquilibrium(prefix);
   }
 

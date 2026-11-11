@@ -45,6 +45,7 @@
         return [name, usable && (name !== 'startingDeposit' || value >= 0) ? value : fallback];
       }),
     );
+  const RESTING_ACTIVE_BASE = 10;
   const isEquilibrium = (rules) => rules.economy === 'equilibrium';
   const incomeOf = (invested, rules) => rules.production + rules.interest * invested;
   const extractionOf = (node, rules) => {
@@ -419,13 +420,10 @@
     const power = (n) => n.active + n.invested * net;
     const load = (n) => n.active + n.invested;
     const capacityRoom = (n) => Math.max(0, rules.capacity - n.active - n.invested);
-    // At rest a node keeps active at 10 + invested while its deposit lasts, so
-    // investing half of what the node holds above 10 makes the most of it
-    // spendable; more only locks energy in principal.
+    const drainableRoom = (n) =>
+      Math.max(0, (load(n) + n.deposit - RESTING_ACTIVE_BASE) / 2 - n.invested);
     const investmentRoom = (n) =>
-      isEquilibrium(rules)
-        ? Math.min(capacityRoom(n), Math.max(0, (load(n) + n.deposit - 10) / 2 - n.invested))
-        : capacityRoom(n);
+      isEquilibrium(rules) ? Math.min(capacityRoom(n), drainableRoom(n)) : capacityRoom(n);
     const weakerAlly = (ally, node) =>
       load(ally) < load(node) || (load(ally) === load(node) && ally.id > node.id);
     const garrison = (n) => Math.min(12, Math.max(2, power(n) * 0.08));
@@ -844,8 +842,8 @@
     }
     if (pressureResults.length)
       log('Round ' + state.round + ' · Pressure: ' + pressureResults.join(', ') + '.');
-    for (const n of nodes) {
-      const income = extractionOf(n, rules);
+    for (const [index, n] of nodes.entries()) {
+      const income = extractionOf({ ...n, deposit: state.nodes[index].deposit }, rules);
       book(n.owner, 'production', income);
       book(n.owner, 'decay', n.active * 0.1);
       settleInDeposit(n, n.active * 0.1, { routine: true });

@@ -247,3 +247,29 @@ test('the round log says where losses settled, and stays silent in the open econ
   const openEvents = resolveOnly(open, attack).events;
   assert.ok(!openEvents.some((line) => /deposit/.test(line)));
 });
+
+test('a round extracts what the forecast said, even when the node pays a withdrawal fee', () => {
+  const rules = engine.rulesOf({ rules: EQUILIBRIUM });
+  const node = { id: 0, owner: 0, active: 0, invested: 100, deposit: 4 };
+  const state = {
+    round: 1,
+    finished: false,
+    rulesVersion: engine.SOFT_CAP_RULES.version,
+    rules: EQUILIBRIUM,
+    nodes: [node],
+  };
+  const predicted = engine.forecast(node, 0, [], { softCap: true, withdraw: 60, rules });
+  const { state: next } = engine.resolveRound({
+    state,
+    playerCount: 1,
+    links: [],
+    orders: {},
+    policies: {},
+    seat: -1,
+    aiOrdersOverride: [],
+    aiWithdrawalsOverride: { 0: 60 },
+    rng: () => 0.5,
+  });
+  assert.equal(predicted.extraction, 4);
+  assert.ok(Math.abs(next.nodes[0].active - predicted.next) < 1e-9);
+});
