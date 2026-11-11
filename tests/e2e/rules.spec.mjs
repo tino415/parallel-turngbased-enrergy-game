@@ -5,7 +5,7 @@ async function startWithRules(page, rules) {
   await page.getByRole('button', { name: 'New game' }).click();
   await page.locator('#newGameRules summary').click();
   for (const [label, value] of Object.entries(rules))
-    await page.getByLabel(label).fill(String(value));
+    await page.locator('#newGameRules').getByLabel(label).fill(String(value));
   await page.getByRole('button', { name: 'Start game' }).click();
   await expect(page.locator('#newGameDialog')).toBeHidden();
 }

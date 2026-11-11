@@ -46,21 +46,9 @@ function mapOptions() {
   };
 }
 function chosenRules() {
-  const { DEFAULT_RULES } = GameEngine;
-  const within = (id, fallback) => {
-    const input = $(id),
-      value = Number(input.value);
-    return input.value !== '' && Number.isFinite(value)
-      ? Math.max(Number(input.min), Math.min(Number(input.max), value))
-      : fallback;
-  };
-  return {
-    production: within('ruleProduction', DEFAULT_RULES.production),
-    interest: within('ruleInterest', 100 * DEFAULT_RULES.interest) / 100,
-    capacity: within('ruleCapacity', DEFAULT_RULES.capacity),
-    overflowDecay: within('ruleOverflowDecay', 100 * DEFAULT_RULES.overflowDecay) / 100,
-  };
+  return RulesForm.read('rule');
 }
+RulesForm.bind('rule');
 function chosenSeat() {
   return Number($('seat').value) || 0;
 }

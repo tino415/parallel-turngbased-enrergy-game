@@ -709,7 +709,7 @@
       : { mixed: [distinct[0], distinct.at(-1)] };
   }
 
-  const LEADERBOARD_COLUMNS = ['player', 'invested', 'active', 'nodes'];
+  const LEADERBOARD_COLUMNS = ['player', 'invested', 'active', 'deposit', 'nodes'];
   const DEFAULT_LEADERBOARD_SORT = { column: 'player', direction: 'asc' };
 
   function leaderboard(match, sort = DEFAULT_LEADERBOARD_SORT) {
@@ -720,7 +720,14 @@
   }
 
   function standingOf(match, owner) {
-    return { player: owner, name: playerName(owner), ...standingIn(match.state.nodes, owner) };
+    return {
+      player: owner,
+      name: playerName(owner),
+      ...standingIn(match.state.nodes, owner),
+      ...(rules(match).economy === 'equilibrium'
+        ? { deposit: sum(match.state.nodes.filter((n) => n.owner === owner).map((n) => n.deposit)) }
+        : {}),
+    };
   }
 
   function standingIn(allNodes, owner) {

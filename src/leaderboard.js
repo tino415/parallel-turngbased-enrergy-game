@@ -59,12 +59,14 @@
       if (header.dataset.column === sort.column)
         header.setAttribute('aria-sort', ARIA_SORT[sort.direction]);
       else header.removeAttribute('aria-sort');
+    const showDeposit = GameStore.selectors.rules(match).economy === 'equilibrium';
+    byId('leaderboardTable').querySelector('th[data-column="deposit"]').hidden = !showDeposit;
     table.tBodies[0].replaceChildren(
-      ...GameStore.selectors.leaderboard(match, sort).map(standingRow),
+      ...GameStore.selectors.leaderboard(match, sort).map((s) => standingRow(s, showDeposit)),
     );
   }
 
-  function standingRow(standing) {
+  function standingRow(standing, showDeposit) {
     const row = document.createElement('tr');
     row.dataset.player = standing.player;
     row.classList.toggle('is-you', isYou(standing.player));
@@ -72,6 +74,7 @@
       playerCell(standing),
       numberCell(EnergyFormat.compactEnergy(standing.invested)),
       numberCell(EnergyFormat.compactEnergy(standing.active)),
+      ...(showDeposit ? [numberCell(EnergyFormat.compactEnergy(standing.deposit))] : []),
       numberCell(String(standing.nodes)),
     );
     return row;

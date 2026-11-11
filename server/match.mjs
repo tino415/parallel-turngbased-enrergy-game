@@ -2,7 +2,7 @@ import '../src/engine.js';
 import '../src/custom-map.js';
 import '../src/store.js';
 
-const { buildMap, firstOwners, playerName } = globalThis.GameEngine;
+const { buildMap, firstOwners, playerName, rulesOf } = globalThis.GameEngine;
 const { generatedMatch, commands } = globalThis.GameStore;
 const { CustomMap } = globalThis;
 
@@ -46,7 +46,8 @@ export function createMatch({ id, options, hostTokenHash, random, shortTurns = f
 export function changeMap(record, { tokenHash, options, random }) {
   requireHost(record, tokenHash);
   if (record.phase !== 'lobby') throw new Refusal(409, 'The match has already started');
-  return revised({ ...record, ...lobbyMap(options, record.seats, random, record.shortTurns) });
+  const requested = { rules: record.options.rules, ...options };
+  return revised({ ...record, ...lobbyMap(requested, record.seats, random, record.shortTurns) });
 }
 
 export function cancelMatch(record, { tokenHash }) {
@@ -138,7 +139,7 @@ function handedToAi(record, owner, replacement, reason) {
 
 function lobbyMap(requested, seatsBefore, random, shortTurns) {
   const { options, map } = requestedMap(requested ?? {}, shortTurns, random);
-  const match = generatedMatch(map, MATCH_DEFAULTS, random, 0);
+  const match = generatedMatch(map, MATCH_DEFAULTS, random, 0, options.rules);
   return {
     options,
     seats: firstOwners(map.players).map((owner) => seatsBefore[owner] ?? freeSeat(owner)),
@@ -147,15 +148,17 @@ function lobbyMap(requested, seatsBefore, random, shortTurns) {
 }
 
 function requestedMap(requested, shortTurns, random) {
+  const rules = rulesOf({ rules: requested.rules });
   if (requested.map == null) {
     const options = mapOptions(requested, shortTurns);
-    return { options, map: buildMap(options) };
+    return { options: { ...options, rules }, map: buildMap(options) };
   }
   const custom = playableCustomMap(requested.map);
   return {
     options: {
       map: JSON.parse(CustomMap.serialize(custom)),
       turnTime: turnSeconds(requested.turnTime, shortTurns),
+      rules,
     },
     map: CustomMap.toGeneratorMap(custom, random),
   };
