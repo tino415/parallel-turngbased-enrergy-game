@@ -122,19 +122,21 @@ test('each header label stays on one line and lines up with its column', async (
       return range.getClientRects();
     };
     const firstRow = table.tBodies[0].rows[0];
-    return [...table.tHead.rows[0].cells].map((cell, index) => {
-      const label = textBox(cell.querySelector('.sort'));
-      const below = firstRow.cells[index];
-      const content = index === 0 ? below.querySelector('.player-swatch') : below;
-      const contentBox = index === 0 ? content.getBoundingClientRect() : textBox(content)[0];
-      return {
-        column: cell.dataset.column,
-        lines: label.length,
-        offset: Math.round(
-          index === 0 ? label[0].left - contentBox.left : label[0].right - contentBox.right,
-        ),
-      };
-    });
+    return [...table.tHead.rows[0].cells]
+      .filter((cell) => !cell.hidden)
+      .map((cell, index) => {
+        const label = textBox(cell.querySelector('.sort'));
+        const below = firstRow.cells[index];
+        const content = index === 0 ? below.querySelector('.player-swatch') : below;
+        const contentBox = index === 0 ? content.getBoundingClientRect() : textBox(content)[0];
+        return {
+          column: cell.dataset.column,
+          lines: label.length,
+          offset: Math.round(
+            index === 0 ? label[0].left - contentBox.left : label[0].right - contentBox.right,
+          ),
+        };
+      });
   });
   expect(layout).toEqual([
     { column: 'player', lines: 1, offset: 0 },
