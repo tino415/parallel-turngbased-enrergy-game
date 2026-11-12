@@ -5,7 +5,8 @@ recommendation of the proposal; the decisions are below, with the simulations be
 Equilibrium ships as a second economy next to the current rules, chosen when a match starts,
 offline and online.
 
-**Todoist:** [New game mode "Equilibrium"](https://app.todoist.com/app/task/6hpf6vp8vF4H94VW).
+**Card:** "Build the Equilibrium game mode" (`rffehlnd0tcc`) on the outline board
+`Projects/Parallel Energy Game/TODO:`.
 
 ## The idea
 
