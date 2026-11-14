@@ -168,34 +168,6 @@ test('conquest default targets persist across reload and refuse shares over 100'
   await expect(page.locator('#defaultDefenseTarget')).toHaveValue('80');
 });
 
-test('a saved template applies to a node, survives a reload and fills the conquest default', async ({
-  page,
-}) => {
-  await openNodeEditor(page);
-  await page.locator('#tacticalPolicyPercent').fill('35');
-  await page.locator('#tacticalPolicyPercent').blur();
-  await page.locator('#tacticalTemplates').click();
-  await page.locator('#templateName').fill('Front line');
-  await page.locator('#templateSaveNode').click();
-  await expect(page.locator('#templatesDialog')).toContainText('Front line');
-  await page.locator('#templatesDialog .ux-dialog-close').click();
-
-  await page.locator('#tacticalPolicyPercent').fill('80');
-  await page.locator('#tacticalPolicyPercent').blur();
-  await page.locator('#tacticalTemplates').click();
-  await page.locator('#templatesDialog').getByRole('button', { name: 'Apply' }).click();
-  await page.locator('#templatesDialog .ux-dialog-close').click();
-  expect(await page.evaluate(() => policies[0].investPct)).toBe(35);
-
-  await page.reload();
-  await page.locator('#tacticalMenu summary').click();
-  await page.locator('#tacticalMenu button').filter({ hasText: 'Settings' }).click();
-  const settings = page.locator('#uxSettingsDialog');
-  await expect(settings.locator('#settingsTemplates')).toContainText('Front line');
-  await settings.getByRole('button', { name: 'Fill from template' }).click();
-  await expect(settings.locator('#defaultInvest')).toHaveValue('35');
-});
-
 test('Orders closes with Escape and reopens with the planned order', async ({ page }) => {
   await openEdgeEditor(page, '0-1');
   await page.locator('#tacticalEdgeAmount').fill('2');

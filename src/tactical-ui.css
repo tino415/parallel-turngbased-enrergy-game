@@ -671,11 +671,3 @@ body > header #resolve {
   margin: 0;
   padding-left: 18px;
 }
-
-.template-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 0;
-}

@@ -1,30 +1,28 @@
 # Architecture: state, commands and rendering
 
-The game is sixteen classic scripts loaded with `defer` into one global scope, in
-this order: `engine.js`, `custom-map.js`, `store.js`, `format.js`, `rules-form.js`, `game.js`,
-`dialogs.js`, `leaderboard.js`, `ux.js`, `templates-ui.js`, `tactical-ui.js`, `replay.js`,
-`rules.js`, `map-editor.js`,
+The game is fourteen classic scripts loaded with `defer` into one global scope, in
+this order: `engine.js`, `custom-map.js`, `store.js`, `format.js`, `game.js`, `dialogs.js`,
+`leaderboard.js`, `ux.js`, `tactical-ui.js`, `replay.js`, `rules.js`, `map-editor.js`,
 `map-library.js`, `online.js`. Later scripts call functions from earlier ones and
 never replace them.
 
-| Module            | Owns                                                                                                           | Touches the DOM |
-| ----------------- | -------------------------------------------------------------------------------------------------------------- | --------------- |
-| `engine.js`       | Rules: map generation, policy evaluation, forecast, AI, `resolveRound`                                         | no              |
-| `custom-map.js`   | A hand-made map: its file format, edits, validation and the generator-shaped map it plays as                   | no              |
-| `store.js`        | All match and interface state, commands, selectors, subscriptions                                              | no              |
-| `format.js`       | Energy number formatting                                                                                       | no              |
-| `rules-form.js`   | The Rules fields shared by New game and the online lobby: read, write, show the deposit only under Equilibrium | no              |
-| `game.js`         | The base renderer, map navigation, save and restore, the global mirrors                                        | yes             |
-| `dialogs.js`      | Orders, Settings and Rules dialog buttons; opening a dialog or the menu closes the other overlays              | yes             |
-| `leaderboard.js`  | The Leaderboard tab: one row per player, sorted by the chosen column, and the round chart                      | yes             |
-| `ux.js`           | Layout, dialogs, side panel, dock, camera fitting                                                              | yes             |
-| `templates-ui.js` | The Templates sheet, the Settings Templates box and Fill from template                                         | yes             |
-| `tactical-ui.js`  | Map selection, node and connection groups, the inspector, pinch zoom, the ☰ menu                              | yes             |
-| `replay.js`       | The replay screen, the game-over notice and the Replay menu item                                               | yes             |
-| `rules.js`        | The Rules dialog and its ☰ menu item: the running match's rules                                               | yes             |
-| `map-editor.js`   | The map editor mode: its tools, the node panel, the drawn map and its entry points                             | yes             |
-| `map-library.js`  | My maps: the saved maps in the New game dialog, their files, and Save in the editor                            | yes             |
-| `online.js`       | The online lobby, the status bar, End turn, polling the server                                                 | yes             |
+| Module           | Owns                                                                                                           | Touches the DOM |
+| ---------------- | -------------------------------------------------------------------------------------------------------------- | --------------- |
+| `engine.js`      | Rules: map generation, policy evaluation, forecast, AI, `resolveRound`                                         | no              |
+| `custom-map.js`  | A hand-made map: its file format, edits, validation and the generator-shaped map it plays as                   | no              |
+| `store.js`       | All match and interface state, commands, selectors, subscriptions                                              | no              |
+| `format.js`      | Energy number formatting                                                                                       | no              |
+| `rules-form.js`  | The Rules fields shared by New game and the online lobby: read, write, show the deposit only under Equilibrium | no              |
+| `game.js`        | The base renderer, map navigation, save and restore, the global mirrors                                        | yes             |
+| `dialogs.js`     | Orders, Settings and Rules dialog buttons; opening a dialog or the menu closes the other overlays              | yes             |
+| `leaderboard.js` | The Leaderboard tab: one row per player, sorted by the chosen column, and the round chart                      | yes             |
+| `ux.js`          | Layout, dialogs, side panel, dock, camera fitting                                                              | yes             |
+| `tactical-ui.js` | Map selection, node and connection groups, the inspector, pinch zoom, the ☰ menu                              | yes             |
+| `replay.js`      | The replay screen, the game-over notice and the Replay menu item                                               | yes             |
+| `rules.js`       | The Rules dialog and its ☰ menu item: the running match's rules                                               | yes             |
+| `map-editor.js`  | The map editor mode: its tools, the node panel, the drawn map and its entry points                             | yes             |
+| `map-library.js` | My maps: the saved maps in the New game dialog, their files, and Save in the editor                            | yes             |
+| `online.js`      | The online lobby, the status bar, End turn, polling the server                                                 | yes             |
 
 ## State ownership
 
@@ -32,39 +30,35 @@ never replace them.
 change goes through a store command, and a slice keeps its identity until a
 command really changes it.
 
-| Value                                                 | Slice                 | Saved | Written by                                                         |
-| ----------------------------------------------------- | --------------------- | ----- | ------------------------------------------------------------------ |
-| `state` (round, nodes, finished, rulesVersion, rules) | `match.state`         | yes   | `resolve`, `replaceMatch`                                          |
-| manual orders per node                                | `match.orders`        | yes   | allocation and order commands                                      |
-| persistent policies per node                          | `match.policies`      | yes   | policy commands, `resolve`                                         |
-| policies of nodes lost, per colour                    | `match.keptPolicies`  | yes   | `resolve`                                                          |
-| message history                                       | `match.history`       | yes   | `resolve`, `replaceMatch`                                          |
-| map: `xy`, `edges`, `N`, `playerCount`, `mapSeed`     | `match.map`           | yes   | `replaceMatch`                                                     |
-| conquest defaults (enabled, reserve, invest, targets) | `match.defaults`      | yes   | `setDefaults`                                                      |
-| seat: the owner this browser plays                    | `match.seat`          | yes   | `classicMatch`, `generatedMatch`                                   |
-| replay record: dice seed, start state, round inputs   | `match.replay`        | yes   | `resolve`, `replaceMatch`                                          |
-| selected node                                         | `ui.selected`         | yes¹  | `select`, inspector commands                                       |
-| view tab                                              | `ui.view`             | no    | `setView`                                                          |
-| Leaderboard sort column and direction                 | `ui.leaderboardSort`  | no    | `sortLeaderboard`                                                  |
-| Leaderboard chart: series, running total, focus       | `ui.leaderboardChart` | no    | `setLeaderboardChart`                                              |
-| camera (`x`, `y`, `scale`)                            | `ui.camera`           | no    | `setCamera`                                                        |
-| policy clipboard                                      | `ui.clipboard`        | no    | `copyPolicy`                                                       |
-| policy templates, kept in browser storage (`game.js`) | `ui.templates`        | no³   | `saveTemplate`, `renameTemplate`, `deleteTemplate`, `setTemplates` |
-| node group selected on the map                        | `ui.bulkSelection`    | no    | group commands, `resolve`²                                         |
-| connection group, each as `[source, destination]`     | `ui.bulkEdges`        | no    | group commands, `resolve`²                                         |
-| group mode on the map                                 | `ui.groupMode`        | no    | `setGroupMode`, `leaveGroupMode`                                   |
-| group editor open                                     | `ui.groupEditing`     | no    | `setGroupEditing`, `leaveGroupMode`                                |
-| inspector target, editing, focused node               | `ui.inspector`        | no    | inspector commands                                                 |
-| AI debug view (AI plans on the map and inspector)     | `ui.aiDebug`          | no    | `setAiDebug`, `?aidebug` in the URL                                |
-| map values: amounts or standing policies              | `ui.mapValues`        | no    | `setMapValues`                                                     |
-| replay frame and play state                           | `ui.replay`           | no    | replay commands                                                    |
-| map editor: map, tool, selection, link start, undo    | `editor`              | no    | map editor commands                                                |
+| Value                                                 | Slice                 | Saved | Written by                          |
+| ----------------------------------------------------- | --------------------- | ----- | ----------------------------------- |
+| `state` (round, nodes, finished, rulesVersion, rules) | `match.state`         | yes   | `resolve`, `replaceMatch`           |
+| manual orders per node                                | `match.orders`        | yes   | allocation and order commands       |
+| persistent policies per node                          | `match.policies`      | yes   | policy commands, `resolve`          |
+| policies of nodes lost, per colour                    | `match.keptPolicies`  | yes   | `resolve`                           |
+| message history                                       | `match.history`       | yes   | `resolve`, `replaceMatch`           |
+| map: `xy`, `edges`, `N`, `playerCount`, `mapSeed`     | `match.map`           | yes   | `replaceMatch`                      |
+| conquest defaults (enabled, reserve, invest, targets) | `match.defaults`      | yes   | `setDefaults`                       |
+| seat: the owner this browser plays                    | `match.seat`          | yes   | `classicMatch`, `generatedMatch`    |
+| replay record: dice seed, start state, round inputs   | `match.replay`        | yes   | `resolve`, `replaceMatch`           |
+| selected node                                         | `ui.selected`         | yes¹  | `select`, inspector commands        |
+| view tab                                              | `ui.view`             | no    | `setView`                           |
+| Leaderboard sort column and direction                 | `ui.leaderboardSort`  | no    | `sortLeaderboard`                   |
+| Leaderboard chart: series, running total, focus       | `ui.leaderboardChart` | no    | `setLeaderboardChart`               |
+| camera (`x`, `y`, `scale`)                            | `ui.camera`           | no    | `setCamera`                         |
+| policy clipboard                                      | `ui.clipboard`        | no    | `copyPolicy`                        |
+| node group selected on the map                        | `ui.bulkSelection`    | no    | group commands, `resolve`²          |
+| connection group, each as `[source, destination]`     | `ui.bulkEdges`        | no    | group commands, `resolve`²          |
+| group mode on the map                                 | `ui.groupMode`        | no    | `setGroupMode`, `leaveGroupMode`    |
+| group editor open                                     | `ui.groupEditing`     | no    | `setGroupEditing`, `leaveGroupMode` |
+| inspector target, editing, focused node               | `ui.inspector`        | no    | inspector commands                  |
+| AI debug view (AI plans on the map and inspector)     | `ui.aiDebug`          | no    | `setAiDebug`, `?aidebug` in the URL |
+| map values: amounts or standing policies              | `ui.mapValues`        | no    | `setMapValues`                      |
+| replay frame and play state                           | `ui.replay`           | no    | replay commands                     |
+| map editor: map, tool, selection, link start, undo    | `editor`              | no    | map editor commands                 |
 
 ¹ `selected` stays in the save format so that old saves keep loading. ux.js
 clears it on load.
-
-³ Templates live in this browser across matches, outside the match save. Applying one
-copies its values once, like Paste, and the node keeps no link to it.
 
 ² `resolve` drops the nodes the player no longer owns and the connections that no
 longer touch the player's nodes, so a group survives rounds but never holds a lost
