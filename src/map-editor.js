@@ -132,7 +132,7 @@
       store.dismissInspector();
       store.openMapEditor(map);
     });
-    byId('fit').click();
+    fitCamera();
   }
 
   function close() {
@@ -142,7 +142,7 @@
     )
       return;
     store.closeMapEditor();
-    byId('fit').click();
+    fitCamera();
   }
 
   function play() {

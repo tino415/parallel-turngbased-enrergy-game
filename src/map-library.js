@@ -308,7 +308,7 @@
       store.dismissInspector();
       store.openMapEditor(map);
     });
-    byId('fit').click();
+    fitCamera();
   }
 
   const fileNameOf = (name) =>

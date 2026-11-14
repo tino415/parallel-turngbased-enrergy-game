@@ -432,20 +432,6 @@ function attachNavigation() {
   const svg = $('map');
   let drag = null;
   let suppressClick = false;
-  svg.addEventListener(
-    'wheel',
-    (e) => {
-      // Normal page scrolling must not zoom the map.
-      if (!e.ctrlKey && !e.metaKey) return;
-      e.preventDefault();
-      store.setCamera({
-        ...camera,
-        scale: Math.max(0.3, Math.min(5, camera.scale * (e.deltaY < 0 ? 1.12 : 0.89))),
-      });
-    },
-    { passive: false },
-  );
-
   svg.addEventListener('pointerdown', (e) => {
     // Only an actual drag pans the map. Touch taps on nodes must remain clicks.
     suppressClick = false;
@@ -625,10 +611,6 @@ function renderMap() {
   const svg = $('map');
   lostMapFocus = mapItemSelector(document.activeElement);
   svg.innerHTML = '';
-  svg.setAttribute(
-    'viewBox',
-    xy.length === 14 && mapSeed === 'classic' ? '0 0 800 460' : '0 0 1800 1050',
-  );
   const ns = 'http://www.w3.org/2000/svg';
   const element = (name, attrs, parent = svg) => {
     const e = document.createElementNS(ns, name);
@@ -864,12 +846,6 @@ function isTypingOrInOverlay(target) {
   if (document.querySelector('dialog[open], :popover-open')) return true;
   return Boolean(target.closest?.('input, textarea, select, [contenteditable]'));
 }
-$('zoomIn').onclick = () => {
-  store.setCamera({ ...camera, scale: Math.min(5, camera.scale * 1.25) });
-};
-$('zoomOut').onclick = () => {
-  store.setCamera({ ...camera, scale: Math.max(0.3, camera.scale / 1.25) });
-};
 $('mapValues').onclick = () => {
   const policy = store.getSnapshot().ui.mapValues === 'policy';
   store.setMapValues(policy ? 'absolute' : 'policy');
@@ -879,9 +855,6 @@ function renderMapValuesButton() {
   $('mapValues').setAttribute('aria-pressed', String(policy));
   $('mapValues').textContent = policy ? 'Amounts' : 'Policies';
 }
-$('fit').onclick = () => {
-  store.setCamera({ x: 0, y: 0, scale: 1 });
-};
 if (!restoreGame()) fresh();
 renderMapValuesButton();
 attachNavigation();
