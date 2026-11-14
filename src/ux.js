@@ -16,7 +16,9 @@
   window.openSettings = openSettings;
   byId('uxReviewHead').onclick = openOrders;
   byId('mobileSettings').onclick = openSettings;
-  byId('uxDockResolve').onclick = resolve;
+  byId('uxDockResolve').onclick = () => {
+    if (!byId('resolve').disabled) resolve();
+  };
 
   const focusButton = document.createElement('button');
   focusButton.id = 'focusMap';

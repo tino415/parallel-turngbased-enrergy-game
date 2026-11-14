@@ -592,9 +592,6 @@ dialog#newGameDialog::backdrop {
     font-size: 12px;
     padding: 6px 9px;
   }
-  #mobileSettings {
-    display: inline-block;
-  }
   .view-tabs {
     width: 100%;
     gap: 4px;
