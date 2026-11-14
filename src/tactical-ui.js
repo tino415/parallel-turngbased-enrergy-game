@@ -750,9 +750,6 @@
           store.pastePolicy(id, clipboard),
         ),
       );
-    row.append(
-      chipButton('tacticalTemplates', 'Templates', 'Policy templates', () => openTemplates([id])),
-    );
     return row;
   }
 
@@ -1374,9 +1371,6 @@
       groupButton('Clear orders', () => store.clearGroupOrders(ids)),
       ...(clipboard
         ? [groupButton('Paste policy to group', () => store.pasteGroupPolicy(ids, clipboard))]
-        : []),
-      ...(store.getSnapshot().ui.templates.length
-        ? [groupButton('Apply template to ' + ids.length + ' nodes', () => openTemplates(ids))]
         : []),
     );
     return block;
@@ -2215,7 +2209,6 @@
     (s) => s.ui.aiDebug,
     (s) => s.ui.selected,
     (s) => s.ui.clipboard,
-    (s) => s.ui.templates,
     (s) => s.ui.inspector,
     (s) => s.ui.groupMode,
     (s) => s.ui.groupEditing,

@@ -830,105 +830,6 @@
   const pasteGroupPolicy = (match, ids, copied) =>
     ids.filter((id) => isOwn(match, id)).reduce((next, id) => pastePolicy(next, id, copied), match);
 
-  const TEMPLATE_FIELDS = [
-    'reserve',
-    'investPct',
-    'investTarget',
-    'divestPct',
-    'defensePct',
-    'defenseTarget',
-  ];
-  const templateValues = (template) => ({
-    ...GROUP_FIELD_DEFAULTS,
-    reserve: defaultPolicy().reserve,
-    investPct: defaultPolicy().investPct,
-    ...Object.fromEntries(
-      TEMPLATE_FIELDS.filter((key) => template[key] !== undefined).map((key) => [
-        key,
-        template[key],
-      ]),
-    ),
-  });
-  const templateOf = (name, policy) => ({
-    name: String(name).trim(),
-    ...templateValues(policy),
-  });
-  const inRange = (value, min, max) => Number.isFinite(value) && value >= min && value <= max;
-  const optionalAmountOk = (value) => value == null || inRange(value, 0, Infinity);
-  const optionalShareOk = (value) => value == null || inRange(value, 0, 100);
-  const isTemplate = (template) =>
-    typeof template?.name === 'string' &&
-    template.name.trim() !== '' &&
-    inRange(template.reserve, 0, Infinity) &&
-    inRange(template.investPct, 0, 100) &&
-    optionalAmountOk(template.investTarget) &&
-    optionalAmountOk(template.defenseTarget) &&
-    optionalShareOk(template.divestPct) &&
-    optionalShareOk(template.defensePct);
-  const withTemplates = (templates) => ({ templates });
-
-  function setTemplates(ui, templates) {
-    const valid = (Array.isArray(templates) ? templates : []).filter(isTemplate);
-    const cleaned = valid.map((t) => templateOf(t.name, t));
-    const unique = cleaned.filter((t, i) => cleaned.findIndex((o) => o.name === t.name) === i);
-    return withTemplates(unique);
-  }
-  function saveTemplate(ui, name, policy) {
-    const template = templateOf(name, policy);
-    if (!template.name) return {};
-    const exists = ui.templates.some((t) => t.name === template.name);
-    return withTemplates(
-      exists
-        ? ui.templates.map((t) => (t.name === template.name ? template : t))
-        : [...ui.templates, template],
-    );
-  }
-  function renameTemplate(ui, name, renamed) {
-    const next = String(renamed).trim();
-    if (!next || next === name || ui.templates.some((t) => t.name === next)) return {};
-    return withTemplates(ui.templates.map((t) => (t.name === name ? { ...t, name: next } : t)));
-  }
-  const deleteTemplate = (ui, name) => withTemplates(ui.templates.filter((t) => t.name !== name));
-
-  const templateShares = (template) => ({
-    investPct: template.investPct,
-    defensePct: template.defensePct ?? 0,
-  });
-  const templateFits = (match, id, template) => {
-    const { investPct, defensePct } = templateShares(template);
-    return sharesFit({ investPct, defensePct, pressure: match.policies[id]?.pressure });
-  };
-  const templateMisfits = (match, ids, template) =>
-    ids.filter((id) => isOwn(match, id) && !templateFits(match, id, template));
-
-  function applyTemplate(match, ids, template) {
-    return ids
-      .filter((id) => isOwn(match, id) && templateFits(match, id, template))
-      .reduce(
-        (next, id) =>
-          withPolicy(next, id, {
-            ...defaultPolicy(),
-            ...next.policies[id],
-            ...templateValues(template),
-            enabled: true,
-          }),
-        match,
-      );
-  }
-
-  const templateDefaults = (template) => {
-    const values = templateValues(template);
-    const text = (value) => (value === null ? '' : String(value));
-    return {
-      reserve: text(values.reserve),
-      invest: text(values.investPct),
-      investTarget: text(values.investTarget),
-      divestPct: text(values.divestPct),
-      defensePct: text(values.defensePct),
-      defenseTarget: text(values.defenseTarget),
-    };
-  };
-
   const isAttack = (match, [, destination]) => !isOwn(match, destination);
   const orderedAmount = (match, [source, destination]) =>
     plan(match, source).edges[destination] || 0;
@@ -1290,7 +1191,6 @@
     leaderboardSort: DEFAULT_LEADERBOARD_SORT,
     leaderboardChart: DEFAULT_LEADERBOARD_CHART,
     clipboard: null,
-    templates: [],
     aiDebug: false,
     mapValues: 'absolute',
     bulkSelection: [],
@@ -1565,11 +1465,6 @@
       pauseGroup: onMatch(pauseGroup),
       clearGroupOrders: onMatch(clearGroupOrders),
       pasteGroupPolicy: onMatch(pasteGroupPolicy),
-      applyTemplate: onMatch(applyTemplate),
-      setTemplates: onUi(setTemplates),
-      saveTemplate: onUi(saveTemplate),
-      renameTemplate: onUi(renameTemplate),
-      deleteTemplate: onUi(deleteTemplate),
       sendOnEachEdge: reporting(sendOnEachEdge, 'skipped'),
       attackChanceOnEachEdge: reporting(attackChanceOnEachEdge, 'skipped'),
       splitOnEachEdge: onMatch(splitOnEachEdge),
@@ -1721,7 +1616,6 @@
       pauseGroup,
       clearGroupOrders,
       pasteGroupPolicy,
-      applyTemplate,
       sendOnEachEdge,
       attackChanceOnEachEdge,
       splitOnEachEdge,
@@ -1749,8 +1643,6 @@
       softCapEnabled,
       rules,
       defaultPolicy,
-      templateMisfits,
-      templateDefaults,
       plan,
       allocated,
       withdrawal,

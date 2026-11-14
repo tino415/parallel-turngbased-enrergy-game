@@ -504,26 +504,6 @@ function showNodeOnMobile() {
 }
 
 const SAVE_KEY = 'parallel-energy-game-v1';
-const TEMPLATES_KEY = 'parallel-energy-game-templates-v1';
-function loadTemplates() {
-  try {
-    store.setTemplates(JSON.parse(localStorage.getItem(TEMPLATES_KEY)));
-  } catch (e) {
-    console.warn('Could not read templates', e);
-  }
-}
-function writeTemplates(templates) {
-  try {
-    localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
-  } catch (e) {
-    console.warn('Could not store templates', e);
-  }
-}
-loadTemplates();
-store.subscribe((snapshot, previous) => {
-  if (previous && GameStore.changed(snapshot, previous, (s) => s.ui.templates))
-    writeTemplates(snapshot.ui.templates);
-});
 function switchView(view) {
   store.setView(view);
 }
