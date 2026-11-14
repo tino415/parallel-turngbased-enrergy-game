@@ -186,6 +186,10 @@
             enabled: Boolean(save.defaults.enabled),
             reserve: save.defaults.reserve,
             invest: save.defaults.invest,
+            investTarget: save.defaults.investTarget ?? defaults.investTarget,
+            divestPct: save.defaults.divestPct ?? defaults.divestPct,
+            defensePct: save.defaults.defensePct ?? defaults.defensePct,
+            defenseTarget: save.defaults.defenseTarget ?? defaults.defenseTarget,
           }
         : defaults,
       replay: Array.isArray(save.replay?.rounds)
@@ -943,15 +947,37 @@
     (source === a && destination === b) || (source === b && destination === a);
 
   function setDefaults(match, defaults) {
-    return { ...match, defaults: { ...match.defaults, ...defaults } };
+    const next = { ...match.defaults, ...defaults };
+    return sharesFit(conquestShares(next)) ? { ...match, defaults: next } : match;
   }
+
+  const percentOf = (value) => Math.max(0, Math.min(100, Number(value) || 0));
+  const targetOf = (value) =>
+    value === '' || value === null || value === undefined || !(Number(value) >= 0)
+      ? null
+      : Number(value);
+
+  const conquestShares = (defaults) => ({
+    investPct: percentOf(defaults.invest),
+    defensePct: percentOf(defaults.defensePct),
+  });
+
+  const setFieldsOnly = (fields) =>
+    Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== null));
 
   function conquestPolicy(defaults) {
     if (!defaults.enabled) return null;
+    const { investPct, defensePct } = conquestShares(defaults);
     return {
       enabled: true,
       reserve: Math.max(0, Number(defaults.reserve) || 0),
-      investPct: Math.max(0, Math.min(100, Number(defaults.invest) || 0)),
+      investPct,
+      ...setFieldsOnly({
+        defensePct: defensePct || null,
+        investTarget: targetOf(defaults.investTarget),
+        divestPct: percentOf(defaults.divestPct) || null,
+        defenseTarget: targetOf(defaults.defenseTarget),
+      }),
     };
   }
 
@@ -1570,6 +1596,7 @@
     generatedMatch,
     matchFromSave,
     saveFromMatch,
+    conquestPolicy,
     humansOf,
     commands: Object.freeze({
       setAllocation,

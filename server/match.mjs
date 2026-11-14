@@ -498,9 +498,18 @@ function cleanPolicy(policy, source, edges) {
 }
 
 function cleanDefaults(defaults) {
+  const invest = Math.min(100, amount(Number(defaults?.invest)));
+  const optionalAmount = (value) => {
+    const target = value === '' || value === null ? NaN : Number(value);
+    return target >= 0 ? target : '';
+  };
   return {
     enabled: Boolean(defaults?.enabled),
     reserve: amount(Number(defaults?.reserve)),
-    invest: Math.min(100, amount(Number(defaults?.invest))),
+    invest,
+    investTarget: optionalAmount(defaults?.investTarget),
+    divestPct: Math.min(100, amount(Number(defaults?.divestPct))),
+    defensePct: Math.min(100 - invest, amount(Number(defaults?.defensePct))),
+    defenseTarget: optionalAmount(defaults?.defenseTarget),
   };
 }

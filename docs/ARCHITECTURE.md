@@ -38,7 +38,7 @@ command really changes it.
 | policies of nodes lost, per colour                    | `match.keptPolicies`  | yes   | `resolve`                           |
 | message history                                       | `match.history`       | yes   | `resolve`, `replaceMatch`           |
 | map: `xy`, `edges`, `N`, `playerCount`, `mapSeed`     | `match.map`           | yes   | `replaceMatch`                      |
-| conquest defaults (enabled, reserve, invest)          | `match.defaults`      | yes   | `setDefaults`                       |
+| conquest defaults (enabled, reserve, invest, targets) | `match.defaults`      | yes   | `setDefaults`                       |
 | seat: the owner this browser plays                    | `match.seat`          | yes   | `classicMatch`, `generatedMatch`    |
 | replay record: dice seed, start state, round inputs   | `match.replay`        | yes   | `resolve`, `replaceMatch`           |
 | selected node                                         | `ui.selected`         | yes¹  | `select`, inspector commands        |

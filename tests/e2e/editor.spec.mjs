@@ -144,6 +144,30 @@ test('Settings closes with Escape and reopens with its values', async ({ page })
   await expect(settings.locator('#defaultInvest')).toHaveValue('40');
 });
 
+test('conquest default targets persist across reload and refuse shares over 100', async ({
+  page,
+}) => {
+  const fill = async (id, value) => {
+    await page.locator('#uxSettingsDialog ' + id).fill(value);
+    await page.locator('#uxSettingsDialog ' + id).blur();
+  };
+  await page.locator('#tacticalMenu summary').click();
+  await page.locator('#tacticalMenu button').filter({ hasText: 'Settings' }).click();
+  await fill('#defaultInvest', '50');
+  await fill('#defaultInvestTarget', '200');
+  await fill('#defaultDefensePct', '30');
+  await fill('#defaultDefenseTarget', '80');
+  await fill('#defaultDefensePct', '60');
+  await expect(page.locator('#defaultDefensePct')).toHaveValue('30');
+  await page.locator('#uxSettingsDialog .ux-dialog-close').click();
+  await page.evaluate(() => render());
+
+  await page.reload();
+  await expect(page.locator('#defaultInvestTarget')).toHaveValue('200');
+  await expect(page.locator('#defaultDefensePct')).toHaveValue('30');
+  await expect(page.locator('#defaultDefenseTarget')).toHaveValue('80');
+});
+
 test('Orders closes with Escape and reopens with the planned order', async ({ page }) => {
   await openEdgeEditor(page, '0-1');
   await page.locator('#tacticalEdgeAmount').fill('2');
