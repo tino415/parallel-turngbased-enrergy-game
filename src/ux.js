@@ -57,9 +57,10 @@
     const g=byId('map').querySelector('g');
     if (g) g.setAttribute('transform','translate('+camera.x+' '+camera.y+') scale('+camera.scale+')');
   }
-  function fitCameraUX() {
+  function fitCamera() {
     store.setCamera(fittedCamera());
   }
+  window.fitCamera=fitCamera;
   function focusCameraUX(id) {
     if (!state.nodes[id] || !xy[id]) return;
     store.setCamera(cameraFocusedOn(id));
@@ -93,12 +94,19 @@
     const covered=document.querySelector('body > header').getBoundingClientRect().bottom-viewport.getBoundingClientRect().top;
     return Math.max(0,covered)*vw/Math.max(260,viewport.clientWidth||window.innerWidth);
   }
+  const clampScale=(scale)=>Math.min(6,Math.max(.25,scale));
   function zoomUX(factor) {
     const [vw,vh]=viewBounds();
-    const next=Math.min(6,Math.max(.25,camera.scale*factor));
+    const next=clampScale(camera.scale*factor);
     factor=next/camera.scale;
     store.setCamera({x:vw/2-(vw/2-camera.x)*factor,y:vh/2-(vh/2-camera.y)*factor,scale:next});
   }
+  byId('map').addEventListener('wheel',(e)=>{
+    // Normal page scrolling must not zoom the map.
+    if(!e.ctrlKey&&!e.metaKey) return;
+    e.preventDefault();
+    store.setCamera({...camera,scale:clampScale(camera.scale*(e.deltaY<0?1.12:.89))});
+  },{passive:false});
   function startOnNewMaps() {
     const key=mapSeed+'/'+N+'/'+edges.length+'/'+state.round+'/'+mySeat();
     if(key===lastMap) return;
@@ -115,7 +123,7 @@
   });
   byId('zoomIn').onclick=()=>zoomUX(1.25);
   byId('zoomOut').onclick=()=>zoomUX(.8);
-  byId('fit').onclick=fitCameraUX;
+  byId('fit').onclick=fitCamera;
   byId('focusMap').onclick=()=>focusCameraUX(store.getSnapshot().ui.inspector.focusedNode);
   // Opening the on-screen keyboard resizes the mobile viewport. Moving
   // focused input elements between parents here blurs them and immediately
