@@ -853,25 +853,16 @@
     name: String(name).trim(),
     ...templateValues(policy),
   });
-  const inRange = (value, min, max) => Number.isFinite(value) && value >= min && value <= max;
-  const optionalAmountOk = (value) => value == null || inRange(value, 0, Infinity);
-  const optionalShareOk = (value) => value == null || inRange(value, 0, 100);
   const isTemplate = (template) =>
     typeof template?.name === 'string' &&
     template.name.trim() !== '' &&
-    inRange(template.reserve, 0, Infinity) &&
-    inRange(template.investPct, 0, 100) &&
-    optionalAmountOk(template.investTarget) &&
-    optionalAmountOk(template.defenseTarget) &&
-    optionalShareOk(template.divestPct) &&
-    optionalShareOk(template.defensePct);
+    Number.isFinite(template.reserve) &&
+    Number.isFinite(template.investPct);
   const withTemplates = (templates) => ({ templates });
 
   function setTemplates(ui, templates) {
     const valid = (Array.isArray(templates) ? templates : []).filter(isTemplate);
-    const cleaned = valid.map((t) => templateOf(t.name, t));
-    const unique = cleaned.filter((t, i) => cleaned.findIndex((o) => o.name === t.name) === i);
-    return withTemplates(unique);
+    return withTemplates(valid.map((t) => templateOf(t.name, t)));
   }
   function saveTemplate(ui, name, policy) {
     const template = templateOf(name, policy);

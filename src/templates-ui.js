@@ -36,14 +36,9 @@
     const match = store.getSnapshot().match;
     const skipped = selectors.templateMisfits(match, ids, template);
     store.applyTemplate(ids, template);
-    const applied = ids.filter((id) => !skipped.includes(id));
-    const done = 'Applied “' + template.name + '” to ' + namedAfter(applied) + '.';
     return skipped.length
-      ? (applied.length ? done + ' ' : '') +
-          'Skipped ' +
-          namedAfter(skipped) +
-          ': pressure shares leave no room for the template.'
-      : done;
+      ? 'Skipped ' + namedAfter(skipped) + ': pressure shares leave no room for the template.'
+      : 'Applied “' + template.name + '” to ' + namedAfter(ids) + '.';
   }
 
   function saveAs(id, name) {

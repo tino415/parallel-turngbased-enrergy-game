@@ -63,12 +63,12 @@ command really changes it.
 ¹ `selected` stays in the save format so that old saves keep loading. ux.js
 clears it on load.
 
+³ Templates live in this browser across matches, outside the match save. Applying one
+copies its values once, like Paste, and the node keeps no link to it.
+
 ² `resolve` drops the nodes the player no longer owns and the connections that no
 longer touch the player's nodes, so a group survives rounds but never holds a lost
 node. A group holds nodes or connections, never both.
-
-³ Templates live in this browser across matches, outside the match save. Applying one
-copies its values once, like Paste, and the node keeps no link to it.
 
 Gesture and render bookkeeping stays local to the code that needs it, because
 no other code reads it: drag and click suppression (`game.js`), pinch fingers
