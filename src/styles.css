@@ -2,20 +2,34 @@
   font-family: system-ui, sans-serif;
   color: #e7eef9;
   background: #0e1625;
+  color-scheme: dark;
+  --ux-bg: #0b1424;
+  --ux-panel: #14233a;
+  --ux-card: #1b2d46;
+  --ux-border: #344963;
+  --ux-muted: #a6bad2;
+  --ux-blue: #589cff;
+  --ux-green: #6edab4;
+  --header-clearance: 60px;
 }
 * {
   box-sizing: border-box;
 }
 body {
   margin: 0;
+  background: var(--ux-bg);
+  color: #f1f6ff;
+  overflow-x: hidden;
 }
 header {
-  padding: 16px 20px;
+  padding: 12px 22px;
   border-bottom: 1px solid #334155;
   display: flex;
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
+  background: #101d30;
+  align-items: center;
 }
 h1 {
   font-size: 21px;
@@ -27,11 +41,11 @@ h1 {
 }
 .layout {
   display: grid;
-  grid-template-columns: minmax(320px, 1fr) 300px;
-  gap: 15px;
-  max-width: 1200px;
+  grid-template-columns: minmax(0, 1fr) 288px;
+  gap: 14px;
+  max-width: 1480px;
   margin: auto;
-  padding: 15px;
+  padding: 14px 20px;
 }
 .panel {
   padding: 15px;
@@ -50,7 +64,7 @@ select {
   background: #263a56;
   border: 1px solid #637891;
   color: white;
-  border-radius: 7px;
+  border-radius: 9px;
   padding: 8px;
   font: inherit;
 }
@@ -126,22 +140,6 @@ button:disabled {
 }
 .policy-box input[type='checkbox'] {
   width: auto;
-}
-#mapViewport {
-  position: relative;
-  height: 65vh;
-  min-height: 360px;
-  overflow: hidden;
-  touch-action: pan-y;
-  cursor: grab;
-}
-#mapViewport svg {
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  /* Map labels are interactive graphics, not selectable document text. */
-  -webkit-user-select: none;
-  user-select: none;
 }
 .flow-label {
   fill: #f7fafc;
@@ -266,11 +264,16 @@ dialog#newGameDialog::backdrop {
   display: flex;
   gap: 5px;
   align-items: center;
+  background: #182942;
+  border: 1px solid #344963;
+  border-radius: 11px;
+  padding: 4px;
 }
 .view-tabs button.active {
-  background: #285e99;
+  background: #315d94;
   border-color: #80b9f5;
   font-weight: 700;
+  border-radius: 8px;
 }
 #messagesView {
   min-height: 60vh;
@@ -527,10 +530,10 @@ dialog#newGameDialog::backdrop {
 .map-zoom-controls {
   position: absolute;
   right: 12px;
-  bottom: 12px;
+  bottom: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   z-index: 2;
 }
 .map-zoom-controls button {
@@ -547,7 +550,7 @@ dialog#newGameDialog::backdrop {
 }
 
 #mobileSettings {
-  display: none;
+  display: inline-block;
 }
 @media (max-width: 760px) {
   svg {
