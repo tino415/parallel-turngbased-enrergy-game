@@ -15,10 +15,7 @@
   root.setAttribute('aria-label', 'Selected map item');
   document.body.append(root);
 
-  const menu = document.createElement('details');
-  menu.id = 'tacticalMenu';
-  menu.innerHTML =
-    '<summary aria-label="More actions">☰</summary><div class="tactical-menu-content"></div>';
+  const menu = byId('tacticalMenu');
   const menuItems = [
     ['Orders', 'uxReviewHead'],
     ['Settings', 'mobileSettings'],
@@ -38,7 +35,6 @@
     };
     menu.querySelector('.tactical-menu-content').append(button);
   }
-  document.querySelector('body > header > div:last-child').append(menu);
 
   function aiPlanLines(id) {
     const { orders, withdrawals } = selectors.aiDebugPlan(currentMatch());
@@ -397,14 +393,11 @@
     return bulkEdges.length + (bulkEdges.length === 1 ? ' connection' : ' connections');
   }
 
-  const selectButton = document.createElement('button');
-  selectButton.type = 'button';
-  selectButton.id = 'uxDockSelect';
+  const selectButton = byId('uxDockSelect');
   selectButton.onclick = () => {
     if (groupMode) leaveGroup();
     else store.setGroupMode(true);
   };
-  byId('uxDockResolve').before(selectButton);
 
   function chooseEdge(a, b) {
     store.inspectEdge(a, b);

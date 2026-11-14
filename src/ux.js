@@ -10,19 +10,8 @@
   const ordersDialog = byId('uxOrdersDialog');
   const settingsDialog = byId('uxSettingsDialog');
 
-  const reviewHead = document.createElement('button');
-  reviewHead.id = 'uxReviewHead';
-  reviewHead.type = 'button';
-  reviewHead.textContent = 'Orders';
-  reviewHead.onclick = () => ordersDialog.showModal();
-  const headerActions = document.querySelector('body > header > div:last-child');
-  headerActions.insertBefore(reviewHead, byId('resolve'));
+  byId('uxReviewHead').onclick = () => ordersDialog.showModal();
   byId('mobileSettings').onclick = () => settingsDialog.showModal();
-
-  const dock = document.createElement('div');
-  dock.className = 'ux-dock';
-  dock.innerHTML = '<button type="button" class="primary" id="uxDockResolve">Resolve round →</button>';
-  document.body.append(dock);
   byId('uxDockResolve').onclick = () => byId('resolve').click();
 
   const focusButton = document.createElement('button');
