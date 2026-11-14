@@ -129,7 +129,7 @@ with the other views.
 | DOM subtree                                                                             | Rendered by      |
 | --------------------------------------------------------------------------------------- | ---------------- |
 | `#map` content and flow colors, `#score`, `#resolve`, `#log`, `#orders`                 | `game.js`        |
-| `#map` viewBox and camera transform, `#uxSide*`, `#uxDock*`                             | `ux.js`          |
+| `#map` viewBox and camera transform, `#uxDockResolve`, the Orders and Settings dialogs  | `ux.js`          |
 | `#tacticalInspector`, `#tacticalGroupBar`, `#tacticalMenu`, `.tactical-edge-hit`, rings | `tactical-ui.js` |
 | `#leaderboardTable` rows and header sort marks, `#leaderboardCharts`                    | `leaderboard.js` |
 | `#replayDialog`, `#gameOverNotice`, the Replay item in `#tacticalMenu`                  | `replay.js`      |
@@ -139,6 +139,29 @@ with the other views.
 
 `tactical-ui.js` builds the node and connection editors inside the inspector
 from store selectors and commands.
+
+### Owners of a surface
+
+One script and one stylesheet own each surface. A surface is declared in
+`index.html` with an id; the owner finds it by id, never by its position in the
+DOM, and calls commands or the owner's functions instead of clicking another
+owner's button.
+
+| Surface                                                             | Script           | Stylesheet        |
+| ------------------------------------------------------------------- | ---------------- | ----------------- |
+| Page shell: `body`, `header`, `.layout`, `.view-tabs`, base forms   | `game.js`        | `styles.css`      |
+| Camera: zoom, wheel, `fitCamera()`, `#map` viewBox, Focus           | `ux.js`          | `ux.css`          |
+| Orders and Settings dialogs, the dock's Resolve button              | `ux.js`          | `ux.css`          |
+| Map viewport, zoom controls, node and group editor, `#tacticalMenu` | `tactical-ui.js` | `tactical-ui.css` |
+| Replay, game over                                                   | `replay.js`      | `replay.css`      |
+| Online lobby and indicators                                         | `online.js`      | `online.css`      |
+| Map editor and its bar                                              | `map-editor.js`  | `map-editor.css`  |
+| Map library                                                         | `map-library.js` | `map-library.css` |
+
+The camera has one owner: `ux.js` clamps every zoom to one range, and the map
+editor and the library call `fitCamera()` rather than clicking `#fit`. The menu,
+the dock and the game-over notice call `resolve`, `openNewGame`, `openOrders` and
+`openSettings`.
 
 ## Map editor
 

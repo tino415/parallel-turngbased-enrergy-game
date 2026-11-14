@@ -10,20 +10,15 @@
   const ordersDialog = byId('uxOrdersDialog');
   const settingsDialog = byId('uxSettingsDialog');
 
-  const reviewHead = document.createElement('button');
-  reviewHead.id = 'uxReviewHead';
-  reviewHead.type = 'button';
-  reviewHead.textContent = 'Orders';
-  reviewHead.onclick = () => ordersDialog.showModal();
-  const headerActions = document.querySelector('body > header > div:last-child');
-  headerActions.insertBefore(reviewHead, byId('resolve'));
-  byId('mobileSettings').onclick = () => settingsDialog.showModal();
-
-  const dock = document.createElement('div');
-  dock.className = 'ux-dock';
-  dock.innerHTML = '<button type="button" class="primary" id="uxDockResolve">Resolve round →</button>';
-  document.body.append(dock);
-  byId('uxDockResolve').onclick = () => byId('resolve').click();
+  const openOrders = () => ordersDialog.showModal();
+  const openSettings = () => settingsDialog.showModal();
+  window.openOrders = openOrders;
+  window.openSettings = openSettings;
+  byId('uxReviewHead').onclick = openOrders;
+  byId('mobileSettings').onclick = openSettings;
+  byId('uxDockResolve').onclick = () => {
+    if (!byId('resolve').disabled) resolve();
+  };
 
   const focusButton = document.createElement('button');
   focusButton.id = 'focusMap';

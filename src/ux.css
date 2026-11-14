@@ -1,34 +1,9 @@
-:root {
-  color-scheme: dark;
-  --ux-bg: #0b1424;
-  --ux-panel: #14233a;
-  --ux-card: #1b2d46;
-  --ux-border: #344963;
-  --ux-muted: #a6bad2;
-  --ux-blue: #589cff;
-  --ux-green: #6edab4;
-}
-body {
-  background: var(--ux-bg);
-  color: #f1f6ff;
-  overflow-x: hidden;
-}
-button,
-input,
-select {
-  border-radius: 9px;
-}
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 summary:focus-visible {
   outline: 3px solid #f0d27e;
   outline-offset: 2px;
-}
-header {
-  background: #101d30;
-  padding: 12px 22px;
-  align-items: center;
 }
 header h1 {
   font-size: 18px;
@@ -42,28 +17,11 @@ header > div:last-child {
   gap: 8px;
   flex-wrap: wrap;
 }
-#score {
-  background: #1c304a;
-  border: 1px solid #344963;
-  border-radius: 8px;
-  padding: 9px 11px;
-  white-space: nowrap;
-  font-size: 12px;
-}
 header .primary {
   background: #387dcc;
   border-color: #579eec;
   color: white;
   font-weight: 750;
-}
-#mobileSettings {
-  display: inline-block;
-}
-.view-tabs {
-  background: #182942;
-  border: 1px solid #344963;
-  border-radius: 11px;
-  padding: 4px;
 }
 .view-tabs button {
   border: 0;
@@ -71,41 +29,12 @@ header .primary {
   padding: 10px 15px;
   font-size: 13px;
 }
-.view-tabs button.active {
-  background: #315d94;
-  border-radius: 8px;
-}
-.layout {
-  max-width: 1480px;
-  grid-template-columns: minmax(0, 1fr) 288px;
-  gap: 14px;
-  padding: 14px 20px;
-}
 .layout > .panel {
   background: var(--ux-panel);
   border-color: var(--ux-border);
 }
-.layout > .panel:first-child {
-  min-width: 0;
-}
-#mapViewport {
-  height: min(70vh, 730px);
-  min-height: 450px;
-  background: #0d1a2b;
-  border: 1px solid #33455f;
-  border-radius: 11px;
-}
-#mapViewport svg {
-  display: block;
-}
 #map .ux-flow-overlay {
   pointer-events: none;
-}
-#mapViewport .map-zoom-controls {
-  right: 12px;
-  top: 12px;
-  bottom: auto;
-  gap: 6px;
 }
 #mapViewport .map-zoom-controls button {
   min-width: 43px;
@@ -115,27 +44,6 @@ header .primary {
 }
 #mapViewport .map-zoom-controls #focusMap {
   font-size: 12px;
-}
-.map-explanation {
-  font-size: 12px;
-  line-height: 1.6;
-  margin: 12px 0 0;
-}
-.ux-node-card {
-  border: 1px solid #405b77;
-  border-radius: 12px;
-  background: var(--ux-card);
-  padding: 14px;
-}
-.ux-node-card strong {
-  font-size: 21px;
-}
-.ux-node-card .muted {
-  margin: 8px 0;
-  line-height: 1.6;
-}
-.ux-node-card button {
-  width: 100%;
 }
 .ux-dialog::backdrop {
   background: #030912ce;
@@ -201,12 +109,6 @@ header .primary {
 }
 #settingsNewGame {
   margin-top: 16px;
-}
-.ux-dock {
-  display: none;
-}
-#messagesView .log {
-  max-height: 65vh;
 }
 @media (min-width: 761px) {
   .layout.ux-wide-view {

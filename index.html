@@ -23,7 +23,7 @@
         <h1>⚡ Parallel Energy Game</h1>
         <div class="muted">Simultaneous orders • Local energy • Prototype</div>
       </div>
-      <div>
+      <div id="headerActions">
         <span id="score"><span id="scoreRound"></span><span id="scoreCounts"></span></span>
         <div class="view-tabs" role="tablist" aria-label="Game views">
           <button
@@ -53,6 +53,7 @@
             Leaderboard
           </button>
         </div>
+        <button id="uxReviewHead" type="button">Orders</button>
         <button
           class="primary"
           id="resolve"
@@ -63,6 +64,10 @@
         </button>
         <button id="reset">New game</button>
         <button id="mobileSettings" type="button">Settings</button>
+        <details id="tacticalMenu">
+          <summary aria-label="More actions">☰</summary>
+          <div class="tactical-menu-content"></div>
+        </details>
       </div>
     </header>
     <dialog id="newGameDialog" closedby="any" aria-labelledby="newGameTitle">
@@ -467,6 +472,10 @@
         </p>
       </div>
     </dialog>
+    <div class="ux-dock">
+      <button id="uxDockSelect" type="button"></button>
+      <button type="button" class="primary" id="uxDockResolve">Resolve round →</button>
+    </div>
     <script src="./src/engine.js" defer></script>
     <script src="./src/custom-map.js" defer></script>
     <script src="./src/store.js" defer></script>

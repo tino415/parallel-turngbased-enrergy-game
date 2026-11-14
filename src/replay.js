@@ -65,7 +65,7 @@
     dismissed = { map: match.map, outcome: outcomeOf(match) };
     renderNotice(match);
   };
-  byId('gameOverNewGame').onclick = () => byId('reset').click();
+  byId('gameOverNewGame').onclick = openNewGame;
   byId('replayClose').onclick = () => store.closeReplay();
   dialog.addEventListener('cancel', (event) => {
     event.preventDefault();
