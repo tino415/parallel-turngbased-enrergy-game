@@ -521,7 +521,7 @@ function writeTemplates(templates) {
 }
 loadTemplates();
 store.subscribe((snapshot, previous) => {
-  if (GameStore.changed(snapshot, previous, (s) => s.ui.templates))
+  if (previous && GameStore.changed(snapshot, previous, (s) => s.ui.templates))
     writeTemplates(snapshot.ui.templates);
 });
 function switchView(view) {

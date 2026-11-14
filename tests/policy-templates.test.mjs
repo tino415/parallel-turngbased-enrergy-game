@@ -70,6 +70,18 @@ test('stored templates are cleaned on load and junk is dropped', () => {
     templatesOf(store).map((t) => t.name),
     ['Ok'],
   );
+  store.setTemplates([
+    { name: 'A', reserve: 1, investPct: 2 },
+    { name: ' A ', reserve: 3, investPct: 4 },
+    { name: 'Wild', reserve: 1, investPct: 500 },
+    { name: 'Negative', reserve: -1, investPct: 5 },
+    { name: 'Target', reserve: 1, investPct: 5, investTarget: -3 },
+  ]);
+  assert.deepEqual(
+    templatesOf(store).map((t) => t.name),
+    ['A'],
+  );
+  assert.equal(templatesOf(store)[0].reserve, 1);
   store.setTemplates('nonsense');
   assert.deepEqual(templatesOf(store), []);
 });
