@@ -416,6 +416,13 @@
         <button id="clearAll">Clear all manual orders</button>
       </div>
     </dialog>
+    <dialog id="templatesDialog" closedby="any" class="ux-dialog">
+      <div class="ux-dialog-header">
+        <h2>Templates</h2>
+        <button class="ux-dialog-close" type="button">Close ×</button>
+      </div>
+      <div class="ux-dialog-body"></div>
+    </dialog>
     <dialog id="uxSettingsDialog" closedby="any" class="ux-dialog">
       <div class="ux-dialog-header">
         <h2>Game settings</h2>
@@ -447,6 +454,14 @@
           <label
             >Floor up to <input id="defaultDefenseTarget" type="number" min="0" placeholder="none"
           /></label>
+          <div id="fillFromTemplateRow" class="template-fill" hidden>
+            <select id="fillFromTemplate" aria-label="Template"></select>
+            <button id="fillFromTemplateApply" type="button">Fill from template</button>
+          </div>
+        </div>
+        <div class="policy-box">
+          <h3>Templates</h3>
+          <div id="settingsTemplates"></div>
         </div>
         <div class="policy-box">
           <h3>Debug</h3>
@@ -500,6 +515,7 @@
     <script src="./src/dialogs.js" defer></script>
     <script src="./src/leaderboard.js" defer></script>
     <script src="./src/ux.js" defer></script>
+    <script src="./src/templates-ui.js" defer></script>
     <script src="./src/tactical-ui.js" defer></script>
     <script src="./src/replay.js" defer></script>
     <script src="./src/rules.js" defer></script>
