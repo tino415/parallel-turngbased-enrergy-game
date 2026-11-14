@@ -1,9 +1,9 @@
 # Architecture: state, commands and rendering
 
-The game is fourteen classic scripts loaded with `defer` into one global scope, in
-this order: `engine.js`, `custom-map.js`, `store.js`, `format.js`, `game.js`, `dialogs.js`,
-`leaderboard.js`, `ux.js`, `tactical-ui.js`, `replay.js`, `rules.js`, `map-editor.js`,
-`map-library.js`, `online.js`. Later scripts call functions from earlier ones and
+The game is fifteen classic scripts loaded with `defer` into one global scope, in
+this order: `engine.js`, `custom-map.js`, `store.js`, `format.js`, `rules-form.js`, `game.js`,
+`dialogs.js`, `leaderboard.js`, `ux.js`, `tactical-ui.js`, `replay.js`, `rules.js`,
+`map-editor.js`, `map-library.js`, `online.js`. Later scripts call functions from earlier ones and
 never replace them.
 
 | Module           | Owns                                                                                                           | Touches the DOM |
