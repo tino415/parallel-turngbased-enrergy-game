@@ -101,11 +101,11 @@
     factor=next/camera.scale;
     store.setCamera({x:vw/2-(vw/2-camera.x)*factor,y:vh/2-(vh/2-camera.y)*factor,scale:next});
   }
+  const isZoomGesture=(e)=>e.ctrlKey||e.metaKey;
   byId('map').addEventListener('wheel',(e)=>{
-    // Normal page scrolling must not zoom the map.
-    if(!e.ctrlKey&&!e.metaKey) return;
+    if(!isZoomGesture(e)) return;
     e.preventDefault();
-    store.setCamera({...camera,scale:clampScale(camera.scale*(e.deltaY<0?1.12:.89))});
+    zoomUX(e.deltaY<0?1.12:1/1.12);
   },{passive:false});
   function startOnNewMaps() {
     const key=mapSeed+'/'+N+'/'+edges.length+'/'+state.round+'/'+mySeat();
