@@ -523,7 +523,11 @@
     "defaults": {
       "enabled": false,
       "reserve": "3",
-      "invest": "45"
+      "invest": "45",
+      "investTarget": "",
+      "divestPct": "0",
+      "defensePct": "0",
+      "defenseTarget": ""
     },
     "replay": null
   }

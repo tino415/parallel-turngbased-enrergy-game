@@ -23,12 +23,23 @@ const softCapEnabled = () => selectors.softCapEnabled(currentMatch());
 const matchRules = () => selectors.rules(currentMatch());
 const withdrawal = (source, p) => selectors.withdrawal(currentMatch(), source, p);
 const availableEnergy = (source, p) => selectors.availableEnergy(currentMatch(), source, p);
+const DEFAULT_INPUTS = {
+  reserve: 'defaultReserve',
+  invest: 'defaultInvest',
+  investTarget: 'defaultInvestTarget',
+  divestPct: 'defaultDivestPct',
+  defensePct: 'defaultDefensePct',
+  defenseTarget: 'defaultDefenseTarget',
+};
 function domDefaults() {
   return {
     enabled: $('autoConquer').checked,
-    reserve: $('defaultReserve').value,
-    invest: $('defaultInvest').value,
+    ...Object.fromEntries(Object.entries(DEFAULT_INPUTS).map(([key, id]) => [key, $(id).value])),
   };
+}
+function writeDefaults(defaults) {
+  $('autoConquer').checked = defaults.enabled;
+  for (const [key, id] of Object.entries(DEFAULT_INPUTS)) $(id).value = defaults[key] ?? '';
 }
 function fresh() {
   store.batch(() => {
@@ -540,9 +551,7 @@ function restoreGame() {
       match = GameStore.matchFromSave(save, domDefaults());
     if (!match) return false;
     // Always recover an existing match; New Game is the explicit way to replace it.
-    $('autoConquer').checked = match.defaults.enabled;
-    $('defaultReserve').value = match.defaults.reserve;
-    $('defaultInvest').value = match.defaults.invest;
+    writeDefaults({ ...domDefaults(), ...match.defaults });
     store.batch(() => {
       store.select(save.selected ?? null);
       store.replaceMatch({ ...match, defaults: domDefaults() });
@@ -553,8 +562,11 @@ function restoreGame() {
     return false;
   }
 }
-for (const id of ['autoConquer', 'defaultReserve', 'defaultInvest'])
-  $(id).addEventListener('change', () => store.setDefaults(domDefaults()));
+for (const id of ['autoConquer', ...Object.values(DEFAULT_INPUTS)])
+  $(id).addEventListener('change', () => {
+    store.setDefaults(domDefaults());
+    writeDefaults(currentMatch().defaults);
+  });
 window.addEventListener('beforeunload', (event) => {
   if (!state || state.finished || currentMatch().online) return;
   saveGame();
@@ -571,7 +583,10 @@ function drawGame(snapshot, previous) {
   const changed = (read) => GameStore.changed(snapshot, previous, read);
   if (changed((s) => s.ui.camera)) moveCamera();
   if (changed((s) => s.ui.mapValues)) renderMapValuesButton();
-  if (changed((s) => s.match)) renderScore();
+  if (changed((s) => s.match)) {
+    renderScore();
+    $('defaultDivestRow').hidden = !softCapEnabled();
+  }
   if (
     currentView === 'map' &&
     [(s) => s.match, (s) => s.ui.view, (s) => s.ui.aiDebug, (s) => s.ui.mapValues].some(changed)

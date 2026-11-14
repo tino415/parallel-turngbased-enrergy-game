@@ -432,6 +432,21 @@
             >Invest surplus (%)
             <input id="defaultInvest" type="number" min="0" max="100" value="70"
           /></label>
+          <label
+            >Invest until invested reaches
+            <input id="defaultInvestTarget" type="number" min="0" placeholder="none"
+          /></label>
+          <label id="defaultDivestRow"
+            >Above the target, scale down % per round
+            <input id="defaultDivestPct" type="number" min="0" max="100" value="0"
+          /></label>
+          <label
+            >Grow the floor by % of surplus
+            <input id="defaultDefensePct" type="number" min="0" max="100" value="0"
+          /></label>
+          <label
+            >Floor up to <input id="defaultDefenseTarget" type="number" min="0" placeholder="none"
+          /></label>
         </div>
         <div class="policy-box">
           <h3>Debug</h3>
