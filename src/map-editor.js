@@ -58,7 +58,7 @@
   }
 
   const head = element('span', { id: 'mapEditorHead', hidden: '' });
-  document.querySelector('body > header > div:last-child').prepend(head);
+  byId('headerActions').prepend(head);
 
   const menuItem = element('button', { type: 'button', id: 'menuMapEditor' }, ['Map editor']);
   menuItem.onclick = () => {
