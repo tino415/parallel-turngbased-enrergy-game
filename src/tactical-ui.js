@@ -17,21 +17,21 @@
 
   const menu = byId('tacticalMenu');
   const menuItems = [
-    ['Orders', 'uxReviewHead'],
-    ['Settings', 'mobileSettings'],
-    ['New game', 'reset'],
+    ['Orders', openOrders],
+    ['Settings', openSettings],
+    ['New game', openNewGame],
   ];
   const ordersCount = document.createElement('span');
   ordersCount.id = 'menuOrdersCount';
-  for (const [label, original] of menuItems) {
+  for (const [label, command] of menuItems) {
     const button = document.createElement('button');
     button.type = 'button';
     button.textContent = label;
-    if (original === 'uxReviewHead') button.append(' ', ordersCount);
+    if (command === openOrders) button.append(' ', ordersCount);
     button.onclick = () => {
       menu.open = false;
       menu.querySelector('summary').focus();
-      byId(original).click();
+      command();
     };
     menu.querySelector('.tactical-menu-content').append(button);
   }

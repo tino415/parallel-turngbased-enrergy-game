@@ -10,9 +10,13 @@
   const ordersDialog = byId('uxOrdersDialog');
   const settingsDialog = byId('uxSettingsDialog');
 
-  byId('uxReviewHead').onclick = () => ordersDialog.showModal();
-  byId('mobileSettings').onclick = () => settingsDialog.showModal();
-  byId('uxDockResolve').onclick = () => byId('resolve').click();
+  const openOrders = () => ordersDialog.showModal();
+  const openSettings = () => settingsDialog.showModal();
+  window.openOrders = openOrders;
+  window.openSettings = openSettings;
+  byId('uxReviewHead').onclick = openOrders;
+  byId('mobileSettings').onclick = openSettings;
+  byId('uxDockResolve').onclick = resolve;
 
   const focusButton = document.createElement('button');
   focusButton.id = 'focusMap';
