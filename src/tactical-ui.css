@@ -172,6 +172,21 @@ body > header #resolve {
 #tacticalInspector[hidden] {
   display: none !important;
 }
+#tacticalInspector.is-mixed {
+  width: min(720px, calc(100vw - 20px));
+}
+#tacticalInspector.is-mixed .tactical-inspector-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.tactical-group-section {
+  min-width: 0;
+}
+.tactical-group-section h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
 .tactical-inspector-head {
   flex: 0 0 auto;
   display: flex;
@@ -482,6 +497,17 @@ body > header #resolve {
   }
   #tacticalInspector:not(.is-editing) {
     max-height: 145px;
+  }
+  #tacticalInspector.is-mixed {
+    width: 100%;
+  }
+  #tacticalInspector.is-mixed .tactical-inspector-body {
+    display: block;
+  }
+  .tactical-group-section + .tactical-group-section {
+    margin-top: 14px;
+    padding-top: 10px;
+    border-top: 1px solid #5b7190;
   }
   #tacticalInspector .tactical-inspector-head {
     padding: 8px 12px;

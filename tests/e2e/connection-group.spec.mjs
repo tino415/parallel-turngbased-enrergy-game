@@ -50,9 +50,7 @@ async function touch(page, edge, type, offset = 0) {
 
 const blueAroundZero = { 1: { active: 10 }, 2: { active: 10 }, 4: { active: 10 } };
 
-test('Shift+click builds a group of connections from own nodes, never with nodes', async ({
-  page,
-}) => {
+test('Shift+click builds a group of connections from own nodes', async ({ page }) => {
   await giveBlue(page, blueAroundZero);
   await edgeHit(page, '1-3').click({ modifiers: ['Shift'] });
   await expect(groupBar(page)).toContainText('1 connection selected');
@@ -61,8 +59,6 @@ test('Shift+click builds a group of connections from own nodes, never with nodes
   await expect(inspector(page)).toBeHidden();
   await edgeHit(page, '9-10').click({ modifiers: ['Shift'] });
   await expect(groupBar(page)).toContainText('Only connections touching your nodes join.');
-  await node(page, 1).click();
-  await expect(groupBar(page)).toContainText('This group holds connections.');
   expect((await ui(page)).bulkEdges).toEqual([
     [1, 3],
     [2, 5],
@@ -84,13 +80,13 @@ test('Shift+click keeps the selected connection in the group it starts', async (
   ]);
 });
 
-test('a selected node does not join a connection group started by Shift+click', async ({
-  page,
-}) => {
+test('a selected node and a Shift+clicked connection form one mixed group', async ({ page }) => {
   await giveBlue(page, blueAroundZero);
-  await node(page, 1).click();
+  await node(page, 1).click({ modifiers: ['Shift'] });
   await edgeHit(page, '2-5').click({ modifiers: ['Shift'] });
-  await expect(groupBar(page)).toContainText('1 connection selected');
+  await expect(groupBar(page)).toContainText('1 node · 1 connection selected');
+  expect((await ui(page)).bulkSelection).toEqual([1]);
+  expect((await ui(page)).bulkEdges).toEqual([[2, 5]]);
 });
 
 test('a connection in a group looks like the selected connection', async ({ page }) => {
@@ -106,12 +102,45 @@ test('a connection in a group looks like the selected connection', async ({ page
   expect(await look('#map .tactical-group-edge >> nth=0')).toEqual(selectedLook);
 });
 
-test('a node group does not take connections', async ({ page }) => {
+test('a node group takes connections too, and the bar helpers keep them', async ({ page }) => {
   await giveBlue(page, blueAroundZero);
   await node(page, 1).click({ modifiers: ['Shift'] });
   await edgeHit(page, '1-3').click();
-  await expect(groupBar(page)).toContainText('This group holds nodes.');
-  expect((await ui(page)).bulkEdges).toEqual([]);
+  await expect(groupBar(page)).toContainText('1 node · 1 connection selected');
+  await groupBar(page).getByRole('button', { name: 'All' }).click();
+  expect((await ui(page)).bulkEdges).toEqual([[1, 3]]);
+  expect((await ui(page)).bulkSelection.slice().sort((a, b) => a - b)).toEqual([0, 1, 2, 4]);
+});
+
+test('a mixed group edits nodes and connections side by side on desktop and stacked on a phone', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await giveBlue(page, blueAroundZero);
+  await page.evaluate(() => {
+    store.setGroupMode(true);
+    store.setBulkSelection([1, 2]);
+    store.setBulkEdges([[1, 3]]);
+    store.setGroupEditing(true);
+    render();
+  });
+  await expect(inspector(page)).toContainText('Group · 2 nodes · 1 connection');
+  const sections = page.locator('#tacticalInspector .tactical-group-section');
+  await expect(sections).toHaveCount(2);
+  await expect(sections.nth(0)).toContainText('Policy for every node');
+  await expect(sections.nth(1)).toContainText('Send each');
+  const [nodes, connections] = await sections.evaluateAll((all) =>
+    all.map((section) => section.getBoundingClientRect()),
+  );
+  expect(connections.left).toBeGreaterThan(nodes.right - 1);
+  expect(Math.abs(connections.top - nodes.top)).toBeLessThan(2);
+
+  await page.setViewportSize({ width: 360, height: 780 });
+  const [phoneNodes, phoneConnections] = await sections.evaluateAll((all) =>
+    all.map((section) => section.getBoundingClientRect()),
+  );
+  expect(phoneConnections.top).toBeGreaterThan(phoneNodes.top);
+  expect(Math.abs(phoneConnections.left - phoneNodes.left)).toBeLessThan(2);
 });
 
 test('a touch long-press on a connection starts selecting, taps add connections and Edit opens them', async ({

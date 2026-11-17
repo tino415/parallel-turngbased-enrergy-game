@@ -62,7 +62,8 @@ clears it on load.
 
 ² `resolve` drops the nodes the player no longer owns and the connections that no
 longer touch the player's nodes, so a group survives rounds but never holds a lost
-node. A group holds nodes or connections, never both.
+node. A group holds nodes, connections or both; with both, the inspector edits
+them in two sections, side by side on desktop and stacked on a phone.
 
 Gesture and render bookkeeping stays local to the code that needs it, because
 no other code reads it: drag and click suppression (`game.js`), pinch fingers
