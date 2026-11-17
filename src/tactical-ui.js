@@ -334,7 +334,7 @@
   groupBar.id = 'tacticalGroupBar';
   groupBar.hidden = true;
   groupBar.setAttribute('role', 'toolbar');
-  groupBar.setAttribute('aria-label', 'Node group');
+  groupBar.setAttribute('aria-label', 'Group');
   viewport.append(groupBar);
 
   function renderGroupBar() {
@@ -1205,15 +1205,17 @@
       show(column);
       return column;
     };
+    const noMessage = { withMessage: false };
+    if (groupMessage) body.append(textElement('p', groupMessage, 'tactical-warning'));
     body.append(
       section('Nodes', (column) =>
-        ids.length === 1 ? showNode(column, ids[0], true) : showGroup(column, ids),
+        ids.length === 1 ? showNode(column, ids[0], true) : showGroup(column, ids, noMessage),
       ),
-      section('Connections', (column) => showEdgeGroup(column, groupEdges())),
+      section('Connections', (column) => showEdgeGroup(column, groupEdges(), noMessage)),
     );
   }
 
-  function showGroup(body, ids) {
+  function showGroup(body, ids, { withMessage = true } = {}) {
     const forecasts = ids.map((id) => projection(id));
     const total = (values) => values.reduce((sum, value) => sum + value, 0);
     body.append(
@@ -1229,7 +1231,8 @@
       groupNodeChoices(ids),
       groupOneOffOrders(ids),
     );
-    if (groupMessage) body.append(textElement('p', groupMessage, 'tactical-warning'));
+    if (withMessage && groupMessage)
+      body.append(textElement('p', groupMessage, 'tactical-warning'));
     body.append(groupMembers(ids));
   }
 
@@ -1455,7 +1458,7 @@
     return row;
   }
 
-  function showEdgeGroup(body, pairs) {
+  function showEdgeGroup(body, pairs, { withMessage = true } = {}) {
     const view = selectors.groupEdgeView(currentMatch(), pairs);
     body.append(
       metrics([
@@ -1469,7 +1472,8 @@
       ...(view.attacks ? groupPressureRows(pairs, view) : []),
       groupStopRow(pairs, view),
     );
-    if (groupMessage) body.append(textElement('p', groupMessage, 'tactical-warning'));
+    if (withMessage && groupMessage)
+      body.append(textElement('p', groupMessage, 'tactical-warning'));
     body.append(edgeGroupMembers(pairs));
   }
 

@@ -109,7 +109,7 @@ test('a node group takes connections too, and the bar helpers keep them', async 
   await expect(groupBar(page)).toContainText('1 node · 1 connection selected');
   await groupBar(page).getByRole('button', { name: 'All' }).click();
   expect((await ui(page)).bulkEdges).toEqual([[1, 3]]);
-  expect((await ui(page)).bulkSelection.length).toBeGreaterThan(1);
+  expect((await ui(page)).bulkSelection.slice().sort((a, b) => a - b)).toEqual([1, 2, 4]);
 });
 
 test('a mixed group edits nodes and connections side by side on desktop and stacked on a phone', async ({
