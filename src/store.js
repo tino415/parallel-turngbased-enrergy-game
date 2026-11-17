@@ -1479,14 +1479,11 @@
       setGroupEditing: (on) => setUi('groupEditing', on),
       setBulkSelection: (ids) => setUi('bulkSelection', ownOnly(ids)),
       toggleGroupMember(id) {
-        if (!isOwn(snapshot.match, id) || snapshot.ui.bulkEdges.length) return;
+        if (!isOwn(snapshot.match, id)) return;
         setUi('bulkSelection', bulkSelectionWith(id, !snapshot.ui.bulkSelection.includes(id)));
       },
       setBulkEdges: (pairs) => setUi('bulkEdges', orderableEdges(snapshot.match, pairs)),
-      toggleGroupEdge(a, b) {
-        if (snapshot.ui.bulkSelection.length) return;
-        setUi('bulkEdges', bulkEdgesWith(a, b));
-      },
+      toggleGroupEdge: (a, b) => setUi('bulkEdges', bulkEdgesWith(a, b)),
       swapGroupEdge(a, b) {
         setUi(
           'bulkEdges',

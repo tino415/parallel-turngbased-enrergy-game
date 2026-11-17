@@ -191,7 +191,7 @@ test('the pressured connections of a node group can be edited together', () => {
   assert.equal(next.policies[2].pressure[5].min, 25);
 });
 
-test('a group holds connections touching own nodes, directed away from them, never with nodes', () => {
+test('a group holds connections touching own nodes, directed away from them', () => {
   const store = GameStore.createStore();
   store.replaceMatch(blueMatch());
   const bulkEdges = () => plain(store.getSnapshot().ui.bulkEdges);
@@ -209,15 +209,30 @@ test('a group holds connections touching own nodes, directed away from them, nev
     [1, 3],
     [1, 0],
   ]);
-  store.toggleGroupMember(2);
-  assert.deepEqual(plain(store.getSnapshot().ui.bulkSelection), []);
   store.toggleGroupEdge(1, 3);
   assert.deepEqual(bulkEdges(), [[1, 0]]);
   store.leaveGroupMode();
   assert.deepEqual(bulkEdges(), []);
+});
+
+test('a group holds nodes and connections together, each kind toggled apart', () => {
+  const store = GameStore.createStore();
+  store.replaceMatch(blueMatch());
+  const group = () => ({
+    nodes: plain(store.getSnapshot().ui.bulkSelection),
+    edges: plain(store.getSnapshot().ui.bulkEdges),
+  });
+  store.setGroupMode(true);
+  store.toggleGroupEdge(3, 1);
+  store.toggleGroupMember(2);
+  assert.deepEqual(group(), { nodes: [2], edges: [[1, 3]] });
+  store.toggleGroupMember(5);
+  assert.deepEqual(group(), { nodes: [2], edges: [[1, 3]] });
+  store.toggleGroupMember(2);
+  assert.deepEqual(group(), { nodes: [], edges: [[1, 3]] });
   store.toggleGroupMember(2);
   store.toggleGroupEdge(1, 3);
-  assert.deepEqual(bulkEdges(), []);
+  assert.deepEqual(group(), { nodes: [2], edges: [] });
 });
 
 test('after a round, connections that no longer touch own nodes leave the group', () => {

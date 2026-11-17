@@ -68,9 +68,11 @@
   });
   const groupIds = () => (groupMode ? bulkSelection : []);
   const groupEdges = () => (groupMode ? bulkEdges : []);
-  const showingEdgeGroup = () => groupEditing && groupEdges().length > 0;
-  const showingGroup = () => groupEditing && groupIds().length >= 2;
-  const editedMember = () => (groupEditing && groupIds().length === 1 ? groupIds()[0] : null);
+  const showingMixedGroup = () => groupEditing && groupIds().length > 0 && groupEdges().length > 0;
+  const showingEdgeGroup = () => groupEditing && groupEdges().length > 0 && !groupIds().length;
+  const showingGroup = () => groupEditing && groupIds().length >= 2 && !groupEdges().length;
+  const editedMember = () =>
+    groupEditing && groupIds().length === 1 && !groupEdges().length ? groupIds()[0] : null;
   let groupMessage = '';
   store.focusNode(state.nodes.find((node) => isMine(node.id))?.id ?? 0);
   let previousRound = state.round;
@@ -268,10 +270,6 @@
   );
 
   function toggleGroupNode(id) {
-    if (groupEdges().length) {
-      showGroupHint('This group holds connections. Done, then pick nodes.');
-      return;
-    }
     if (!isMine(id)) {
       showGroupHint('Only your nodes join a group.');
       return;
@@ -284,10 +282,6 @@
   }
 
   function toggleGroupEdge(a, b) {
-    if (groupIds().length) {
-      showGroupHint('This group holds nodes. Done, then pick connections.');
-      return;
-    }
     if (selectors.edgeSource(currentMatch(), a, b) === null) {
       showGroupHint('Only connections touching your nodes join.');
       return;
@@ -360,7 +354,6 @@
     edit.disabled = bulkSelection.length === 0 && bulkEdges.length === 0;
     const helper = (label, predicate) => {
       const button = action(label, () => selectOwnNodes(predicate));
-      button.disabled = bulkEdges.length > 0;
       return button;
     };
     updateChildrenInPlace(groupBar, [
@@ -390,7 +383,12 @@
 
   function groupCount() {
     if (!bulkEdges.length) return String(bulkSelection.length);
-    return bulkEdges.length + (bulkEdges.length === 1 ? ' connection' : ' connections');
+    const connections =
+      bulkEdges.length + (bulkEdges.length === 1 ? ' connection' : ' connections');
+    if (!bulkSelection.length) return connections;
+    return (
+      bulkSelection.length + (bulkSelection.length === 1 ? ' node · ' : ' nodes · ') + connections
+    );
   }
 
   const selectButton = byId('uxDockSelect');
@@ -1195,6 +1193,23 @@
       roundsToTarget +
       (roundsToTarget === 1 ? ' round' : ' rounds') +
       ' to target'
+    );
+  }
+
+  function showMixedGroup(body) {
+    const ids = groupIds();
+    const section = (title, show) => {
+      const column = document.createElement('section');
+      column.className = 'tactical-group-section';
+      column.append(textElement('h3', title));
+      show(column);
+      return column;
+    };
+    body.append(
+      section('Nodes', (column) =>
+        ids.length === 1 ? showNode(column, ids[0], true) : showGroup(column, ids),
+      ),
+      section('Connections', (column) => showEdgeGroup(column, groupEdges())),
     );
   }
 
@@ -2119,8 +2134,8 @@
 
   function positionInspector() {
     if (root.hidden || mobile()) return;
-    if (showingGroup() || showingEdgeGroup() || editedMember() !== null) {
-      root.style.left = Math.max(10, innerWidth - 372) + 'px';
+    if (showingGroup() || showingEdgeGroup() || showingMixedGroup() || editedMember() !== null) {
+      root.style.left = Math.max(10, innerWidth - root.offsetWidth - 12) + 'px';
       root.style.top = '70px';
       return;
     }
@@ -2159,8 +2174,9 @@
     // the unchanged mobile Orders/Resolve dock, or near the edge on desktop.
     const group = showingGroup();
     const edgeGroup = showingEdgeGroup();
+    const mixed = showingMixedGroup();
     const member = editedMember();
-    const groupEditor = group || edgeGroup || member !== null;
+    const groupEditor = group || edgeGroup || mixed || member !== null;
     root.hidden =
       !(groupEditor || (active && editing)) ||
       currentView !== 'map' ||
@@ -2168,9 +2184,10 @@
     document.body.classList.toggle('tactical-selection-active', !root.hidden);
     if (root.hidden) return;
     root.classList.toggle('is-editing', true);
+    root.classList.toggle('is-mixed', mixed);
     const subject = group
       ? 'Group · ' + groupIds().length + ' nodes'
-      : edgeGroup
+      : edgeGroup || mixed
         ? 'Group · ' + groupCount()
         : member !== null
           ? 'Node ' + member
@@ -2191,7 +2208,8 @@
     header.append(close);
     const body = document.createElement('div');
     body.className = 'tactical-inspector-body';
-    if (group) showGroup(body, groupIds());
+    if (mixed) showMixedGroup(body);
+    else if (group) showGroup(body, groupIds());
     else if (edgeGroup) showEdgeGroup(body, groupEdges());
     else if (member !== null) showNode(body, member, true);
     else if (active.kind === 'node') showNode(body, active.id);
